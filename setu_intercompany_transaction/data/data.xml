@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <menuitem id="intercompany_main_menu" name="Inter Company Transaction"
+                  parent="stock.menu_stock_root" sequence="99" />
+
+        <!-- Sequences for Intercompany Transfer -->
+        <record id="seq_intercompany_transfer" model="ir.sequence">
+            <field name="name">Inter Company</field>
+            <field name="code">setu.intercompany.transfer</field>
+            <field name="prefix">ICT</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- Sequences for Internal Transfer -->
+        <record id="seq_inter_warehouse" model="ir.sequence">
+            <field name="name">Inter Warehouse</field>
+            <field name="code">setu.interwarehouse.transfer</field>
+            <field name="prefix">IWT</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- Sequences for Reverse Transfer -->
+        <record id="seq_reverse_transfer" model="ir.sequence">
+            <field name="name">Inter Company</field>
+            <field name="code">setu.reverse.intercompany.transfer</field>
+            <field name="prefix">RT</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>

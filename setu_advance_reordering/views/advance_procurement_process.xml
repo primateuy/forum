@@ -1,0 +1,350 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="form_advance_procurement_process" model="ir.ui.view">
+            <field name="name">advance.procurement.process.form</field>
+            <field name="model">advance.procurement.process</field>
+            <field name="arch" type="xml">
+                <form string="Advance Procurement Process">
+                    <header>
+                        <field name="is_procurement_line_pending" invisible="1"/>
+                        <button name="action_procurement_confirm" string="Validate" type="object"
+                                invisible="state != 'draft'" class="btn-primary"/>
+
+                        <button name="action_recalculate_procurement_demand" string="Re-calculate Demand" type="object"
+                                invisible="state not in ['inprogress']" class="btn-primary"/>
+
+                        <button name="action_procurement_verified" string="Verify" type="object"
+                                invisible="state not in ['inprogress']" class="btn-primary"/>
+
+                        <button name="action_procurement_internal_transfer" string="Create Inter Transfer" type="object"
+                                invisible="state not in ['verified']" class="btn-primary"/>
+
+                        <button name="action_procurement_cancel" string="Cancel" type="object"
+                                confirm="Are you sure want to cancel advance reorder ?"
+                                invisible="state in ['verified','approved','done','unable_to_replenish','cancel']"/>
+
+                        <button name="action_procurement_reset_to_draft" string="Reset to Draft" type="object"
+                                invisible="state not in ['cancel','no_data']"/>
+
+                        <field name="state" widget="statusbar"
+                               statusbar_visible="draft,inprogress,verified,done,cancel"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <field name="iwt_count" invisible="1"/>
+                            <field name="ict_count" invisible="1"/>
+                            <button type="object"
+                                    name="action_inter_warehouse_transfer_view"
+                                    class="oe_stat_button"
+                                    icon="fa-truck"
+                                    invisible="iwt_count == 0">
+                                <field name="iwt_count" widget="statinfo" string="Inter Warehouse Transfer"/>
+                            </button>
+                            <button type="object"
+                                    name="action_inter_company_transfer_view"
+                                    class="oe_stat_button"
+                                    icon="fa-truck"
+                                    invisible="ict_count == 0">
+                                <field name="ict_count" widget="statinfo" string="Inter Company Transfer"/>
+                            </button>
+                        </div>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" readonly="1"/>
+                            </h1>
+                        </div>
+                        <group>
+                            <group readonly="state != 'draft'">
+                                <field name="warehouse_id" required="1"/>
+                                <field name="procurement_date" required="1"/>
+                                <field name="user_id" readonly="1"/>
+                                <!--                                <field name="approve_id"/>-->
+                            </group>
+                            <group string="Replenish for next X days" readonly="state != 'draft'">
+                                <field name="buffer_stock_days" readonly="state != 'draft'"/>
+                                <field name="generate_demand_with" required="1"
+                                       readonly="state != 'draft'"/>
+                            </group>
+                        </group>
+                        <group>
+                            <group string="Procurement statistics">
+                                <label for="procurement_total_volume"/>
+                                <div class="o_row">
+                                    <field name="procurement_total_volume" readonly="1"/>
+                                    <span>
+                                        <field name="volume_uom_name" readonly="1"/>
+                                    </span>
+                                </div>
+                                <!--                                <field name="procurement_total_volume" readonly="1"/>-->
+                            </group>
+                            <group string="Choose date to calculate Average sales"
+                                   invisible="not generate_demand_with or generate_demand_with == 'forecast_sales'"
+                                   readonly="state != 'draft'">
+                                <field name="history_sale_start_date"
+                                       required="generate_demand_with == 'history_sales'"/>
+                                <field name="history_sale_end_date"
+                                       required="generate_demand_with == 'history_sales'"/>
+                                <field name="procurement_demand_growth"/>
+                            </group>
+                        </group>
+                        <notebook colspan="4">
+                            <page string="Products" name="procurement_product" colspan="4">
+                                <field name="product_ids" nolabel="1" required="1"
+                                       readonly="state != 'draft'"/>
+                            </page>
+                            <page string="Configurations" name="procurement_configuration" colspan="4">
+                                <field name="config_ids" nolabel="1" readonly="state != 'draft'">
+                                    <tree string="Configuration" editable="bottom">
+                                        <field name="warehouse_id" required="1"/>
+                                        <field name="transit_days"/>
+                                        <field name="shipment_date" readonly="1" force_save="True"/>
+                                        <field name="shipment_arrival_date" readonly="1" force_save="True"/>
+                                        <field name="advance_stock_start_date" readonly="1" force_save="True"/>
+                                        <field name="advance_stock_end_date" readonly="1" force_save="True"/>
+                                        <field name="inter_company_channel_id" readonly="1" force_save="True"
+                                               widget="many2onebutton"
+                                               invisible="not inter_company_channel_id"/>
+                                        <field name="inter_warehouse_channel_id" widget="many2onebutton"
+                                               invisible="not inter_warehouse_channel_id"/>
+                                    </tree>
+                                    <form string="Configuration">
+                                        <group>
+                                            <group>
+                                                <field name="transit_days"/>
+                                                <field name="shipment_date"/>
+                                                <field name="shipment_arrival_date"/>
+                                                <field name="inter_company_channel_id"
+                                                       invisible="not inter_company_channel_id"/>
+                                                <field name="inter_warehouse_channel_id"
+                                                       invisible="not inter_warehouse_channel_id"/>
+                                            </group>
+                                            <group>
+<!--                                                <field name="warehouse_ids" invisible="1"/>-->
+                                                <field name="warehouse_id" />
+                                                <field name="procurement_process_id" invisible="1"/>
+                                                <field name="advance_stock_start_date"/>
+                                                <field name="advance_stock_end_date"/>
+                                            </group>
+                                        </group>
+                                    </form>
+                                </field>
+                            </page>
+                            <page string="Demand Calculation" name="procurement_lines" colspan="4"
+                                  invisible="not line_ids">
+                                <field name="line_ids" nolabel="1"
+                                       readonly="state in ['done','unable_to_replenish','cancel','verified']">
+                                    <tree string="Demand Calculation" editable="bottom" create="false">
+                                        <field name="product_id" readonly="1"/>
+                                        <field name="warehouse_id" readonly="1"/>
+                                        <!--                                        <field name="carton_qty"/>-->
+                                        <field name="average_daily_sale" readonly="1" force_save="True"/>
+                                        <field name="available_stock" readonly="1" force_save="True"/>
+                                        <field name="incoming_qty" readonly="1" force_save="True"/>
+                                        <button class="oe_stat_button, oe_inline" name="action_incoming_qty_stock_move"
+                                                type="object" icon="fa-exchange" help="Stock Move"/>
+                                        <field name="transit_time_sales" readonly="1" force_save="True"/>
+                                        <field name="stock_after_transit" readonly="1" force_save="True"/>
+                                        <field name="expected_sales" readonly="1" force_save="True"/>
+                                        <field name="demanded_qty" readonly="1" force_save="True"/>
+                                        <field name="demand_adjustment_qty"/>
+                                        <field name="wh_sharing_percentage" column_invisible="True"/>
+                                    </tree>
+                                    <form string="Procurement Lines">
+                                        <group>
+                                            <group>
+                                                <field name="product_id"/>
+                                                <field name="warehouse_id"/>
+                                                <!--                                                <field name="carton_qty"/>-->
+                                                <field name="average_daily_sale"/>
+                                                <field name="available_stock"/>
+                                                <field name="incoming_qty"/>
+                                                <field name="wh_sharing_percentage"/>
+                                            </group>
+                                            <group>
+                                                <field name="transit_time_sales"/>
+                                                <field name="stock_after_transit"/>
+                                                <field name="expected_sales"/>
+                                                <field name="demanded_qty"/>
+                                                <field name="demand_adjustment_qty"/>
+                                                <!--                                                <field name="demanded_cartoon_qty"/>-->
+                                            </group>
+                                        </group>
+                                    </form>
+                                </field>
+                            </page>
+                            <page string="Not Found Forecast Sale" name="reorder_not_forecast" colspan="4"
+                                  invisible="not non_forecast_ids">
+                                <button name="action_procurement_create_forecast_sale" string="Create Forecast Sale"
+                                        type="object"
+                                        class="btn-primary"/>
+                                <field name="non_forecast_ids" nolabel="1"
+                                       readonly="state not in ['draft', 'inprogress']">
+                                    <tree string="Forecast Sale" editable="bottom">
+                                        <field name="product_id" readonly="1" force_save="True"/>
+                                        <field name="warehouse_id" readonly="1" force_save="True"/>
+                                        <field name="period_id" readonly="1" force_save="True"/>
+                                        <field name="forecast_qty"/>
+                                    </tree>
+                                    <form>
+                                        <group>
+                                            <field name="product_id"/>
+                                            <field name="warehouse_id"/>
+                                            <field name="period_id"/>
+                                            <field name="forecast_qty"/>
+                                        </group>
+                                    </form>
+                                </field>
+                            </page>
+                            <page string="Summary" name="procurement_summary" colspan="4"
+                                  invisible="not summary_ids">
+                                <field name="summary_ids" nolabel="1" readonly="1">
+                                    <tree string="Summary" editable="bottom">
+                                        <field name="product_id"/>
+                                        <field name="product_volume"/>
+                                        <field name="volume_uom_name" string="Volume UOM"/>
+                                        <field name="product_weight"/>
+                                        <field name="weight_uom_name" string="Weight UOM"/>
+                                        <field name="warehouse_demand_qty"/>
+                                        <field name="demanded_qty"/>
+                                        <field name="available_qty"/>
+                                        <field name="order_qty"/>
+                                        <field name="total_volume"/>
+                                        <field name="volume_uom_name" string="Volume UOM"/>
+                                    </tree>
+                                    <form>
+                                        <group>
+                                            <group>
+                                                <field name="product_id"/>
+                                                <label for="product_volume"/>
+                                                <div class="o_row">
+                                                    <field name="product_volume"/>
+                                                    <span>
+                                                        <field name="volume_uom_name"/>
+                                                    </span>
+                                                </div>
+                                                <label for="product_weight"/>
+                                                <div class="o_row">
+                                                    <field name="product_weight"/>
+                                                    <span>
+                                                        <field name="weight_uom_name"/>
+                                                    </span>
+                                                </div>
+                                                <!--                                                <field name="product_volume"/>-->
+                                                <!--                                                <field name="product_weight"/>-->
+                                            </group>
+                                            <group>
+                                                <field name="warehouse_demand_qty"/>
+                                                <field name="demanded_qty"/>
+                                                <field name="available_qty"/>
+                                                <div class="o_row">
+                                                    <field name="total_volume"/>
+                                                    <span>
+                                                        <field name="volume_uom_name"/>
+                                                    </span>
+                                                </div>
+                                                <!--                                                <field name="total_volume"/>-->
+                                            </group>
+                                        </group>
+                                    </form>
+                                </field>
+                            </page>
+                            <!--                            <page string="Classification" name="procurement_classification" colspan="4" attrs="{'invisible':[('procurement_classification_ids','=',[])]}">-->
+                            <!--                                <field name="procurement_classification_ids" nolabel="1" readonly="1">-->
+                            <!--                                    <tree string="Classification">-->
+                            <!--                                        <field name="product_id" widget="many2onebutton"/>-->
+                            <!--                                        <field name="warehouse_id" widget="many2onebutton"/>-->
+                            <!--                                        <field name="turnover_ratio"/>-->
+                            <!--                                        <field name="fsn_classification"/>-->
+                            <!--                                    </tree>-->
+                            <!--                                    <form>-->
+                            <!--                                        <group>-->
+                            <!--                                            <group>-->
+                            <!--                                                <field name="product_id" />-->
+                            <!--                                                <field name="warehouse_id"/>-->
+                            <!--                                            </group>-->
+                            <!--                                            <group>-->
+                            <!--                                                <field name="turnover_ratio"/>-->
+                            <!--                                                <field name="fsn_classification"/>-->
+                            <!--                                            </group>-->
+                            <!--                                        </group>-->
+                            <!--                                    </form>-->
+                            <!--                                </field>-->
+                            <!--                            </page>-->
+                            <!--                            <page string="Stock Movement" name="procurement_stock_movement" colspan="4" attrs="{'invisible':[('procurement_stock_movement_ids','=',[])]}">-->
+                            <!--                                <field name="procurement_stock_movement_ids" nolabel="1" readonly="1">-->
+                            <!--                                    <tree string="Stock Movement">-->
+                            <!--                                        <field name="product_id" widget="many2onebutton"/>-->
+                            <!--                                        <field name="warehouse_id" widget="many2onebutton"/>-->
+                            <!--                                        <field name="opening_stock"/>-->
+                            <!--                                        <field name="sales"/>-->
+                            <!--                                        <field name="sales_return"/>-->
+                            <!--                                        <field name="purchase"/>-->
+                            <!--                                        <field name="purchase_return"/>-->
+                            <!--                                        <field name="internal_in" />-->
+                            <!--                                        <field name="internal_out"/>-->
+                            <!--                                        <field name="adjustment_in"/>-->
+                            <!--                                        <field name="adjustment_out"/>-->
+                            <!--                                        <field name="production_in" optional="hide"/>-->
+                            <!--                                        <field name="production_out" optional="hide"/>-->
+                            <!--                                        <field name="transit_in" optional="hide"/>-->
+                            <!--                                        <field name="transit_out" optional="hide"/>-->
+                            <!--                                        <field name="closing_stock"/>-->
+                            <!--                                    </tree>-->
+                            <!--                                    <form>-->
+                            <!--                                        <group>-->
+                            <!--                                            <group>-->
+                            <!--                                                <field name="product_id" />-->
+                            <!--                                                <field name="warehouse_id"/>-->
+                            <!--                                                <field name="opening_stock"/>-->
+                            <!--                                                <field name="sales"/>-->
+                            <!--                                                <field name="sales_return"/>-->
+                            <!--                                                <field name="purchase"/>-->
+                            <!--                                                <field name="purchase_return"/>-->
+                            <!--                                                <field name="internal_in"/>-->
+                            <!--                                            </group>-->
+                            <!--                                            <group>-->
+                            <!--                                                <field name="internal_out"/>-->
+                            <!--                                                <field name="adjustment_in"/>-->
+                            <!--                                                <field name="adjustment_out"/>-->
+                            <!--                                                <field name="production_in"/>-->
+                            <!--                                                <field name="production_out"/>-->
+                            <!--                                                <field name="transit_in"/>-->
+                            <!--                                                <field name="transit_out"/>-->
+                            <!--                                                <field name="closing_stock"/>-->
+                            <!--                                            </group>-->
+                            <!--                                        </group>-->
+                            <!--                                    </form>-->
+                            <!--                                </field>-->
+                            <!--                            </page>-->
+                        </notebook>
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids"/>
+                        <field name="message_ids"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
+        <record id="tree_advance_procurement_process" model="ir.ui.view">
+            <field name="name">advance.procurement.process.tree</field>
+            <field name="model">advance.procurement.process</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="name"/>
+                    <field name="procurement_date"/>
+                    <field name="user_id"/>
+                    <field name="state"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="actions_advance_procurement_process" model="ir.actions.act_window">
+            <field name="name">Replenishment from Warehouses</field>
+            <field name="res_model">advance.procurement.process</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="advance_reordering_settings" model="advance.reordering.settings">
+            <field name="reorder_rounding_method" eval="False"/>
+        </record>
+    </data>
+</odoo>

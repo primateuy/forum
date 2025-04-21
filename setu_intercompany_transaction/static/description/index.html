@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Inter Company Transaction | Setu Consulting Services Pvt. Ltd. | Odoo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="https://www.setuconsulting.com/css/fonts.css" rel="stylesheet">
+    <link href="https://www.setuconsulting.com/css/plugins.css" rel="stylesheet">
+    <!-- <link href="https://www.setuconsulting.com/css/style.css" rel="stylesheet"> -->
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
+    <link href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"
+          integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700&display=swap" rel="stylesheet">
+</head>
+<!-- odoo description page css -->
+<style>
+    h1, h2,  h3,  h4,  h5,  h6,  
+    .h1,  .h2,  .h3,  .h4,  .h5,  .h6 {
+        font-weight: 400;
+        line-height: 1.1;
+        color: #21272b;
+    }
+    ul {
+        color: #222020;
+    }
+</style>
+
+<body>
+<div class="container">
+    <!-- Header -->
+    <section class="index-banner shadow-sm position-relative mt40" style="border-top:4px solid #37bbf9; border-radius: 10px;">
+        <img class="w-100 h-100 position-absolute img-fluid mb16" src="images/etc/1-background.jpg" style="border-radius: 10px;" />
+        <div class="container p-md-4 p-4 position-relative">
+            <div class="row align-items-center">
+                <div class="col-md-2 text-center text-md-left">
+                    <img src="images/odoo_images/setu.png" alt="Setu Consulting Services Pvt. Ltd." title="Setu Consulting Services Pvt. Ltd." class="img img-fluid" >
+                </div>
+                <div class="col-md-4 text-center" style="margin-left: auto; padding-right: 10px; padding-left: 10px;">
+                    <img src="images/odoo15.png" width="80px" alt="Odoo 15 Certified" title="Odoo 15 Certified"> 
+                    <img src="images/odoo16.png" width="80px" alt="Odoo 16 Certified" title="Odoo 16 Certified"> 
+                    <img src="images/odoo17.png" width="80px" alt="Odoo 16 Certified" title="Odoo 17 Certified"> 
+                </div>
+                <div class="col-md-2 text-center text-md-left" style="margin-left: auto;padding-right: 10px; padding-left: 10px;">
+                    <h6 style="font-size:18px;margin:10px 0">
+                        <span class="btn btn-danger w-md-100 w-auto" style="color:#ffffff; background-color:#f62943; border-radius:0.5rem;"><i class="fa fa-check"></i> Community </span>
+                    </h6>
+                </div>
+                <div class="col-md-2 text-center text-md-left" style="padding-right: 10px; padding-left: 10px;">
+                    <h6 style="font-size:18px;margin:10px 0">
+                        <span class="btn btn-warning w-md-100 w-auto" style="color:#ffffff; background-color:#dab000; border-radius:0.5rem;"><i class="fa fa-check"></i> Enterprise </span>
+                    </h6>
+                </div>
+                <div class="col-md-2 text-center text-md-left" style="padding-right: 10px; padding-left: 10px;">
+                    <h6 style="font-size:18px;margin:10px 0">
+                        <span class="btn btn-success w-md-100 w-auto" style="color:#ffffff; background-color:#00c157; border-radius:0.5rem;"><i class="fa fa-check"></i> Odoo.sh</span>
+                    </h6>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <div class="col-lg-12 col-md-12">
+        <!-- Title START -->
+        <div class="container p-4 position-relative">
+            <div class="row align-items-center">
+                <div class="row align-items-center">
+                    <div class="col-md-8 text-center text-md-left" style="margin-left: auto;padding-right: 10px; padding-left: 10px;">
+                        <h6 style="font-size:18px;">
+                            <span class="btn btn-primary" style="color:#ffffff; font-size: 38px; font-weight: bold; background-color:#0298FF; border-radius:0.5rem;">
+                                Inter Company Transaction
+                            </span>
+                        </h6>
+                    </div>
+                    <div class="col-md-2 text-center text-md-left" style="margin-left: auto;padding-right: 140px; padding-left: 10px;">
+                        <a href="mailto:apps@setuconsulting.com?subject=Inter Company Transaction Version 17.0 - Demo Request" target="_blank">
+                            <img src="images/requestdemo1.png" title="Request a Demo" alt="Request a Demo" width="200px" class="ml-4" >
+                        </a>
+                    </div>
+                    <div class="col-md-2 text-center text-md-left" style="margin-left: auto; padding-left: 70px;">
+                        <a href="https://www.youtube.com/playlist?list=PLH6xCEY0yCID5xMUPKh_818Dq6Fpq6rg8" target="_blank">
+                            <img src="images/video_userguide1.png" title="Video user guide" alt="Video user guide" width="110px" class="ml-4" >
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Title END -->
+        <section class="index-banner shadow-sm position-relative mt40" style="border-top:4px solid #37bbf9; border-radius: 10px; margin-top: 15px;">
+            <img class="w-100 h-100 position-absolute img-fluid mb16" src="images/etc/1-background.jpg" style="border-radius: 10px;" />
+            <div class="col-lg-12 col-md-12">
+                <div class="row align-items-center">
+                    <div class="col-md-12" style="margin-left: auto;padding-right: 10px; padding-left: 10px;">
+                        <div class="container p-md-3 p-4 position-relative" style="text-align: justify">
+                            <font size="4" style="font-family: Roboto;font-weight: 500;">
+                                In any industry today inventory movements between companies or between warehouses are common operations. It’s really hard to track each movement and its corresponding records. Especially when there are more companies doing transactions with each other, it becomes painful to manage track records for companies. <br><br>
+
+                                We have developed a solution called “Inter Company Transaction” which helps to manage all transactions between companies in an automated way. All required documents will be created automatically by just a single click. Users can get all historical transactions (deliveries, receipts, invoices, vendor bills) very easily.
+                            </font>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="container position-relative p-4">
+                <section id="sh_hot_feature" style="background-color: transparent;">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="sh_icon d-flex justify-content-center align-items-center rounded shadow" style="padding: 15px;border: 1px solid #9ebdfb;border-bottom: 4px solid #9ebdfb;background-color: #ebf0fb;border-radius: 0.25rem !important;min-height: 83px;">
+                                    <span style="color: #212121;font-weight: 600;vertical-align: middle;padding-left: 10px;text-align: left;">
+                                        <span class="btn btn-warning">
+                                            <strong>Special feature ( Stock + Inter warehouse transfer)</strong>
+                                        </span> <br><br>
+                                        Pick the available stock first and the rest will be picked up from other warehouses of the same company. When a sales order gets created, it will reserve available stock and for the rest, it will create inter warehouse transaction records between the sales order's warehouse and the other warehouses where the stock is available. inter warehouse transaction will be created based on the inter warehouse channels configured in the system. 
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </section>
+    </div>
+
+    <!-- Key Features - START -->
+    <div class="container mt-4">
+        <span class="badge badge-pill badge-light" style="color:#000000; font-size: 32px; font-weight: bold; background-color:#ffffff; border-radius:0.5rem; padding:1rem;">KEY FEATURES
+        </span>
+    </div>
+    <section class="index-banner shadow-sm position-relative mt40" style="border-top:4px solid #37bbf9; border-radius: 10px;">
+        <img class="w-100 h-100 position-absolute img-fluid mb16" src="images/etc/5-background.jpg" style="border-radius: 10px; opacity:0.1" />
+        <div class="container p-md-3 p-4 position-relative">
+            <!-- KEY FEATURES START -->
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="row text-left">
+                        <div class="col-lg-6">
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center; border-radius: 10px;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Inter Company Channels</h5>
+                                        <p style="color:#616060; text-align:justify;">
+                                            Each company can configure its source from where they will purchase as and when needed. More than one channel can be configured and the system will pick the right one according to priority.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center; border-radius: 10px;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Inter company transfer</h5>
+                                        <p style="color:#616060">
+                                            It allows stock movements between companies by creating sales orders in the fulfiller company and purchase orders in the requestor company. Along with stock movement it will take care about accounting documents.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center; border-radius: 10px;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Auto create Inter Warehouse Transaction</h5>
+                                        <p style="color:#616060">
+                                            Companies can configure when an inter warehouse transaction needs to be created automatically (create Inter warehouse when receive sales order, when there isn’t enough stock for all products, when there isn’t enough stock for any single product, manually)
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center; border-radius: 10px;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Direct delivery to customer</h5>
+                                        <p style="color:#616060">
+                                            It’s similar to dropship, if the requestor company wants to deliver orders to customers directly from the fulfiller company then the fulfiller company will deliver orders directly to customers instead of the requestor company's warehouse.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center; border-radius: 10px;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Easy return management</h5>
+                                        <p style="color:#616060">
+                                            Helps to manage inventory return process, there is an easy interface from where users can return stock to companies or warehouses.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-6">
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center; border-radius: 10px;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Inter Warehouse Channels</h5>
+                                        <p style="color:#616060">
+                                            Each company can configure its source warehouses from where they will replenish stock as and when needed. More than one channel can be configured and the system will pick the right one according to priority.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center; border-radius: 10px;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                   <div class="sh_icon">
+                                      <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                   </div>
+                                   <div class="sh_dec">
+                                        <h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Inter warehouse transfer</h5>
+                                        <p style="color:#616060">
+                                            It allows stock movements between warehouses of the same company by creating two step pickings (Source -> Transit -> Destination) or direct transfer (Source -> Destination) in a single step (based on configurations).
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center; border-radius: 10px;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Auto create Inter Company Transaction</h5>
+                                        <p style="color:#616060">
+                                            Companies can configure when an inter company transaction needs to be created automatically (create Inter company when receive sales order, when there isn’t enough stock for all products, when there isn’t enough stock for any single product, manually)
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center; border-radius: 10px;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Automatic documents processing</h5>
+                                        <p style="color:#616060">
+                                            There is an option in the channels / inter company transaction which will process all the documents according to the configurations. Based on the configuration system will create / validate all the documents. 
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center; border-radius: 10px;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                   <div class="sh_icon">
+                                      <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                   </div>
+                                   <div class="sh_dec">
+                                      <h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Easy import feature</h5>
+                                        <p style="color:#616060">
+                                            Helps to create inter company and inter warehouse transactions record by importing simple csv files.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- Key Features - END -->
+
+    <section class="index-banner shadow-sm position-relative" style="border-top:4px solid #37bbf9; border-radius: 10px;">
+        <img class="w-100 h-100 position-absolute img-fluid mb16" src="images/etc/5-background.jpg" style="border-radius: 10px; opacity:0.1"/>
+        <div class="container p-md-3 p-4 position-relative">
+            <div class="sh_dec">
+                <ul class="list-unstyled pl-0 bg-white" style="font-size:15px;">
+                    <table style="font-size: 18px;">
+                        <tbody>
+                            <tr>
+                                <td valign="top"><li class="mb-1"><img src="images/icon/next.svg" alt="arrow" style="width:15px;margin-right:10px"></li></td>
+                                <td>Inter company transaction will create sales order in fulfiller company and purchase order in requestor company</td>
+                            </tr><tr><td>&nbsp;</td></tr>
+                            <tr>
+                                <td valign="top"><li class="mb-4"><img src="images/icon/next.svg" alt="arrow" style="width:15px;margin-right:10px"></li></td>
+                                <td>Allow to create inter company transactions automatically based on channel configurations. The requestor company can configure from which companies they want to purchase stock. It can be more than one, using priority users can define which one has to be picked first.</td>
+                            </tr><tr><td>&nbsp;</td></tr>
+                            <tr>
+                                <td valign="top"><li class="mb-4"><img src="images/icon/next.svg" alt="arrow" style="width:15px;margin-right:10px"></li></td>
+                                <td>Companies want to create inter company records or not, it is based on configuration in the company.  At the time of sales order confirmation system  will check the configurations in the company whether it needs to create inter company records or not.<br><br>
+                                <li class="mb-4"><img src="images/icon/correct.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Create inter company records when there is no stock of all products.</li>
+                                <li class="mb-4"><img src="images/icon/correct.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Create inter company records when there is no stock of any single product.</li>
+                                <li class="mb-4"><img src="images/icon/correct.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Always create inter company records.</li>
+                                <li class="mb-4"><img src="images/icon/correct.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Create inter company records manually.</li>
+                                </td>
+                            </tr><tr><td>&nbsp;</td></tr>
+                            <tr>
+                                <td valign="top"><li class="mb-4"><img src="images/icon/next.svg" alt="arrow" style="width:15px;margin-right:10px"></li></td>
+                                <td>Allow to create inter warehouse transactions automatically based on warehouse channel configurations. The requestor warehouse can configure from which warehouse they want to replenish the stock. It can be more than one, using priority users can define which one has to be picked first. </td>
+                            </tr><tr><td>&nbsp;</td></tr>
+                            <tr>
+                                <td valign="top"><li class="mb-4"><img src="images/icon/next.svg" alt="arrow" style="width:15px;margin-right:10px"></li></td>
+                                <td>Companies want to replenish stock from the other warehouses of the same company or not, it is based on configuration in the company.  At the time of sales order confirmation system  will check the configurations in the company whether it needs to create inter warehouse records or not.<br><br>
+                                <li class="mb-4"><img src="images/icon/correct.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Create inter warehouse records when there is no stock of all products.</li>
+                                <li class="mb-4"><img src="images/icon/correct.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Create inter warehouse records when there is no stock of any single product.</li>
+                                <li class="mb-4"><img src="images/icon/correct.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Always create inter warehouse records.</li>
+                                <li class="mb-4"><img src="images/icon/correct.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Create inter warehouse records manually.</li>
+                                </td>
+                            </tr><tr><td>&nbsp;</td></tr>
+                            <tr>
+                                <td valign="top"><li class="mb-4"><img src="images/icon/next.svg" alt="arrow" style="width:15px;margin-right:10px"></li></td>
+                                <td valign="top">Separate invoice numbering management for requestor and fulfiller companies. </td>
+                            </tr>
+                            <tr>
+                                <td valign="top"><li class="mb-4"><img src="images/icon/next.svg" alt="arrow" style="width:15px;margin-right:10px"></li></td>
+                                <td valign="top">Easy control over pricing. Pricing effect will remain the same in all the documents. </td>
+                            </tr>
+                            <tr>
+                                <td valign="top"><li class="mb-4"><img src="images/icon/next.svg" alt="arrow" style="width:15px;margin-right:10px"></li></td>
+                                <td valign="top">Automatic creation & validation of sales order, purchase order, customer invoice, vendor bill.</td>
+                            </tr>
+                            <tr>
+                                <td valign="top"><li class="mb-4"><img src="images/icon/next.svg" alt="arrow" style="width:15px;margin-right:10px"></li></td>
+                                <td valign="top">The fulfiller company offers delivery direct to the requestor company’s customer then it’s possible to manage by just configurations.</td>
+                                </tr>
+                            <tr>
+                                <td valign="top"><li class="mb-4"><img src="images/icon/next.svg" alt="arrow" style="width:15px;margin-right:10px"></li></td>
+                                <td valign="top">Stock can be transferred between warehouses of the same company with two steps (fulfillment  warehouse -> transit location and transit location -> requestor warehouse) or single step (fulfillment warehouse -> requestor warehouse).</td>
+                            </tr><tr><td>&nbsp;</td></tr>
+                            <tr>
+                                <td valign="top"><li class="mb-4"><img src="images/icon/next.svg" alt="arrow" style="width:15px;margin-right:10px"></li></td>
+                                <td valign="top">Users can create reverse transfer easily from the inter company or inter warehouse screen. System allows for partial or complete reverse transfer.</td>
+                            </tr><tr><td>&nbsp;</td></tr>
+                            <tr>
+                                <td valign="top"><li class="mb-4"><img src="images/icon/next.svg" alt="arrow" style="width:15px;margin-right:10px"></li></td>
+                                <td valign="top">Easy and flexible navigation between documents.</td>
+                            </tr>
+                            <tr>
+                                <td valign="top"><li class="mb-4"><img src="images/icon/next.svg" alt="arrow" style="width:15px;margin-right:10px"></li></td>
+                                <td valign="top">Easy import features to create inter company transactions or inter warehouse transactions.</td>
+                            </tr><tr><td>&nbsp;</td></tr>
+                        </tbody>
+                    </table>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- SCREENSHOT - ICT START -->
+    <section class="index-banner shadow-sm position-relative" style="border-top:4px solid #37bbf9; border-radius: 10px;">
+        <img class="w-100 h-100 position-absolute img-fluid mb16" src="images/etc/5-background.jpg" style="border-radius: 10px; opacity:0.1"/>
+        <div class="container p-md-3 p-4 position-relative">
+            <div class="col-sm-6 col-md-12 px-2">
+               <h2 class="w-100 text-center my-3">Inter Company Transfer</h2>
+                <div class="text-center w-100 mb-4">
+                    <img src="images/line.png" alt="Setu Consulting" width="30%" height="100%">
+               </div>
+            </div>
+            <section id="sec-visual-customization" class="row p-3" style="border-radius:20px">
+                <img class="img-fluid shadow" style="border-radius: 5px;" src="images/screenshots/ict/Slide1.PNG" alt="SETU ICT - IWT">
+            </section>
+            <section id="sec-visual-customization" class="row p-3" style="border-radius:20px">
+                <img class="img-fluid shadow" style="border-radius: 5px;" src="images/screenshots/ict/Slide2.PNG" alt="SETU ICT - IWT">
+            </section>
+            <section id="sec-visual-customization" class="row p-3" style="border-radius:20px">
+                <img class="img-fluid shadow" style="border-radius: 5px;" src="images/screenshots/ict/Slide3.PNG" alt="SETU ICT - IWT">
+            </section>
+            <section id="sec-visual-customization" class="row p-3" style="border-radius:20px">
+                <img class="img-fluid shadow" style="border-radius: 5px;" src="images/screenshots/ict/Slide4.PNG" alt="SETU ICT - IWT">
+            </section>
+            <section id="sec-visual-customization" class="row p-3" style="border-radius:20px">
+                <img class="img-fluid shadow" style="border-radius: 5px;" src="images/screenshots/ict/Slide5.PNG" alt="SETU ICT - IWT">
+            </section>
+            <section id="sec-visual-customization" class="row p-3" style="border-radius:20px">
+                <img class="img-fluid shadow" style="border-radius: 5px;" src="images/screenshots/ict/Slide6.PNG" alt="SETU ICT - IWT">
+            </section>
+            <section id="sec-visual-customization" class="row p-3" style="border-radius:20px">
+                <img class="img-fluid shadow" style="border-radius: 5px;" src="images/screenshots/ict/Slide7.PNG" alt="SETU ICT - IWT">
+            </section>
+            <section id="sec-visual-customization" class="row p-3" style="border-radius:20px">
+                <img class="img-fluid shadow" style="border-radius: 5px;" src="images/screenshots/ict/Slide8.PNG" alt="SETU ICT - IWT">
+            </section>
+        </div>
+    </section>
+    <!-- SCREENSHOT - ICT END -->
+
+    <!-- SCREENSHOT - IWT START -->
+    <section class="index-banner shadow-sm position-relative" style="border-top:4px solid #37bbf9; border-radius: 10px;">
+        <img class="w-100 h-100 position-absolute img-fluid mb16" src="images/etc/5-background.jpg" style="border-radius: 10px; opacity:0.1"/>
+        <div class="container p-md-3 p-4 position-relative">
+            <div class="col-sm-6 col-md-12 px-2">
+               <h2 class="w-100 text-center my-3">Inter Warehouse Transfer</h2>
+                <div class="text-center w-100 mb-4">
+                    <img src="images/line.png" alt="Setu Consulting" width="30%" height="100%">
+               </div>
+            </div>
+            <section id="sec-visual-customization" class="row p-3" style="border-radius:20px">
+                <img class="img-fluid shadow" style="border-radius: 5px;" src="images/screenshots/ict/Slide1.PNG" alt="SETU ICT - IWT">
+            </section>
+            <section id="sec-visual-customization" class="row p-3" style="border-radius:20px">
+                <img class="img-fluid shadow" style="border-radius: 5px;" src="images/screenshots/ict/Slide2.PNG" alt="SETU ICT - IWT">
+            </section>
+            <section id="sec-visual-customization" class="row p-3" style="border-radius:20px">
+                <img class="img-fluid shadow" style="border-radius: 5px;" src="images/screenshots/ict/Slide3.PNG" alt="SETU ICT - IWT">
+            </section>
+            <section id="sec-visual-customization" class="row p-3" style="border-radius:20px">
+                <img class="img-fluid shadow" style="border-radius: 5px;" src="images/screenshots/ict/Slide4.PNG" alt="SETU ICT - IWT">
+            </section>
+            <section id="sec-visual-customization" class="row p-3" style="border-radius:20px">
+                <img class="img-fluid shadow" style="border-radius: 5px;" src="images/screenshots/ict/Slide5.PNG" alt="SETU ICT - IWT">
+            </section>
+            <section id="sec-visual-customization" class="row p-3" style="border-radius:20px">
+                <img class="img-fluid shadow" style="border-radius: 5px;" src="images/screenshots/ict/Slide6.PNG" alt="SETU ICT - IWT">
+            </section>
+        </div>
+    </section>
+    <!-- SCREENSHOT - IWT END -->
+</div>
+
+<!-- ProcureMate Pro Solution START-->
+<section class="index-banner shadow-sm position-relative mt40" style="border-top:4px solid #37bbf9; border-radius: 10px; margin-top: 20px;">
+    <div class="container p-md-4 p-4 position-relative">   
+        <div class="col-lg-12">
+            <div class="row text-center">
+                <div class="col-lg-6">
+                    <div style="padding: 20px;width: 100%;">
+                        <div class="sh_dec">
+                            <a href="https://www.procuremate.pro" target="_blank" style="color:#ffffff; font-weight:600;">
+                                <img src="images/procuremate-setu-consulting-odoo-erp-consultant.png" width="50%" height="50%">
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div style="padding: 20px;width: 100%;">
+                        <div class="w-100 w-md-75 w-lg-100 my-1 pl-3 text-nowrap text-truncate btn btn-info rounded" style="vertical-align: middle;margin-top:15px">
+                            <i class="fa fa-envelope fa-fw" style="font-size:1.2rem;"></i>
+                            <a href="mailto:sales@procuremate.pro" target="_blank" style="color:#ffffff; font-weight:600;">sales@procuremate.pro</a>
+                            <i class="fa fa-chrome fa-fw" style="font-size:1.2rem;"></i>
+                            <a href="https://www.procuremate.pro" target="_blank" style="color:#ffffff; font-weight:600;">www.procuremate.pro</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-12">
+                    <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+                        <div class="sh_inner_box d-flex align-items-baseline">
+                            <div class="sh_dec">
+                                <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">
+                                    Revolutionizing Procurement Management with a Comprehensive Tender Management System
+                                </h5>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="procuremate" class="row carousel slide mt64 mb32" data-bs-ride="carousel">
+            <div class="carousel-inner">
+                <div class="carousel-item active" style="height:auto;">
+                    <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                        <div style="border-radius:10px" class="shadow-sm">
+                            <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/ProcureMate/1.jpg" width="100%" height="100%">
+                        </div>
+                    </div>
+                </div>
+                <div class="carousel-item" style="height:auto;">
+                    <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                        <div style="border-radius:10px" class="shadow-sm">
+                            <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/ProcureMate/2.jpg" width="100%" height="100%">
+                        </div>
+                    </div>
+                </div>
+                <div class="carousel-item" style="height:auto;">
+                    <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                        <div style="border-radius:10px" class="shadow-sm">
+                            <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/ProcureMate/3.jpg" width="100%" height="100%">
+                        </div>
+                    </div>
+                </div>
+                <div class="carousel-item" style="height:auto;">
+                    <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                        <div style="border-radius:10px" class="shadow-sm">
+                            <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/ProcureMate/4.jpg" width="100%" height="100%">
+                        </div>
+                    </div>
+                </div>
+                <div class="carousel-item" style="height:auto;">
+                    <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                        <div style="border-radius:10px" class="shadow-sm">
+                            <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/ProcureMate/5.jpg" width="100%" height="100%">
+                        </div>
+                    </div>
+                </div>
+                <div class="carousel-item" style="height:auto;">
+                    <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                        <div style="border-radius:10px" class="shadow-sm">
+                            <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/ProcureMate/6.jpg" width="100%" height="100%">
+                        </div>
+                    </div>
+                </div>
+                <div class="carousel-item" style="height:auto;">
+                    <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                        <div style="border-radius:10px" class="shadow-sm">
+                            <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/ProcureMate/7.jpg" width="100%" height="100%">
+                        </div>
+                    </div>
+                </div>
+                <div class="carousel-item" style="height:auto;">
+                    <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                        <div style="border-radius:10px" class="shadow-sm">
+                            <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/ProcureMate/8.jpg" width="100%" height="100%">
+                        </div>
+                    </div>
+                </div>
+                <div class="carousel-item" style="height:auto;">
+                    <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                        <div style="border-radius:10px" class="shadow-sm">
+                            <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/ProcureMate/9.jpg" width="100%" height="100%">
+                        </div>
+                    </div>
+                </div>
+                <div class="carousel-item" style="height:auto;">
+                    <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                        <div style="border-radius:10px" class="shadow-sm">
+                            <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/ProcureMate/10.jpg" width="100%" height="100%">
+                        </div>
+                    </div>
+                </div>
+                <div class="carousel-item" style="height:auto;">
+                    <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                        <div style="border-radius:10px" class="shadow-sm">
+                            <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/ProcureMate/11.jpg" width="100%" height="100%">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <a class="carousel-control-prev" href="#procuremate" data-bs-slide="prev" style="margin-left:-30px; width:35px; color:#000">
+                <span class="carousel-control-prev-icon">
+                    <i class="fa fa-arrow-circle-left" style="font-size:24px; color:#704A66"></i>
+                </span>
+            </a>
+            <a class="carousel-control-next" href="#procuremate" data-bs-slide="next" style="margin-right:-30px; width:35px; color:#000">
+                <span class="carousel-control-next-icon">
+                    <i class="fa fa-arrow-circle-right" style="font-size:24px; color:#704A66"></i>
+                </span>
+            </a>
+        </div>
+    </div>
+</section>
+<!-- ProcureMate Pro Solution END-->
+
+<!-- Contact Details START-->
+<section class="index-banner shadow-sm position-relative mt40" style="border-top:4px solid #37bbf9; border-radius: 10px; margin-top: 20px;">
+    <img class="w-100 h-100 position-absolute img-fluid mb16" src="images/etc/1-background.jpg" style="border-radius: 10px;" />
+    <div class="container p-md-4 p-4 position-relative">
+        <div class="row align-items-center">
+            <div class="col-lg-4 text-center mb-5 mb-lg-0">
+                <div class="h3 p-2 mb-2 font-weight-bold">Contact Us</div> 
+                <div class="w-100 w-md-75 w-lg-100 my-1 pl-3 text-nowrap text-truncate btn btn-info rounded">
+                    <i class="fa fa-envelope fa-fw" style="font-size:1.2rem;"></i>
+                    <a href="mailto:support@setuconsulting.com" target="_blank" style="color:#ffffff; font-weight:600;">support@setuconsulting.com</a>
+                </div>
+                <div class="w-100 w-md-75 w-lg-100 my-1 pl-3 text-nowrap text-truncate btn btn-info rounded">
+                    <i class="fa fa-skype fa-fw" style="font-size:1.2rem;"></i>
+                    <span>Skype: </span>
+                    <a href="skype:live:.cid.7abebb3d4adef53f?chat" target="_blank" style="color:#ffffff; font-weight:600;">Setu Consulting</a>
+                </div>
+                <div class="w-100 w-md-75 w-lg-100 m-auto my-1 pl-3 text-nowrap text-truncate btn-light border border-dark rounded" style="line-height: 2.4rem;">
+                    <a href="https://setuconsulting.com/contactus" target="_blank">www.setuconsulting.com</a>
+                </div>
+            </div>
+            <div class="col-12 col-lg-4 border-left border-right" style="border-left: 10px;">
+                <div class="h3 p-2 mb-3 text-center font-weight-bold">Odoo Certified Partner</div> 
+                <div class="text-left">
+                    <div class="my-3 pl-3 text-nowrap text-truncate lead text-white" data-container="body" data-toggle="popover" data-placement="top">
+                        <img src="images/odoo15.png" width="100px" alt="Odoo 15 Certified" title="Odoo 15 Certified"> 
+                        <img src="images/odoo16.png" width="100px" alt="Odoo 16 Certified" title="Odoo 16 Certified"> 
+                        <img src="images/odoo17.png" width="100px" alt="Odoo 16 Certified" title="Odoo 17 Certified"> 
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-lg-4 mt-5 mt-lg-0">
+                <div class="h4 p-2 text-center font-weight-bold">Watch and subscribe</div> 
+                <div class="text-center">
+                    <a href="https://www.youtube.com/@setuconsulting" target="_blank">
+                        <img src="images/youtube.png" width="200px">
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- Contact Details END-->
+
+<!-- Suggested Solution START-->
+<section class="index-banner shadow-sm position-relative mt40" style="border-top:4px solid #37bbf9; border-radius: 10px; margin-top: 20px;">
+    <div class="container p-md-4 p-4 position-relative">   
+        <section class="oe_container mt32">
+            <h3 style='color:#091E42; font-family:"Montserrat"; text-align:center; margin:25px auto; text-transform:uppercase' class="oe_slogan">
+                <b>Suggested Solutions</b>
+            </h3> 
+            <div id="demo9" class="row carousel slide mt32 mb32" data-bs-ride="carousel">
+                <div class="carousel-inner">
+                    <div class="carousel-item active" style="height:40%;">
+                        <a href="mailto:sales@procuremate.pro" target="_blank">
+                        <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                            <div style="border-radius:10px" class="shadow-sm">
+                                <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/procurement-management-system-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+                            </div>
+                        </div>
+                        </a>
+                    </div>
+                    <div class="carousel-item" style="height:40%;">
+                        <a href="https://apps.odoocdn.com/apps/modules/17.0/setu_advance_reordering" target="_blank">
+                        <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                            <div style="border-radius:10px" class="shadow-sm">
+                                <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/advance-reordering-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+                            </div>
+                        </div>
+                        </a>
+                    </div>
+                    <div class="carousel-item" style="height:40%;">
+                        <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                            <div style="border-radius:10px" class="shadow-sm">
+                                <a href="https://apps.odoocdn.com/apps/modules/17.0/setu_advance_inventory_reports" target="_blank">
+                                <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/advance-inventory-reports-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-item" style="height:40%;">
+                        <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                            <div style="border-radius:10px" class="shadow-sm">
+                                <a href="https://apps.odoocdn.com/apps/modules/17.0/setu_inventory_count_management" target="_blank">
+                                <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/inventory-count-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-item" style="height:40%;">
+                        <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                            <div style="border-radius:10px" class="shadow-sm">
+                                <a href="https://apps.odoocdn.com/apps/modules/17.0/setu_cash_flow_forecasting" target="_blank">
+                                <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/cashforecast-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-item" style="height:40%;">
+                        <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                            <div style="border-radius:10px" class="shadow-sm">
+                                <a href="https://apps.odoocdn.com/apps/modules/17.0/setu_inventory_ledger_report" target="_blank">
+                                <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/inventory-ledger-report-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-item" style="height:40%;">
+                        <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                            <div style="border-radius:10px" class="shadow-sm">
+                                <a href="https://apps.odoocdn.com/apps/modules/17.0/setu_intercompany_transaction" target="_blank">
+                                <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/inter-company-transfer-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-item" style="height:40%;">
+                        <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                            <div style="border-radius:10px" class="shadow-sm">
+                                <a href="https://apps.odoocdn.com/apps/modules/17.0/setu_rfm_analysis" target="_blank">
+                                <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/rfm-analysis-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-item" style="height:40%;">
+                        <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                            <div style="border-radius:10px" class="shadow-sm">
+                                <a href="https://apps.odoocdn.com/apps/modules/17.0/setu_rma" target="_blank">
+                                <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/rma-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-item" style="height:40%;">
+                        <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                            <div style="border-radius:10px" class="shadow-sm">
+                                <a href="https://apps.odoocdn.com/apps/modules/17.0/setu_inventory_coverage_abc_analysis_report" target="_blank">
+                                <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/ineventory-coverage-abc-analysis-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-item" style="height:40%;">
+                        <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                            <div style="border-radius:10px" class="shadow-sm">
+                                <a href="https://apps.odoocdn.com/apps/modules/17.0/setu_inventory_coverage_report" target="_blank">
+                                <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/inventory-coverage-analysis-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-item" style="height:40%;">
+                        <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                            <div style="border-radius:10px" class="shadow-sm">
+                                <a href="https://apps.odoocdn.com/apps/modules/17.0/setu_customer_consignment" target="_blank">
+                                <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/consignment-management-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-item" style="height:40%;">
+                        <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                            <div style="border-radius:10px" class="shadow-sm">
+                                <a href="https://apps.odoocdn.com/apps/modules/17.0/setu_asset_tracking" target="_blank">
+                                <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/asset-tracking-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-item" style="height:40%;">
+                        <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                            <div style="border-radius:10px" class="shadow-sm">
+                                <a href="https://apps.odoocdn.com/apps/modules/17.0/setu_abc_analysis_reports" target="_blank">
+                                <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/abc-sales-analysis-report-setu-consulting-odoo-erp-consultant.jpg.png" width="100%" height="100%">
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-item" style="height:40%;">
+                        <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                            <div style="border-radius:10px" class="shadow-sm">
+                                <a href="https://apps.odoocdn.com/apps/modules/17.0/setu_shopify_connector" target="_blank">
+                                <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/odoo-shopify-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-item" style="height:40%;">
+                        <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                            <div style="border-radius:10px" class="shadow-sm">
+                                <a href="https://apps.odoocdn.com/apps/modules/17.0/setu_woocommerce_connector" target="_blank">
+                                <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/woocommerce-odoo-connector-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-item" style="height:40%;">
+                        <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                            <div style="border-radius:10px" class="shadow-sm">
+                                <a href="https://apps.odoocdn.com/apps/modules/17.0/setu_wayfair_connector" target="_blank">
+                                <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/wayfair-connector-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-item" style="height:40%;">
+                        <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                            <div style="border-radius:10px" class="shadow-sm">
+                                <a href="https://apps.odoocdn.com/apps/modules/17.0/setu_sales_incentive" target="_blank">
+                                <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/sales-incentive-commision-management-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-item" style="height:40%;">
+                        <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                            <div style="border-radius:10px" class="shadow-sm">
+                                <a href="https://apps.odoocdn.com/apps/modules/17.0/setu_sales_product_performance_report" target="_blank">
+                                <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/sales-product-perfomance-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-item" style="height:40%;">
+                        <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                            <div style="border-radius:10px" class="shadow-sm">
+                                <a href="https://apps.odoocdn.com/apps/modules/17.0/setu_sales_purchase_price_tracker" target="_blank">
+                                <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/sales-purchase-price-taker-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-item" style="height:40%;">
+                        <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                            <div style="border-radius:10px" class="shadow-sm">
+                                <a href="https://apps.odoocdn.com/apps/modules/17.0/setu_shipengine_integration" target="_blank">
+                                <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/ship-engine-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-item" style="height:40%;">
+                        <div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+                            <div style="border-radius:10px" class="shadow-sm">
+                                <a href="https://apps.odoocdn.com/apps/modules/17.0/shopon_pos_theme" target="_blank">
+                                <img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/shop-on-pos-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <a class="carousel-control-prev" href="#demo9" data-bs-slide="prev" style="margin-left:-30px; width:35px; color:#000">
+                    <span class="carousel-control-prev-icon">
+                        <i class="fa fa-arrow-circle-left" style="font-size:24px; color:#704A66"></i>
+                    </span>
+                </a>
+                <a class="carousel-control-next" href="#demo9" data-bs-slide="next" style="margin-right:-30px; width:35px; color:#000">
+                    <span class="carousel-control-next-icon">
+                        <i class="fa fa-arrow-circle-right" style="font-size:24px; color:#704A66"></i>
+                    </span>
+                </a>
+            </div>
+        </section>
+    </div>
+</section>
+<!-- Suggested Solution END-->
+
+<section class="index-banner shadow-sm position-relative mt40" style="border-top:4px solid #37bbf9; border-radius: 10px; margin-top: 15px;">
+    <img class="w-100 h-100 position-absolute img-fluid mb16" src="images/etc/2-background.jpg" style="border-radius: 10px;" />
+    <div class="container p-md-3 p-4 position-relative">
+        <div class="row">
+            <div class="col-sm-6 col-md-6 mt-3 px-2 text-center">
+                <div style="border-radius:10px; border-left:4px solid #5A63A6; box-shadow: 0px 2px 9px 4px #d0cecb;">
+                    <h5 class="font-weight-bold">FREE SUPPORT</h5>
+                    <p class="m-auto w-75" style="line-height: 1.5;font-weight: 100;">We will provide free support for any issues, queries, and bug fixing upto 90 days from the date of purchase of this application. 
+                    <a href="mailto:support@setuconsulting.com?subject=Inter Company Transaction V17.0 - Support Request" target="_blank" class="btn btn-info mx-2 pr-sm-4 mb-2 mb-lg-0" style="text-transform: uppercase; font-size: 14px;"><i class="fa fa-envelope-square mr-sm-2" style="font-size: 20px;vertical-align: middle;"></i> <span class="d-none d-sm-inline">Request free support</span></a>
+                    </p>
+                </div>
+            </div>
+            <div class="col-sm-6 col-md-6 mt-3 px-2 text-center">
+                <div style="border-radius:10px; border-left:4px solid #5A63A6; height: 150px; box-shadow: 0px 2px 9px 4px #d0cecb;">
+                    <h3 class="font-weight-bold">NOTE</h3>
+                    <p class="m-auto w-75" style="line-height: 1.5;font-weight: 100;">
+                        Get notified about latest update. Please drop an email when you make purchase at
+                        <a href="mailto:info@setuconsulting.com?subject=Inter Company Transaction V17.0 - New Purchase" class="btn btn-info mx-2 pr-sm-4 mb-2 mb-lg-0" style="text-transform: uppercase; font-size: 14px;"><i class="fa fa-envelope-square mr-sm-2" style="font-size: 20px;vertical-align: middle;"></i> <span class="d-none d-sm-inline">Setu Consulting</span></a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="sec-visual-customization" class="row mb-5 mt-6 p-3 py-5 bg-light shadow justify-content-center" style="border-radius:20px">
+    <img src="images/odoo_images/odoo-services.png" class="responsive" style="margin:2px 2px 2px 2px; border-radius: 10px;  box-shadow: -1px 0px 10px 2px #888;" alt="Setu Consulting Services Private Limited | Odoo Certified Consultant | Offical Odoo Partner" title="Setu Consulting Services Private Limited | Odoo Certified Consultant | Offical Odoo Partner">
+</section>
+
+</body>
+</html>

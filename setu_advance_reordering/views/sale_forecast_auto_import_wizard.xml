@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="form_sale_forecast_auto_import_wizard" model="ir.ui.view">
+            <field name="name">sale.forecast.auto.import.wizard.form</field>
+            <field name="model">sale.forecast.auto.import.wizard</field>
+            <field name="arch" type="xml">
+                <form>
+                    <group>
+                        <group>
+                            <field name="process_type" widget="radio"/>
+                            <field name="is_auto_import_export" invisible="1"/>
+                        </group>
+                        <group invisible="not process_type or process_type == 'export'">
+                            <field name="import_process_by" widget="radio"
+                                   required="process_type == 'import'"/>
+                        </group>
+                    </group>
+                    <group invisible="not process_type or process_type == 'export' or not import_process_by or import_process_by == 'auto_import'">
+                            <p style="margin-left:10px;">
+                                <li>
+                                    Comma Separated Values (.CSV)
+                                </li>
+                                <li>
+                                    Columns name must be the same as described in the sample files
+                                </li>
+                                <li>
+                                    <a href="/setu_advance_reordering/static/templates/Import_sale_forecast_sample_file.csv"
+                                       class="ml4">
+                                        <i class="fa fa-download mr4"/>
+                                        Download Import Forecast Sale Sample File
+                                    </a>
+                                </li>
+                            </p>
+                            <group style="width:100%;">
+                                <field name="import_file_attachment" filename="file_name" widget="binary"
+                                       required="process_type == 'import' and import_process_by == 'file_import'"/>
+                                <field name="file_name" invisible="1"/>
+                            </group>
+                    </group>
+
+                    <group string="Choose sales type" invisible="not is_auto_import_export">
+                        <group>
+                            <field name="create_forecast_sales_from"
+                                   options="{'no_create': True, 'no_create_edit':True}"
+                                   required="process_type == 'export' or import_process_by == 'auto_import'"/>
+                            <field name="forecast_sales_of" options="{'no_create': True, 'no_create_edit':True}"
+                                   required="create_forecast_sales_from == 'forecast_sales' and import_process_by == 'auto_import'" invisible="process_type == 'export' or create_forecast_sales_from == 'history_sales'"/>
+                        </group>
+                        <group>
+                            <field name="auto_forecast_growth"
+                                   invisible="process_type == 'export'"/>
+                        </group>
+                    </group>
+                    <group string="Choose fiscal periods" invisible="not is_auto_import_export">
+                        <group invisible="forecast_sales_of == 'seasonal_forecast'">
+                            <field name="source_period_id" options="{'no_create': True, 'no_create_edit':True}"
+                                   required="process_type == 'export' or create_forecast_sales_from == 'history_sales' or forecast_sales_of == 'normal_forecast'"/>
+                            <field name="destination_period_id" options="{'no_create': True, 'no_create_edit':True}"
+                                   required="process_type == 'export' or create_forecast_sales_from == 'history_sales' or forecast_sales_of == 'normal_forecast'"/>
+                        </group>
+                        <group invisible="process_type == 'export'">
+                            <field name="target_period_ids" widget="many2many_tags"
+                                   options="{'no_create': True, 'no_create_edit':True}"
+                                   required="import_process_by == 'auto_import'"/>
+                        </group>
+                    </group>
+                    <group expand="0" invisible="not is_auto_import_export">
+                        <group expand="0" string="Products &#038; Categories">
+                            <field name="product_category_ids" widget="many2many_tags"
+                                   options="{'no_create': True, 'no_create_edit':True}"/>
+                            <field name="product_ids" widget="many2many_tags"
+                                   options="{'no_create': True, 'no_create_edit':True}" domain="[('id','in',products_ids)]"/>
+                            <field name="products_ids" invisible="1"/>
+                        </group>
+                        <group expand="0" string="Companies &#038; Warehouses">
+                            <field name="company_ids" widget="many2many_tags"
+                                   domain="[('id', 'in', allowed_company_ids)]"
+                                   options="{'no_create': True, 'no_create_edit':True}"/>
+                            <field name="warehouse_ids" widget="many2many_tags"
+                                   options="{'no_create': True, 'no_create_edit':True}" domain="[('id','in',warehouses_ids)]"/>
+                            <field name="warehouses_ids" invisible="1"/>
+                        </group>
+                    </group>
+                    <footer>
+                        <button string="Import" name="action_auto_import_sale_forecast" type="object"
+                                class="oe_highlight"
+                                invisible="not process_type or process_type == 'export'"/>
+                        <button string="Export" name="action_auto_export_forecast_sale" type="object"
+                                class="oe_highlight"
+                                invisible="not process_type or process_type == 'import'"/>
+                        <button string="Cancel" class="btn btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_sale_forecast_auto_import_wizard" model="ir.actions.act_window">
+            <field name="name">Import / Export Sales Forecast</field>
+            <field name="res_model">sale.forecast.auto.import.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+    </data>
+</odoo>

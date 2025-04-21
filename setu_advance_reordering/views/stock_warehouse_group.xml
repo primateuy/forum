@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="form_stock_warehouse_group" model="ir.ui.view">
+            <field name="name">stock.warehouse.group.form</field>
+            <field name="model">stock.warehouse.group</field>
+            <field name="arch" type="xml">
+                <form string="Stock Warehouse Group">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name" required="1"/>
+                            </group>
+                            <group>
+                                <field name="warehouse_ids" widget="many2many_tags" required="1"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="tree_stock_warehouse_group" model="ir.ui.view">
+            <field name="name">stock.warehouse.group.tree</field>
+            <field name="model">stock.warehouse.group</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="name"/>
+                    <field name="warehouse_ids" widget="many2many_tags"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="actions_stock_warehouse_group" model="ir.actions.act_window">
+            <field name="name">Warehouse Group</field>
+            <field name="res_model">stock.warehouse.group</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+    </data>
+</odoo>

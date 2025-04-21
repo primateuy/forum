@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <data>
+        <menuitem id="menu_sub_inventory_reports" name="Reports"
+                  parent="setu_advance_reordering.menu_main_advance_reorder_process" sequence="4"/>
+
+        <!--        <menuitem id="menu_advance_inventory_reports" name="Advance Inventory Reports"-->
+        <!--                  parent="setu_advance_reordering.menu_sub_inventory_reports" sequence="1"-->
+        <!--                  />-->
+        <!--        <menuitem id="menu_over_stock_analysis" action="setu_advance_inventory_reports.setu_overstock_report_action"-->
+        <!--                  parent="setu_advance_reordering.menu_advance_inventory_reports" sequence="1" />-->
+        <!--        <menuitem id="menu_outofstock_analysis" action="setu_advance_inventory_reports.setu_outofstock_report_action"-->
+        <!--                  parent="setu_advance_reordering.menu_advance_inventory_reports" sequence="2" />-->
+        <!--        <menuitem id="menu_turnover_analysis" action="setu_advance_inventory_reports.setu_turnover_analysis_report_action"-->
+        <!--                  parent="setu_advance_reordering.menu_advance_inventory_reports" sequence="3" />-->
+        <!--        <menuitem id="menu_fsn_analysis" action="setu_advance_inventory_reports.setu_fsn_analysis_report_action"-->
+        <!--                  parent="setu_advance_reordering.menu_advance_inventory_reports" sequence="4" />-->
+        <!--        <menuitem id="menu_xyz_analysis" action="setu_advance_inventory_reports.setu_xyz_analysis_report_action"-->
+        <!--                  parent="setu_advance_reordering.menu_advance_inventory_reports" sequence="5" />-->
+        <!--        <menuitem id="menu_fsn_xyz_analysis" action="setu_advance_inventory_reports.setu_fsn_xyz_analysis_report_action"-->
+        <!--                  parent="setu_advance_reordering.menu_advance_inventory_reports" sequence="6" />-->
+
+        <menuitem id="menu_sale_forecast_report" action="setu_sale_forecast_report_action"
+                  parent="menu_sub_inventory_reports" sequence="2"/>
+        <menuitem id="menu_forecast_vs_actual_sales_report" action="action_setu_forecast_vs_actual_sales"
+                  parent="menu_sub_inventory_reports" sequence="3"/>
+    </data>
+</odoo>

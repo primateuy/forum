@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <data>
+        <!--        forecast sale form view-->
+        <record id="forecast_product_sale_form" model="ir.ui.view">
+            <field name="name">forecast.product.sale.form</field>
+            <field name="model">forecast.product.sale</field>
+            <field name="arch" type="xml">
+                <form string="Forecast Product Sale">
+                    <header>
+                        <button name="recalculate_actual_sales"
+                                class="oe_highlight"
+                                string="Calculate Actual Sales" type="object"/>
+                    </header>
+                    <sheet string="Forecast product sale form">
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" readonly="1"/>
+                            </h1>
+                        </div>
+                        <group expand="0" string="Forecast Product Sale">
+                            <group expand="0">
+                                <field name="product_id" required="True"/>
+                                <field name="warehouse_id" required="True"/>
+                                <field name="period_id" required="True" options="{'no_create': True}"/>
+                            </group>
+                            <group expand="0">
+                                <field name="forecast_qty" required="True"/>
+                                <field name="average_daily_forecast_qty" readonly="1"/>
+                            </group>
+                        </group>
+                        <group expand="0">
+                            <group expand="0" string="Sale Quantity">
+                                <field name="actual_sale_qty" readonly="1"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!--forecast sale tree view-->
+        <record id="forecast_product_sale_tree" model="ir.ui.view">
+            <field name="name">forecast.product.sale.tree</field>
+            <field name="model">forecast.product.sale</field>
+            <field name="arch" type="xml">
+                <tree string="Forecast product sale tree">
+                    <field name="name"/>
+                    <field name="product_id"/>
+                    <field name="warehouse_id"/>
+                    <field name="period_id"/>
+                    <field name="forecast_qty"/>
+                    <field name="previous_forecast_qty" column_invisible="True"/>
+                    <field name="previous_period_id" column_invisible="True"/>
+                    <field name="next_period_id" column_invisible="True"/>
+                    <field name="actual_sale_qty"/>
+                </tree>
+            </field>
+        </record>
+
+        <!--forecast sale search view-->
+        <record id="forecast_product_sale_search" model="ir.ui.view">
+            <field name="name">forecast.product.sale.search</field>
+            <field name="model">forecast.product.sale</field>
+            <field name="arch" type="xml">
+                <search string="Forecast product sale search">
+                    <field name="name"/>
+                    <field name="product_id"/>
+                    <field name="warehouse_id"/>
+                    <field name="period_id"/>
+                    <separator/>
+                    <filter name="currenct_year_forecast" string="Current Year Forecast"
+                            domain="[('period_id.fpenddate','&lt;=', time.strftime('%%Y-12-31')),
+                            ('period_id.fpstartdate','&gt;=',time.strftime('%%Y-01-01'))]"/>
+                    <filter name="future_forecast" string="Future Forecast"
+                            domain="[('period_id.fpstartdate', '&gt;=', (context_today() + relativedelta(months=1)).strftime('%Y-%m-01'))]"/>
+                    <filter name="last_year_forecast" string="Last Year Forecast"
+                            domain="[('period_id.fpenddate','&lt;', (context_today() - relativedelta(years=1)).strftime('%%Y-12-31')),
+                                     ('period_id.fpstartdate','&gt;=', (context_today() - relativedelta(years=1)).strftime('%%Y-01-01'))]"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Product" name="product_id" context="{'group_by':'product_id'}"/>
+                        <filter string="Fiscal Period" name="period_id" context="{'group_by':'period_id'}"/>
+                        <filter string="Warehouse" name="warehouse_id" context="{'group_by':'warehouse_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!--forecast sale graph view-->
+        <record id="forecast_product_sale_graph" model="ir.ui.view">
+            <field name="name">forecast.product.sale.graph</field>
+            <field name="model">forecast.product.sale</field>
+            <field name="arch" type="xml">
+                <graph string="Forecast product sale graph" type="bar" stacked='True'>
+                    <field name="forecast_qty" type="measure"/>
+                    <field name="period_id" type="row"/>
+                    <field name="warehouse_id" type="row"/>
+                    <field name="product_id"/>
+                </graph>
+            </field>
+        </record>
+
+        <!--forecast sale pivot view-->
+        <record id="forecast_product_sale_pivot" model="ir.ui.view">
+            <field name="name">forecast.product.sale.pivot</field>
+            <field name="model">forecast.product.sale</field>
+            <field name="arch" type="xml">
+                <pivot string="Forecast product sale pivot">
+                    <field name="product_id" type="row"/>
+                    <field name="warehouse_id" type="col"/>
+                    <field name="forecast_qty" type="measure"/>
+                    <field name="period_id" type="col"/>
+                </pivot>
+            </field>
+        </record>
+
+        <record id="action_forecast_product_sale" model="ir.actions.act_window">
+            <field name="name">Sales Forecast</field>
+            <field name="res_model">forecast.product.sale</field>
+            <field name="view_mode">tree,form,pivot</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your Product Sales Forecast
+                </p>
+            </field>
+        </record>
+
+        <!--newly added-->
+        <record id="setu_sale_forecast_report_action" model="ir.actions.act_window">
+            <field name="name">Sales Forecast Report</field>
+            <field name="res_model">forecast.product.sale</field>
+            <field name="view_mode">pivot,graph</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Product Sales Forecast
+                </p>
+            </field>
+        </record>
+
+        <record id="setu_sale_forecast_pivot_act_window" model="ir.actions.act_window.view">
+            <field name="sequence" eval="1"/>
+            <field name="view_mode">pivot</field>
+            <field name="view_id" ref="forecast_product_sale_pivot"/>
+            <field name="act_window_id" ref="setu_sale_forecast_report_action"/>
+        </record>
+
+        <record id="setu_sale_forecast_graph_act_window" model="ir.actions.act_window.view">
+            <field name="sequence" eval="2"/>
+            <field name="view_mode">graph</field>
+            <field name="view_id" ref="forecast_product_sale_graph"/>
+            <field name="act_window_id" ref="setu_sale_forecast_report_action"/>
+        </record>
+
+
+        <!--forecast sale graph view-->
+        <record id="forecast_vs_actual_sale_graph" model="ir.ui.view">
+            <field name="name">forecast.vs.actual.sale.graph</field>
+            <field name="model">forecast.product.sale</field>
+            <field name="arch" type="xml">
+                <graph string="Forecast vs Actual Sales Graph" type="bar" stacked='True'>
+                    <field name="product_id"/>
+                    <field name="warehouse_id" type="row"/>
+                    <field name="period_id" type="row"/>
+                    <field name="actual_sale_qty" type="measure"/>
+                    <field name="forecast_qty" type="measure"/>
+                </graph>
+            </field>
+        </record>
+
+        <!--forecast sale pivot view-->
+        <record id="forecast_vs_actual_sale_pivot" model="ir.ui.view">
+            <field name="name">forecast.vs.actual.sale.pivot</field>
+            <field name="model">forecast.product.sale</field>
+            <field name="arch" type="xml">
+                <pivot string="Forecast vs Actual Sales Pivot">
+                    <field name="product_id" type="row"/>
+                    <field name="warehouse_id" type="col"/>
+                    <field name="period_id" type="col"/>
+                    <field name="actual_sale_qty" type="measure"/>
+                    <field name="forecast_qty" type="measure"/>
+                </pivot>
+            </field>
+        </record>
+
+        <!--Forecast Sales vs actual Sales-->
+        <record id="action_setu_forecast_vs_actual_sales" model="ir.actions.act_window">
+            <field name="name">Forecast vs Actual Sales</field>
+            <field name="res_model">forecast.product.sale</field>
+            <field name="view_mode">pivot,graph</field>
+            <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('forecast_vs_actual_sale_pivot')}),
+            (0, 0, {'view_mode': 'graph', 'view_id': ref('forecast_vs_actual_sale_graph')})]"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Forecast vs Actual Sales
+                </p>
+            </field>
+        </record>
+
+        <!--        <record id="setu_forecast_vs_actual_sales_pivot_act_window" model="ir.actions.act_window.view" >-->
+        <!--            <field name="sequence" eval="1"/>-->
+        <!--            <field name="view_mode">pivot</field>-->
+        <!--            <field name="view_id" ref="forecast_vs_actual_sale_pivot"/>-->
+        <!--            <field name="act_window_id" ref="action_setu_forecast_vs_actual_sales"/>-->
+        <!--        </record>-->
+
+        <!--        <record id="setu_forecast_vs_actual_sales_graph_act_window" model="ir.actions.act_window.view" >-->
+        <!--            <field name="sequence" eval="2"/>-->
+        <!--            <field name="view_mode">graph</field>-->
+        <!--            <field name="view_id" ref="forecast_vs_actual_sale_graph"/>-->
+        <!--            <field name="act_window_id" ref="action_setu_forecast_vs_actual_sales"/>-->
+        <!--        </record>-->
+    </data>
+</odoo>

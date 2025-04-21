@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="res_config_settings_advance_reorder_view_form" model="ir.ui.view">
+            <field name="name">res.config.settings.advance.reorder.view.form</field>
+            <field name="model">res.config.settings</field>
+            <field name="priority" eval="10"/>
+            <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//form" position="inside">
+                    <app data-string="Advance Reordering" string="Advance Reordering"
+                         name="advance_reordering">
+                        <block title="Advance Reordering With Real Demand">
+                            <div class="row mt16 o_settings_container" name="advance_reordering_with_demand">
+                                <div class="col-12 col-lg-6 o_setting_box">
+                                    <div class="o_setting_right_pane">
+                                        <label for="reorder_rounding_method"/>
+                                        <div class="text-muted">
+                                            Set Rounding method for Demand generate from Advance Reorder with Real
+                                            Demand
+                                            and
+                                            Replenishment from Warehouses
+                                        </div>
+                                        <div class="content-group">
+                                            <div class="mt16">
+                                                <field name="reorder_rounding_method" class="o_light_label"
+                                                       widget="selection"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-lg-6 o_setting_box">
+                                    <div class="o_setting_right_pane">
+                                        <label for="reorder_round_quantity"/>
+                                        <div class="text-muted">
+                                            Set Rounding Quantity for Demand generate from Advance Reorder with Real
+                                            Demand
+                                            and Replenishment from Warehouses
+                                        </div>
+                                        <div class="content-group">
+                                            <div class="mt16">
+                                                <field name="reorder_round_quantity" class="oe_inline"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mt16 o_settings_container" name="advance_reordering_vendor_lead">
+                                <div class="col-12 col-lg-6 o_setting_box">
+                                    <div class="o_setting_right_pane">
+                                        <label for="vendor_lead_days_method"/>
+                                        <div class="text-muted">
+                                            Set Rounding Quantity for Demand generate from Advance Reorder with Real
+                                            Demand
+                                            and Replenishment from Warehouses
+                                        </div>
+                                        <div class="content-group">
+                                            <div class="mt16">
+                                                <field name="vendor_lead_days_method" class="oe_inline"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-lg-6 o_setting_box">
+                                    <div class="o_setting_right_pane"
+                                         invisible="vendor_lead_days_method != 'static'">
+                                        <label for="vendor_static_lead_days"/>
+                                        <div class="text-muted">
+                                            Set Rounding Quantity for Demand generate from Advance Reorder with Real
+                                            Demand and Replenishment from Warehouses
+                                        </div>
+                                        <div class="content-group">
+                                            <div class="mt16">
+                                                <field name="vendor_static_lead_days" class="oe_inline"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </block>
+                        <block title="Advance Reordering With Orderpoint">
+                            <div class="row mt16 o_settings_container" name="advance_reordering_order_point">
+                                <div class="col-12 col-lg-6 o_setting_box">
+                                    <div class="o_setting_right_pane">
+                                        <label for="purchase_lead_calc_base_on"/>
+                                        <div class="text-muted">
+                                            Purchase lead calculation based on vendor or real time for Advance
+                                            Reordering
+                                            with Order points
+                                        </div>
+                                        <div class="content-group">
+                                            <div class="mt16">
+                                                <field name="purchase_lead_calc_base_on" class="o_light_label"
+                                                       widget="selection"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-lg-6 o_setting_box"
+                                     invisible="purchase_lead_calc_base_on not in ['vendor_lead_time','real_time']">
+                                    <div class="o_setting_right_pane">
+                                        <label for="max_lead_days_calc_method"/>
+                                        <div class="text-muted">
+                                            Maximum Lead time Calculation of purchase for Advance Reordering with Order
+                                            points
+                                        </div>
+                                        <div class="content-group">
+                                            <div class="mt16">
+                                                <field name="max_lead_days_calc_method" class="o_light_label"
+                                                       widget="selection"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="o_setting_right_pane"
+                                         invisible="max_lead_days_calc_method != 'avg_extra_percentage'">
+                                        <label for="extra_lead_percentage"/>
+                                        <div class="text-muted">
+                                            (Maximum Lead time + Extra Percentage) as Maximum Lead time of purchase for
+                                            Advance Reordering with Order points
+                                        </div>
+                                        <div class="content-group">
+                                            <div class="mt16">
+                                                <field name="extra_lead_percentage" class="oe_inline"
+                                                       widget="percentage"
+                                                       style="text-align: right;"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mt16 o_settings_container" name="advance_reordering_max_sales">
+                                <div class="col-12 col-lg-6 o_setting_box">
+                                    <div class="o_setting_right_pane">
+                                        <label for="max_sales_calc_method"/>
+                                        <div class="text-muted">
+                                            Maximum Daily Sales Calculation of sales for Advance Reordering with Order
+                                            points
+                                        </div>
+                                        <div class="content-group">
+                                            <div class="mt16">
+                                                <field name="max_sales_calc_method" class="o_light_label"
+                                                       widget="selection"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="o_setting_right_pane"
+                                         invisible="max_sales_calc_method != 'avg_extra_percentage'">
+                                        <label for="extra_sales_percentage"/>
+                                        <div class="text-muted">
+                                            (Maximum Daily Sales + Extra Percentage) as Maximum Daily Sales of sales for
+                                            Advance Reordering with Order points
+                                        </div>
+                                        <div class="content-group">
+                                            <div class="mt16">
+                                                <field name="extra_sales_percentage" class="oe_inline"
+                                                       widget="percentage"
+                                                       style="text-align: right;"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </block>
+                    </app>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="action_res_config_settings_advance_reorder" model="ir.actions.act_window">
+            <field name="name">Settings</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">res.config.settings</field>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="res_config_settings_advance_reorder_view_form"/>
+            <field name="target">inline</field>
+            <field name="context">{'module' : 'advance_reordering'}</field>
+        </record>
+    </data>
+</odoo>

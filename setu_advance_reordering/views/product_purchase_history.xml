@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <data>
+        <record id="product_purchase_history_tree" model="ir.ui.view">
+            <field name="name">product.purchase.history.tree</field>
+            <field name="model">product.purchase.history</field>
+            <field name="arch" type="xml">
+                <tree string="Product Purchase History">
+                    <field name="product_id" />
+                    <field name="warehouse_id" />
+                    <field name="orderpoint_id" />
+                    <field name="purchase_id" readonly="1" />
+                    <field name="po_date" readonly="1" optional="show"/>
+                    <field name="partner_id" readonly="1" optional="show"/>
+                    <field name="po_qty" readonly="1" optional="show"/>
+                    <field name="currency_id" readonly="1" optional="show"/>
+                    <field name="purchase_price" readonly="1" optional="show"/>
+                    <field name="lead_time" readonly="1" optional="show"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="product_purchase_history_search" model="ir.ui.view">
+            <field name="name">product.purchase.history.search</field>
+            <field name="model">product.purchase.history</field>
+            <field name="arch" type="xml">
+                <search string="Product Purchase History">
+                    <field name="product_id" />
+                    <field name="warehouse_id" />
+                    <field name="orderpoint_id" />
+                    <field name="po_date" />
+                    <separator/>
+                    <filter string="Warehouse" context="{'group_by':'warehouse_id'}" name="warehouse_id_groupby"/>
+                    <filter string="Product" context="{'group_by':'product_id'}" name="product_id_groupby"/>
+                    <filter string="Date" context="{'group_by':'po_date'}" name="po_date_groupby"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="product_purchase_history_graph" model="ir.ui.view">
+            <field name="name">product.purchase.history.graph</field>
+            <field name="model">product.purchase.history</field>
+            <field name="arch" type="xml">
+                <graph string="Product Purchase History Analysis" type="bar" stacked="False">
+                    <field name="warehouse_id" type="col"/>
+                    <field name="po_date"  type="row"/>
+                    <field name="po_qty" type="measure"/>
+                </graph>
+            </field>
+        </record>
+
+        <record id="product_purchase_history_pivot" model="ir.ui.view">
+            <field name="name">product.purchase.history.pivot</field>
+            <field name="model">product.purchase.history</field>
+            <field name="arch" type="xml">
+                <pivot string="Product Purchase History Analysis">
+                    <field name="warehouse_id" type="col"/>
+                    <field name="po_date"  type="row"/>
+                    <field name="po_qty" type="measure"/>
+                </pivot>
+            </field>
+        </record>
+
+        <record id="product_purchase_history_action" model="ir.actions.act_window">
+            <field name="name">Product Purchase History Analysis</field>
+            <field name="res_model">product.purchase.history</field>
+            <field name="binding_view_types">tree,graph</field>
+            <field name="view_mode">tree,pivot,graph</field>
+            <field name="context">{
+                    'graph_groupbys': ['po_date:month', 'warehouse_id'],
+                    'pivot_row_groupby': ['warehouse_id', 'product_id'],
+                    'pivot_column_groupby': ['po_date:month'],
+                    'pivot_measures': ['po_qty']
+                }
+            </field>
+        </record>
+
+<!--        <menuitem id="product_purchase_history_menu" action="product_purchase_history_action"-->
+<!--                  parent="setu_advance_reordering.advance_reordering" sequence="13" />-->
+
+    </data>
+</odoo>

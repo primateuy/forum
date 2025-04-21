@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="res_partner_advance_reorder_inherit_view" model="ir.ui.view">
+            <field name="name">res.partner.advance.reorder.inherit.view</field>
+            <field name="model">res.partner</field>
+            <field name="inherit_id" ref="stock.view_partner_stock_form"/>
+            <field name="arch" type="xml">
+                <field name="property_stock_supplier" position="after">
+                    <field name="minimum_reorder_amount"/>
+                    <field name="vendor_rule"/>
+                </field>
+                <xpath expr="//page[@name='sales_purchases']/group" position="inside">
+                    <group string="Pricelist" name="pricelist" colspan="4">
+                        <field name="vendor_pricelist_ids" nolabel="1"/>
+                    </group>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,1359 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* setu_intercompany_transaction
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 16.0+e\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-05-23 08:42+0000\n"
+"PO-Revision-Date: 2023-05-23 08:42+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,help:setu_intercompany_transaction.field_sale_order__sale_iwt_option
+msgid ""
+"\n"
+"               this field is useful to control when the inter warehouse record will be created automatically \n"
+"               1. Always create interwarehouse record when sale order gets confirmed in requestor warehouse\n"
+"               2. Manual - provide an option to select inter warehouse channel manual in sale order\n"
+"               "
+msgstr ""
+"\n"
+"                Este campo sirve para controlar cuándo se creará automáticamente el registro entre almacenes  \n"
+"               1. Siempre se creará un registro entre almacenes cuando el pedido de venta se confirme en el almacén solicitante.\n"
+"               2. Manual - proporciona una opción para seleccionar manualmente el canal entre almacenes en el pedido de venta. \n"
+"               "
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,help:setu_intercompany_transaction.field_setu_intercompany_transfer__manage_lot_serial
+msgid ""
+"\n"
+"            This option helps to manage lot/serial number automatically in requestor company.\n"
+"            Lot /Serial number which are set in fulfiller company's delivery will set directly in requestor company's incoming shipmenet\n"
+"        "
+msgstr ""
+"\n"
+"            Esta opción ayuda a gestionar el número de lote/serie automáticamente en la empresa solicitante.\n"
+"            El número de lote/serie que se establece en la entrega de la empresa cumplidora se establecerá directamente en la red de envíos entrantes de la empresa solicitante.\n"
+"        "
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,help:setu_intercompany_transaction.field_setu_interwarehouse_channel__transfer_with_single_picking
+msgid ""
+"\n"
+"            This option is useful to transfer stock between two warehouses directly without moving stock to transit location.\n"
+"            By default stock will be transferred in two step\n"
+"                1. source Location to Transit Location\n"
+"                2. Transit Location to Destination Location\n"
+"        "
+msgstr ""
+"\n"
+"       Esta opción es útil para transferir existencias entre dos almacenes directamente sin mudar el stock a la ubicación de tránsito."
+" Por defecto, las acciones se transferirán en dos pasos\n"
+"                1. Ubicación de origen a la ubicación del tránsito\n"
+"                2. Ubicación de tránsito a la ubicación del destino\n"
+"        "
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,help:setu_intercompany_transaction.field_res_company__stock_replenishment_priority
+#: model:ir.model.fields,help:setu_intercompany_transaction.field_sale_order__stock_replenishment_priority
+msgid ""
+"\n"
+"            User can choose whether stock will be replenished in the warehouse from another warehouse of the same company or \n"
+"            stock will be replenished from another company's warehouse.\n"
+"         "
+msgstr ""
+"\n"
+"            El usuario puede elegir si las existencias se repondrán en el almacén desde otro almacén de la misma empresa o \n"
+"            las existencias se repondrán desde el almacén de otra empresa.\n"
+"         "
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,help:setu_intercompany_transaction.field_res_company__create_ict_option
+#: model:ir.model.fields,help:setu_intercompany_transaction.field_sale_order__create_ict_option
+msgid ""
+"\n"
+"            this field is useful to control when the inter company record will be created automatically \n"
+"            1. When any single product of sale order is out of stock in requestor company\n"
+"            2. When all products of sale order are out of stock in requestor company\n"
+"            3. Always create intercompany record when sale order gets confirmed in requestor company\n"
+"            4. Manual - provide an option to select inter company channel manual in sale order\n"
+"        "
+msgstr ""
+"\n"
+"            Este campo es útil para controlar cuándo se creará automáticamente el registro entre empresas. \n"
+"            1. Cuando cualquier producto único de la orden de venta está agotado en la empresa de requisitos\n"
+"            2. Cuando todos los productos de la orden de venta están agotados en la empresa de requisitos\n"
+"            3. Siempre cree un registro entre compañías cuando la orden de venta se confirme en la empresa de requisitos\n"
+"            4. Manual: proporcione una opción para seleccionar el manual del canal entre empresas en la orden de venta\n"
+"        "
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,help:setu_intercompany_transaction.field_res_company__create_iwt_option
+#: model:ir.model.fields,help:setu_intercompany_transaction.field_sale_order__create_iwt_option
+msgid ""
+"\n"
+"            this field is useful to control when the inter warehouse record will be created automatically \n"
+"            1. When any single product of sale order is out of stock in requestor warehouse\n"
+"            2. When all products of sale order are out of stock in requestor warehouse\n"
+"            3. Always create interwarehouse record when sale order gets confirmed in requestor warehouse\n"
+"            4. Manual - provide an option to select inter warehouse channel manual in sale order\n"
+"            "
+msgstr ""
+"\n"
+"            Este campo es útil para controlar cuándo se creará automáticamente el registro entre almacén automáticamente \n"
+"            1. Cuando cualquier producto único de la orden de venta está agotado en el almacén de solicitantes\n"
+"            2. Cuando todos los productos de la orden de venta están agotados en el almacén de solicitantes\n"
+"            3. Siempre cree un registro de interwarehouse cuando la orden de venta se confirme en el almacén de solicitantes\n"
+"            4. Manual: proporcione una opción para seleccionar el manual del canal Inter Warehouse en la orden de venta\n"
+"            "
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,help:setu_intercompany_transaction.field_setu_ict_auto_workflow__validate_ict
+msgid ""
+"\n"
+"        If this option is selected then it will create intercompany sale / purchase automatically\n"
+"    "
+msgstr ""
+"\n"
+"        Si se selecciona esta opción, creará una venta / compra entre compañías automáticamente \n"
+"    "
+
+#. module: setu_intercompany_transaction
+#: model:ir.model,name:setu_intercompany_transaction.model_setu_intercompany_transfer
+msgid ""
+"\n"
+"        Intercompany Transfer\n"
+"        ==========================================================\n"
+"        This app is used to keep track of all the transactions between two warehouses, source warehouse\n"
+"        and destination warehouse can be of same company and can be of different company.\n"
+"        \n"
+"        This app will perform following operations.\n"
+"        -> Inter company transaction (transaction between warehouses of two different companies)\n"
+"        -> Inter warehouse transaction (transaction between warehouses of same company)\n"
+"        -> Reverse transactions (Inter company or Inter warehouse)\n"
+"        \n"
+"        Advance features\n"
+"        -> Define inter company rules which will create inter comapny transactions record automatically\n"
+"        -> Manage serial number and lot number in Inter company transfers\n"
+"    "
+msgstr ""
+"\n"
+"        Transferencia entre compañías\n"
+"        ==========================================================\n"
+"        Esta aplicación se utiliza para realizar un seguimiento de todas las transacciones entre dos almacenes, almacén de origen\n"
+"        y el almacén de destino puede ser de la misma compañía y puede ser de una compañía diferente.\n"
+"        \n"
+"        Esta aplicación realizará las siguientes operaciones.\n"
+"        -> Transacción entre empresas (transacción entre almacenes de dos compañías diferentes)\n"
+"        -> Transacción entre almacén (transacción entre almacenes de la misma compañía)\n"
+"        -> Transacciones inversas (Inter Company o Inter Warehouse)\n"
+"        \n"
+"        Características avanzadas\n"
+"        -> Definir reglas entre empresas que crearán registros de transacciones entre empresas automáticamente\n"
+"        -> Administrar el número de serie y el número de lote en las transferencias entre empresas\n"
+"    "
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model,name:setu_intercompany_transaction.model_setu_intercompany_channel
+msgid ""
+"\n"
+"        Intercompany channel is used to define an automated actions should be taken when source company receive orders\n"
+"    "
+msgstr ""
+"\n"
+"        El canal entre empresas se utiliza para definir una acción automatizada que se deben tomar cuando la compañía fuente recibe pedidos\n"
+"    "
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model,name:setu_intercompany_transaction.model_setu_interwarehouse_channel
+msgid ""
+"\n"
+"        Interwarehouse channel is used to define an automated actions should be taken when destination warehouse receive orders\n"
+"    "
+msgstr ""
+
+#. module: setu_intercompany_transaction
+#: model:ir.model,name:setu_intercompany_transaction.model_setu_ict_auto_workflow
+msgid ""
+"\n"
+"        This model is used to automate some activities in the intercompany transactions. \n"
+"        Like, Auto confirm sales order, purchase order, auto create customer invoice, vendor bill etc... \n"
+"    "
+msgstr ""
+"\n"
+"        Este modelo se utiliza para automatizar algunas actividades en las transacciones entre compañías. \n"
+"        Como, confirme automáticamente el pedido de ventas, el pedido de compra, la factura de los clientes, la factura del proveedor, etc. \n"
+"    "
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,help:setu_intercompany_transaction.field_setu_intercompany_channel__manage_lot_serial
+msgid ""
+"\n"
+"        This option helps to manage lot/serial number automatically in requestor company.\n"
+"        Lot /Serial number which are set in fulfiller company's delivery will set directly in requestor company's incoming shipmenet\n"
+"    "
+msgstr ""
+"\n"
+"        Esta opción ayuda a gestionar el número de lote/serie automáticamente en la empresa solicitante.\n"
+"        El número de lote/serie que se establece en la entrega de la empresa cumplidora se establecerá directamente en la red de envíos entrantes de la empresa solicitante.\n"
+"    "
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,help:setu_intercompany_transaction.field_setu_intercompany_transfer__transfer_with_single_picking
+msgid ""
+"\n"
+"        This option is useful to transfer stock between two warehouses directly without moving stock to transit location.\n"
+"        By default stock will be transferred in two step\n"
+"            1. Source Location to Transit Location\n"
+"            2. Transit Location to Destination Location\n"
+"    "
+msgstr ""
+"\n"
+"        Esta opción es útil para transferir existencias entre dos almacenes directamente sin mudar el stock a la ubicación de tránsito..\n"
+"        Por defecto, las acciones se transferirán en dos pasos\n"
+"            1. Ubicación de origen a la ubicación del tránsito\n"
+"            2. Ubicación de tránsito a la ubicación del destino\n"
+"    "
+
+#. module: setu_intercompany_transaction
+#: model:ir.model,name:setu_intercompany_transaction.model_wizard_import_ict_product
+msgid ""
+"\n"
+"    This wizard helps to choose file which will going to import ICT lines from csv files\n"
+"    "
+msgstr ""
+"\n"
+"    Este asistente ayuda a elegir un archivo que va a importar líneas de TIC desde archivos CSV\n"
+"    "
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model,name:setu_intercompany_transaction.model_setu_intercompany_transfer_line
+msgid ""
+"\n"
+"    this is to define how many products will be going to transfer to another warehouse with which price. \n"
+"    "
+msgstr ""
+"\n"
+"    Esto es para definir cuántos productos se transferirán a otro almacén y cual será el precio. \n"
+"    "
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.form_wizard_import_ict_lines
+msgid ""
+"<i class=\"fa fa-download mr4\"/>\n"
+"                                    Download Inter Company Transfer Line Sample Template"
+msgstr ""
+"<i class=\"fa fa-download mr4\"/>\n"
+"                                    Descargar plantilla de ejemplo de línea de transferencia entre empresas"
+
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.form_wizard_import_ict_lines
+msgid ""
+"<i class=\"fa fa-download mr4\"/>\n"
+"                                    Download Inter Warehouse Transfer Line Sample Template"
+msgstr ""
+"<i class=\"fa fa-download mr4\"/>\n"
+"                                    Descargar plantilla de ejemplo de línea de transferencia entre almacenes"
+
+
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid ""
+"<p style=\"color:red;\">Stock of %s has been not found in any "
+"warehouses!</p>"
+msgstr ""
+"<p style=\"color:red;\">¡No se ha encontrado stock de %s en ningún almacén!</p> "
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__active
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__active
+msgid "Active"
+msgstr ""
+"Activo"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+msgid "Advance Configurations"
+msgstr ""
+"Configuraciones avanzadas"
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_ict_option__always
+msgid "Always replenish stock"
+msgstr ""
+"Reponer siempre el stock"
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_iwt_option__always
+msgid "Always replenish stock (From other warehouses only)"
+msgstr ""
+"Reponer siempre el stock (solo desde otros almacenes)"
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__sale_order__sale_iwt_option__always
+msgid "Always replenish stock(Use Stock From Other Warehouses)"
+msgstr ""
+"Reponer siempre el stock (Usar el stock de otros almacenes)"
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__sale_order__sale_iwt_option__as_per_company
+msgid "As Per Company"
+msgstr ""
+"Según la empresa (Configuración)"
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.actions.act_window,name:setu_intercompany_transaction.setu_ict_auto_workflow_action
+#: model:ir.ui.menu,name:setu_intercompany_transaction.setu_ict_auto_workflow_menu
+msgid "Auto Workflow - ICT"
+msgstr ""
+"Flujo de Trabajo automatico - ICT"
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__validate_ict
+msgid "Auto validate Interwarehouse tansfer record?"
+msgstr ""
+"Validar automaticamente la transferencia entre almacenes?"
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__auto_workflow_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__auto_workflow_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__auto_workflow_id
+msgid "Auto workflow"
+msgstr ""
+"Flujo de Trabajo automatico - ICT"
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product__file_data
+msgid "CSV File"
+msgstr ""
+"Archivo CSV"
+
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid ""
+"Can't create ICT for this order, because ICT channel not found for this "
+"company. Create ICT manually."
+msgstr ""
+"No se puede crear ICT para este pedido, porque no se ha encontrado el canal ICT para esta "
+"empresa. Cree la ICT manualmente."
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid ""
+"Can't create Inter Warehouse Transfer for this order, because Inter "
+"Warehouse Channel not found for this warehouse. Please create manually."
+msgstr ""
+"No se puede crear una transferencia entre almacenes para este pedido porque no se ha encontrado el "
+"canal entre almacenes para este almacén. Por favor, créelo manualmente."
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__setu_intercompany_transfer__state__cancel
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.form_wizard_import_ict_lines
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_form
+msgid "Cancel"
+msgstr ""
+"Cancelar"
+
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.form_wizard_import_ict_lines
+msgid "Columns name must be the same as described in the sample files"
+msgstr ""
+"El nombre de las columnas debe ser el mismo que se describe en los archivos de muestra"
+
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.form_wizard_import_ict_lines
+msgid "Comma Separated Values (.CSV)"
+msgstr ""
+"Valores separados por coma (.csv)"
+
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_form
+msgid "Common Configurations"
+msgstr ""
+"Configuraciones comunes"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model,name:setu_intercompany_transaction.model_res_company
+msgid "Companies"
+msgstr ""
+"Compañías"
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_res_company__create_ict_option
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__create_ict_option
+msgid "Create Inter Company Transfer"
+msgstr ""
+"Crear transferencia entre empresas"
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_res_company__create_iwt_option
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__create_iwt_option
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__sale_iwt_option
+msgid "Create Inter Warhouse Transfer"
+msgstr ""
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__create_ict_invoices
+msgid "Create intercompany invoices?"
+msgstr ""
+"¿Crear facturas entre compañías?"
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__create_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__create_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__create_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__create_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__create_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product__create_uid
+msgid "Created by"
+msgstr ""
+"Creado por"
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__create_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__create_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__create_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__create_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__create_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product__create_date
+msgid "Created on"
+msgstr ""
+"Creado en"
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__customer_invoice_journal_id
+msgid "Customer Invoice Journal"
+msgstr ""
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__ict_date
+msgid "Date"
+msgstr ""
+"Fecha"
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__location_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__location_id
+msgid "Destination location"
+msgstr ""
+"Ubicación de destino"
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__transfer_with_single_picking
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__transfer_with_single_picking
+msgid "Direct transfer to destination without transit location?"
+msgstr ""
+"¿Transferencia directa al destino sin ubicación de tránsito?"
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__display_name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__display_name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__display_name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__display_name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__display_name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product__display_name
+msgid "Display Name"
+msgstr ""
+"Nombre para mostrar"
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_res_company__distributed_iwt
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__distributed_iwt
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__distributed_replenish
+msgid "Distributed IWT?"
+msgstr ""
+"Distribuido IWT?"
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__stock_replenishment_priority__do_nothing
+msgid "Do Nothing"
+msgstr ""
+"No hacer nada"
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__setu_intercompany_transfer__state__done
+msgid "Done"
+msgstr ""
+"Realizado"
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product__file_name
+msgid "File Name"
+msgstr ""
+"Nombre del archivo"
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_ict_option__stock_plus_intercompany
+msgid ""
+"First use available stock and create inter company transfer for remaining"
+msgstr ""
+"Utilizar primero las existencias disponibles y crear una transferencia entre almacenes para el resto."
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_iwt_option__stock_plus_interwarehouse
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__sale_order__sale_iwt_option__stock_plus_interwarehouse
+msgid ""
+"First use available stock and create inter warehouse transfer for remaining"
+msgstr ""
+"Utilizar primero las existencias disponibles y crear una transferencia entre almacenes para el resto."
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__fulfiller_company_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__fulfiller_company_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_form
+msgid "Fulfiller"
+msgstr ""
+"Proveedor"
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__fulfiller_company_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_search
+msgid "Fulfiller Company"
+msgstr ""
+"Empresa proveedora"
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__fulfiller_partner_id
+msgid "Fulfiller Partner"
+msgstr ""
+"Socio proveedor"
+"Almacen proveedor"
+
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__fulfiller_warehouse_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__fulfiller_warehouse_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__fulfiller_warehouse_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_search
+msgid "Fulfiller Warehouse"
+msgstr ""
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__ict_count
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__ict_ids
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.ict_sale_order_form
+msgid "ICT"
+msgstr ""
+"ICT"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_search
+msgid "ICT Auto Workflow"
+msgstr ""
+"Flujo de trabajo automático de las ICT"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__ict_channel_ids
+msgid "ICT Channels"
+msgstr ""
+"Canales de ICT"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_transfer_search
+msgid "ICT Date"
+msgstr ""
+"Fecha de ICT"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__ict_transfer_type
+msgid "ICT Transfer Type"
+msgstr ""
+"Tipo de transferencia de ICT"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_transfer_search
+msgid "ICT User"
+msgstr ""
+"Usuario ICT"
+
+#. module: setu_intercompany_transaction
+#: model:ir.ui.menu,name:setu_intercompany_transaction.menu_ict_user_guide
+msgid "ICT User Guide"
+msgstr ""
+"Guia Abierta de ICT para el usuario "
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product__id
+msgid "ID"
+msgstr ""
+"ID"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.ict_sale_order_form
+msgid "INTERCOMAPNY TRANFER"
+msgstr ""
+"Transferencia entre Empresas"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.ict_sale_order_form
+msgid "INTERWAREHOUSE TRANSFER"
+msgstr ""
+"Transferencia entre Almacenes"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.ict_sale_order_form
+msgid "IWT"
+msgstr ""
+"IWT"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,help:setu_intercompany_transaction.field_setu_intercompany_transfer__location_id
+#: model:ir.model.fields,help:setu_intercompany_transaction.field_setu_interwarehouse_channel__location_id
+msgid "IWT will be created for this location from the fulfiller warehouse."
+msgstr ""
+"Se creara una IWT para esta ubicación desde el almacen proveedor"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.form_wizard_import_ict_lines
+msgid "Import"
+msgstr ""
+"Importar"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.form_wizard_import_ict_lines
+msgid "Import Intercompany Lines"
+msgstr ""
+"Importación de líneas entre empresas"
+
+#. module: setu_intercompany_transaction
+#: model:ir.actions.act_window,name:setu_intercompany_transaction.action_wizard_import_ict_product
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+msgid "Import Lines"
+msgstr ""
+"Líneas de importación"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__setu_intercompany_transfer__transfer_type__inter_company
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.res_company_form
+msgid "Inter Company"
+msgstr ""
+"Entre Empresas"
+
+#. module: setu_intercompany_transaction
+#: model:ir.actions.act_window,name:setu_intercompany_transaction.setu_intercompany_channel_action
+#: model:ir.ui.menu,name:setu_intercompany_transaction.setu_intercompany_channel_menu
+msgid "Inter Company Channel"
+msgstr ""
+"Canal entre Empresas"
+
+#. module: setu_intercompany_transaction
+#: model:ir.ui.menu,name:setu_intercompany_transaction.intercompany_main_menu
+msgid "Inter Company Transaction"
+msgstr ""
+"Transacción entre empresas"
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid "Inter Company Transactions"
+msgstr ""
+"Transacciones entre empresas"
+
+#. module: setu_intercompany_transaction
+#: model:ir.actions.act_window,name:setu_intercompany_transaction.setu_intercompany_transfer_action
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__intercompany_transfer_id
+#: model:ir.ui.menu,name:setu_intercompany_transaction.setu_intercompany_transfer_menu
+msgid "Inter Company Transfer"
+msgstr ""
+"Tranferencia entre Compañias"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__ict_user_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__ict_user_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__ict_user_id
+msgid "Inter Company User"
+msgstr ""
+"Usuario de Inter Company"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__setu_intercompany_transfer__transfer_type__inter_warehouse
+msgid "Inter Warehouse"
+msgstr ""
+"Entre Almacenes"
+
+#. module: setu_intercompany_transaction
+#: model:ir.actions.act_window,name:setu_intercompany_transaction.setu_interwarehouse_channel_action
+#: model:ir.ui.menu,name:setu_intercompany_transaction.setu_interwarehouse_channel_menu
+msgid "Inter Warehouse Channel"
+msgstr ""
+"Canal entre almacenes"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+msgid "Inter Warehouse Transaction"
+msgstr ""
+"Transacción entre almacenes"
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid "Inter Warehouse Transactions"
+msgstr ""
+"Transacciones entre almacén"
+
+#. module: setu_intercompany_transaction
+#: model:ir.actions.act_window,name:setu_intercompany_transaction.setu_interwarehouse_transfer_action
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_stock_picking__ict_internal_transfer_id
+#: model:ir.ui.menu,name:setu_intercompany_transaction.setu_interwarehouse_transfer_menu
+msgid "Inter Warehouse Transfer"
+msgstr ""
+"Transferencia entre Almacenes"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+msgid "Inter Warehouse Transfer Lines"
+msgstr ""
+"Líneas de transferencia entre almacenes"
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid "Inter company channel must be selected to create inter company record."
+msgstr ""
+"Se debe seleccionar el canal interempresas para crear el registro interempresas."
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid "Inter company record has been already created."
+msgstr ""
+"El registro de interación entre empresas ya ha sido creado."
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid ""
+"Inter warehouse channel must be selected to create inter warehouse record."
+msgstr ""
+"Se debe seleccionar el canal entre almacenes para crear el registro entre almacenes."
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid "Inter warehouse record has been already created."
+msgstr ""
+"Ya se ha creado el registro entre almacenes."
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+msgid "InterCompany Transfer Lines"
+msgstr ""
+"Lineas de transferencia entre compañias"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_ict_auto_workflow_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_ict_auto_workflow_tree
+msgid "Intercompany Auto Workflow"
+msgstr ""
+"Flujo de trabajo automático entre empresas"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__intercompany_channel_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__intercompany_channel_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_tree
+msgid "Intercompany Channel"
+msgstr ""
+"Canal entre empresas"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+msgid "Intercompany Transaction"
+msgstr ""
+"Transacción entre empresas"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_account_bank_statement_line__intercompany_transfer_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_account_move__intercompany_transfer_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_account_payment__intercompany_transfer_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_purchase_order__intercompany_transfer_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__intercompany_transfer_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_stock_picking__purchase_intercompany_transfer_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_stock_picking__sale_intercompany_transfer_id
+msgid "Intercompany Transfer"
+msgstr ""
+"Transferencia entre compañías"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__intercompany_transfer_line_ids
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+msgid "Intercompany Transfer Lines"
+msgstr ""
+"Lineas de transferencia entre compañias"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__interwarehouse_channel_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order_line__interwarehouse_channel_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__interwarehouse_channel_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_tree
+msgid "Interwarehouse Channel"
+msgstr ""
+"Canal entre almacenes"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__interwarehouse_channel_ids
+msgid "Interwarehouse Channels"
+msgstr ""
+"Canales entre almacenes"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_ict_auto_workflow_form
+msgid "Invoice Auto Workflow"
+msgstr ""
+"Flujo de trabajo automático de facturas"
+
+#. module: setu_intercompany_transaction
+#: model:ir.actions.act_window,name:setu_intercompany_transaction.action_move_invoice
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__invoice_ids
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+msgid "Invoices"
+msgstr ""
+"Facturas"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model,name:setu_intercompany_transaction.model_account_move
+msgid "Journal Entry"
+msgstr ""
+"Apunte Contable"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow____last_update
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel____last_update
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer____last_update
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line____last_update
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel____last_update
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product____last_update
+msgid "Last Modified on"
+msgstr ""
+"Última modificación en"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__write_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__write_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__write_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__write_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__write_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product__write_uid
+msgid "Last Updated by"
+msgstr ""
+"Última actualización por"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__write_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__write_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__write_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__write_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__write_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product__write_date
+msgid "Last Updated on"
+msgstr ""
+"Ultima actualización en"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__manage_lot_serial
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__manage_lot_serial
+msgid "Manage serial / lot number in Inter Company Transactions?"
+msgstr ""
+"¿Gestionar el número de serie / lote en las transacciones entre empresas?"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_ict_option__manual
+msgid "Manual - Select ICT Channel manually in sale order"
+msgstr ""
+"Manual - Seleccionar canal de ICT manualmente en orden de venta"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_iwt_option__manual
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__sale_order__sale_iwt_option__manual
+msgid "Manual - Select Inter Warehouse Channel manually in sale order"
+msgstr ""
+"Manual - Seleccione manualmente el canal entre almacenes en el orden de venta"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__name
+msgid "Name"
+msgstr ""
+"Nombre"
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/models/setu_intercompany_transfer.py:0
+#: code:addons/setu_intercompany_transaction/models/setu_intercompany_transfer.py:0
+#: code:addons/setu_intercompany_transaction/models/setu_intercompany_transfer.py:0
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__setu_intercompany_transfer__state__draft
+#, python-format
+msgid "New"
+msgstr ""
+"Nuevo"
+
+#. module: setu_intercompany_transaction
+#: model:ir.actions.act_url,name:setu_intercompany_transaction.action_ict_user_guide
+msgid "Open ICT User Guide"
+msgstr ""
+"Guia Abierta de ICT para el usuario "
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__origin_ict_id
+msgid "Origin ICT"
+msgstr ""
+"Origen ICT"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__origin_order_id
+msgid "Origin Sale Order"
+msgstr ""
+"Orden de venta de origen"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__picking_ids
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_form
+msgid "Pickings"
+msgstr ""
+"Ganancias"
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/models/setu_intercompany_transfer.py:0
+#, python-format
+msgid "Please add any product to do a transfer."
+msgstr ""
+"Por favor agregue algún producto para hacer una transferencia."
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__unit_price
+msgid "Price"
+msgstr ""
+"Precio"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__pricelist_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__pricelist_id
+msgid "Pricelist"
+msgstr ""
+"Lista de precios"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__sequence
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__sequence
+msgid "Priority"
+msgstr ""
+"Prioridad"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__product_id
+msgid "Product"
+msgstr ""
+"Producto"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model,name:setu_intercompany_transaction.model_product_product
+msgid "Product Variant"
+msgstr ""
+"Variante de producto"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__fulfiller_fiscal_position_id
+msgid "Purchase Fiscal Position"
+msgstr ""
+"Posición Fiscal para Compras"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model,name:setu_intercompany_transaction.model_purchase_order
+msgid "Purchase Order"
+msgstr ""
+"Orden de compra"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__purchase_ids
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+msgid "Purchases"
+msgstr ""
+"Compras"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__quantity
+msgid "Quantity"
+msgstr ""
+"Cantidad"
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/models/setu_intercompany_transfer.py:0
+#, python-format
+msgid "Quantity should be greater than 0 to do a transfer."
+msgstr ""
+"La cantidad debería ser mayor a 0 para hacer una transferencia."
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__stock_replenishment_priority__refill_from_intercomapny
+msgid "Replenish stock from another company's warehouse"
+msgstr ""
+"Reponer el stock desde el almacen de otra empresa"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__stock_replenishment_priority__refill_from_interwarehouse
+msgid "Replenish stock from another warehouse of the same company"
+msgstr ""
+"Reponer el stock desde otro almacen de la misma empresa"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__requestor_company_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__requestor_company_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_form
+msgid "Requestor"
+msgstr ""
+"Solicitante"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__requestor_company_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_search
+msgid "Requestor Company"
+msgstr ""
+"Empresa solicitante"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__requestor_partner_id
+msgid "Requestor Partner"
+msgstr ""
+"Socio solicitante"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__requestor_warehouse_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__requestor_warehouse_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_search
+msgid "Requestor Warehouse"
+msgstr ""
+"Almacen solicitante"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+msgid "Return"
+msgstr ""
+"Devolver"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_tree
+msgid "Reverse Transaction"
+msgstr ""
+"Devolución"
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/models/setu_intercompany_transfer.py:0
+#, python-format
+msgid "Reverse Transactions"
+msgstr ""
+"Devolución"
+
+#. module: setu_intercompany_transaction
+#: model:ir.actions.act_window,name:setu_intercompany_transaction.setu_reverse_transfer_action
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__setu_intercompany_transfer__transfer_type__reverse_transfer
+#: model:ir.ui.menu,name:setu_intercompany_transaction.setu_reverse_transfer_menu
+msgid "Reverse Transfer"
+msgstr ""
+"Devolución"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_form
+msgid "Reverse Transfer Lines"
+msgstr ""
+"Lineas de devolución"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_ict_auto_workflow_form
+msgid "Sale / Purchase Auto Workflow"
+msgstr ""
+"Flujo de trabajo automático de venta/compra"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__sale_ids
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+msgid "Sales"
+msgstr ""
+"Ventas"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__requestor_fiscal_position_id
+msgid "Sales Fiscal Position"
+msgstr ""
+"Posición fiscal de ventas"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model,name:setu_intercompany_transaction.model_sale_order
+msgid "Sales Order"
+msgstr ""
+"Órdenes de venta"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model,name:setu_intercompany_transaction.model_sale_order_line
+msgid "Sales Order Line"
+msgstr ""
+"Línea de pedido de ventas"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__sales_team_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__sales_team_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_search
+msgid "Sales Team"
+msgstr ""
+"Equipo de ventas"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_transfer_tree
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+msgid "Setu Inter Warehouse Transaction"
+msgstr ""
+"Setu Transacción entre almacenes"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_ict_auto_workflow_form
+msgid "Setu Intercompany Auto Workflow"
+msgstr ""
+"Setu Flujo de trabajo automático entre empresas"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_tree
+msgid "Setu Intercompany Transaction"
+msgstr ""
+"Setu Transacción entre empresas"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_form
+msgid "Setu Reverse Transaction"
+msgstr ""
+"Setu Devolución"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__state
+msgid "State"
+msgstr ""
+"Estado"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_search
+msgid "Status"
+msgstr ""
+"Estado"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_res_company__stock_replenishment_priority
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__stock_replenishment_priority
+msgid "Stock Replenish source"
+msgstr ""
+"Fuente de reposición de existencias"
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/wizard/wizard_import_ict_products.py:0
+#, python-format
+msgid "The file must have an extention .csv"
+msgstr ""
+"El archivo debe tener una extensión .csv"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__invoice_count
+msgid "Total Invoice"
+msgstr ""
+"Total de la factura"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__delivery_count
+msgid "Total Pickings"
+msgstr ""
+"Total de la factura"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__purchase_count
+msgid "Total Purchase"
+msgstr ""
+"Compra total"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__sale_count
+msgid "Total Sale"
+msgstr ""
+"Total"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model,name:setu_intercompany_transaction.model_stock_picking
+msgid "Transfer"
+msgstr ""
+"Transferir"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__transfer_type
+msgid "Transfer Type"
+msgstr ""
+"Tipo de transferencia de ICT"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_form
+msgid "Validate"
+msgstr ""
+"Validar"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__validate_ict_invoices
+msgid "Validate intercompany invoices?"
+msgstr ""
+"Validar las facturas de intercompañía?"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__validate_ict
+msgid "Validate intercompany record?"
+msgstr ""
+"Validar las facturas de intercompañía?"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__validate_ict_so_po
+msgid "Validate intercompany sale / purchase?"
+msgstr ""
+"Validar la venta / compra entre compañías?"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__vendor_bill_journal_id
+msgid "Vendor Bill Journal"
+msgstr ""
+"Diario de facturas de proveedores"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_ict_option__insufficient_stock_all_product
+msgid "When all products out of stock in requestor company"
+msgstr ""
+"Cuando todos los productos agotados en la empresa de solicitantes"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_iwt_option__insufficient_stock_all_product
+msgid "When all products out of stock in requestor warehouse"
+msgstr ""
+"Cuanto todos los productos esten agotados en el almacen solicitante"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_ict_option__insufficient_stock_single_product
+msgid "When any single product is out of stock in requestor company"
+msgstr ""
+"Cuando un solo producto está agotado en la empresa de solicitantes"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_iwt_option__insufficient_stock_single_product
+msgid "When any single product is out of stock in requestor warehouse"
+msgstr ""
+"Cuando un producto está agotado en el almacén del solicitante"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,help:setu_intercompany_transaction.field_setu_intercompany_channel__fulfiller_fiscal_position_id
+msgid "select fiscal position for purchase order"
+msgstr ""
+"Seleccione la posición fiscal para la orden de compra"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,help:setu_intercompany_transaction.field_setu_intercompany_channel__requestor_fiscal_position_id
+msgid "select fiscal position for sale order"
+msgstr ""
+"Seleccionar posición fiscal para la orden de venta"

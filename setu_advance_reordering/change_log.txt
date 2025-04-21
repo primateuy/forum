@@ -1,0 +1,80 @@
+Date : 09 Sep 2024
+Version : 17.0.0.2 (in __manifest__.py)
+Odoo Version : 17.0
+Done by : Aastha Vora
+Tested by : Aastha Vora
+Module : setu_advance_reordering
+	- Multicompany Reorder with real demand Issue while creating new record.
+
+Date : 28th May 2024
+Version : 17.0.0.1 (in __manifest__.py)
+Odoo Version : 17.0
+Done by : Udit Ramani
+Tested by : Udit Ramani
+Module : setu_advance_reordering
+	- Purchase history update issue in the orderpoint.
+
+Date : 20th Nov 2023
+Version : 17.0 (in __manifest__.py)
+Odoo Version : 17
+Done by : Richisha Acharya
+Tested by :
+Module : setu_advance_reordering
+	- Migrated from V16 to V17.
+
+Date : 21st April 2023
+Version : 16.5 (in __manifest__.py)
+Odoo Version : 16.5
+Done by : Udit Ramani
+Tested by : Udit Ramani on 21st April 2023
+Module : setu_advance_reordering
+	- Procurement exception handing case(solution048) and purchase_stock run method not calling issue fixed.
+
+Date : 12th April 2023
+Version : 16.5 (in __manifest__.py)
+Odoo Version : 16.5
+Done by : Devangi Pabari
+Tested by : Devangi Pabari on 12th April 2023
+Module : setu_advance_reordering
+	- Changes(Tracking -> tracking,Index -> index)
+
+Date : 29th March 2023
+Version : 16.4 (in __manifest__.py)
+Odoo Version : 16.4
+Done by : Devangi Pabari
+Tested by : Devangi Pabari on 29th March 2023
+Module : setu_advance_reordering
+	- Issues Fix Related To Purchase Order's Unit Of Measure and Quantity
+
+Date : 6th March 2023
+Version : '16.3' (in __manifest__.py)
+Odoo Version : 16
+Done by : Devangi Pabari
+Tested by : Udit Ramani, Devangi Pabari
+Description : Added condition of picking in update_iwt_history sql file.
+
+Date : 24th Feb 2023
+Version : '16.2' (in __manifest__.py)
+Odoo Version : 16
+Done by : Udit Ramani
+Tested by : Udit Ramani on 24th Feb 2023
+Module : setu_advance_reordering
+	- Issue fixed related to Vendor MOQ in Real Demand.
+
+Date : 30th Jan 2023
+Version : '16.1' (in __manifest__.py)
+Odoo Version : 16
+Done by : Udit Ramani
+Tested by : Udit Ramani on 30th Jan 2023
+Module : setu_advance_reordering
+	- added warehouse and company domain in rule finding in reorder rule when purchase order is selected.
+
+Date : 11th November 2022
+Version : '16.0' (in __manifest__.py)
+Odoo Version : 16
+Done by : Niyati Palan
+Tested by : Udit Ramani on 11th Nov 2022
+Module : setu_advance_reordering
+	- View related changes.
+	- In supplier info, name is replaced with partner_id so took that change everywhere in the module where it is used.
+	- Purchase related changes in reordering rule.

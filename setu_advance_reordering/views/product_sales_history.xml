@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <data>
+        <record id="product_sales_history_tree" model="ir.ui.view">
+            <field name="name">product.sales.history.tree</field>
+            <field name="model">product.sales.history</field>
+            <field name="arch" type="xml">
+                <tree string="Product Sales History">
+                    <field name="product_id"/>
+                    <field name="warehouse_id"/>
+                    <field name="orderpoint_id"/>
+                    <field name="actual_sales_qty"/>
+                    <field name="actual_sales_return_qty"/>
+                    <field name="sales_qty"/>
+                    <field name="total_orders" optional="show"/>
+                    <field name="average_daily_sale" optional="show"/>
+                    <field name="max_daily_sale_qty" optional="show"/>
+                    <field name="min_daily_sale_qty" optional="show"/>
+                    <field name="start_date" optional="show"/>
+                    <field name="end_date" optional="show"/>
+                    <field name="duration" optional="show"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="product_sales_history_search" model="ir.ui.view">
+            <field name="name">product.sales.history.search</field>
+            <field name="model">product.sales.history</field>
+            <field name="arch" type="xml">
+                <search string="Product Sales History">
+                    <field name="product_id"/>
+                    <field name="warehouse_id"/>
+                    <field name="orderpoint_id"/>
+                    <field name="start_date"/>
+                    <field name="end_date"/>
+                    <separator/>
+                    <filter string="Warehouse" context="{'group_by':'warehouse_id'}" name="warehouse_id_groupby"/>
+                    <filter string="Product" context="{'group_by':'product_id'}" name="product_id_groupby"/>
+                    <filter string="Date" context="{'group_by':'start_date'}" name="start_date_groupby"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="product_sales_history_graph" model="ir.ui.view">
+            <field name="name">product.sales.history.graph</field>
+            <field name="model">product.sales.history</field>
+            <field name="arch" type="xml">
+                <graph string="Product Sales History Analysis" type="bar" stacked="False">
+                    <field name="warehouse_id" type="col"/>
+                    <field name="start_date" type="row"/>
+                    <field name="sales_qty" type="measure"/>
+                    <field name="total_orders" type="measure"/>
+                    <field name="average_daily_sale" type="measure"/>
+                </graph>
+            </field>
+        </record>
+
+        <record id="product_sales_history_pivot" model="ir.ui.view">
+            <field name="name">product.sales.history.pivot</field>
+            <field name="model">product.sales.history</field>
+            <field name="arch" type="xml">
+                <pivot string="Product Sales History Analysis">
+                    <field name="warehouse_id" type="col"/>
+                    <field name="start_date" type="row"/>
+                    <field name="sales_qty" type="measure"/>
+                    <field name="total_orders" type="measure"/>
+                    <field name="average_daily_sale" type="measure"/>
+                </pivot>
+            </field>
+        </record>
+
+        <record id="product_sales_history_action" model="ir.actions.act_window">
+            <field name="name">Product Sales History Analysis</field>
+            <field name="res_model">product.sales.history</field>
+            <field name="binding_view_types">tree,graph</field>
+            <field name="view_mode">tree,pivot,graph</field>
+            <field name="context">{
+                'graph_groupbys': ['start_date:month', 'warehouse_id'],
+                'pivot_row_groupby': ['warehouse_id', 'product_id'],
+                'pivot_column_groupby': ['start_date:month'],
+                'pivot_measures': ['sales_qty', 'total_orders']
+                }
+            </field>
+        </record>
+
+        <!--        <menuitem id="product_sales_history_menu" action="product_sales_history_action"-->
+        <!--                  parent="setu_advance_reordering.advance_reordering" sequence="12" />-->
+
+    </data>
+</odoo>

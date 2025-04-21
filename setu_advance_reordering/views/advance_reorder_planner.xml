@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="tree_advance_reorder_planner" model="ir.ui.view">
+            <field name="name">advance.reorder.planner.tree</field>
+            <field name="model">advance.reorder.planner</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="name"/>
+                    <field name="vendor_id"/>
+                    <field name="user_id"/>
+                    <field name="state"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="form_advance_reorder_planner" model="ir.ui.view">
+            <field name="name">advance.reorder.planner.form</field>
+            <field name="model">advance.reorder.planner</field>
+            <field name="arch" type="xml">
+                <form string="Advance Reorder with Demand Generation Template">
+                    <header>
+                        <button name="verify_reorder_planing" string="verify" type="object"
+                                invisible="not active or state != 'draft'"
+                                class="btn-primary"/>
+                        <button name="create_real_demand_record" string="Run Manually" type="object"
+                                invisible="not active or state == 'draft'"
+                                class="btn-primary"/>
+                        <button name="reset_to_draft" string="Reset To Draft" type="object"
+                                invisible="not active or state == 'draft'"
+                                class="btn-primary"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,verified"/>
+                    </header>
+                    <sheet>
+                        <widget name="web_ribbon" title="Archived" bg_color="bg-danger"
+                                invisible="active"/>
+                        <div class="oe_button_box" name="button_box">
+                            <button type="object"
+                                    name="action_reorder_count"
+                                    class="oe_stat_button"
+                                    icon="fa-truck"
+                                    invisible="reorder_count == 0">
+                                <field name="reorder_count" widget="statinfo" string="Reorder"/>
+                            </button>
+                            <button type="object"
+                                    name="action_purchase_count"
+                                    class="oe_stat_button"
+                                    icon="fa-truck"
+                                    invisible="purchase_count == 0">
+                                <field name="purchase_count" widget="statinfo" string="Purchase"/>
+                            </button>
+                        </div>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" required="1" readonly="state != 'draft'"/>
+                            </h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="vendor_selection_strategy" required="1"
+                                       readonly="state != 'draft'"/>
+                                <field name="vendor_id" required="vendor_selection_strategy == 'specific_vendor'"
+                                                                invisible="vendor_selection_strategy != 'specific_vendor'"
+                                                                readonly="state != 'draft'"/>
+                                <field name="user_id" required="1" readonly="state != 'draft'"/>
+                                <field name="auto_workflow_id" readonly="state != 'draft'"/>
+                                <separator string="scheduler configuration" colspan="4"/>
+                                <field name="planing_frequency" required="1"
+                                       readonly="state != 'draft'"/>
+                                <field name="previous_execution_date" readonly="state != 'draft'"/>
+                                <field name="next_execution_date" readonly="state != 'draft'"/>
+                                <field name="only_out_of_stock_product"
+                                       readonly="state != 'draft'"/>
+                                <field name="active" invisible="1"/>
+                            </group>
+                            <group string="Reorder for next X days">
+                                <field name="buffer_security_days" required="1"
+                                       readonly="state != 'draft'"/>
+                                <field name="generate_demand_with" required="1"
+                                       readonly="state != 'draft'"/>
+                                <separator string="Choose days to calculate Average sales" colspan="4"
+                                           required="generate_demand_with == 'history_sales'"
+                                                                invisible="generate_demand_with != 'history_sales'"
+                                                                readonly="state != 'draft'"/>/>
+                                <field name="past_days" required="generate_demand_with == 'history_sales'"
+                                                                invisible="generate_demand_with != 'history_sales'"
+                                                                readonly="state != 'draft'"/>
+                                <field name="reorder_demand_growth" required="generate_demand_with == 'history_sales'"
+                                                                           invisible="generate_demand_with != 'history_sales'"
+                                                                            readonly="state != 'draft'"/>
+                            </group>
+                        </group>
+                        <notebook colspan="4">
+                            <page string="Products" name="reorder_product" colspan="4">
+                                <field name="product_ids" nolabel="1" required="1"
+                                       readonly="state != 'draft'" domain="[('id','in',products_ids)]"/>
+                                <field name="products_ids" invisible="1"/>
+                            </page>
+                            <page string="Configurations" name="reorder_configuration" colspan="4">
+                                <field name="config_ids" nolabel="1" required="1"
+                                       readonly="state != 'draft'">
+                                    <tree string="Configuration" editable="bottom">
+                                        <field name="warehouse_group_id" required="1"/>
+                                        <field name="default_warehouse_id" required="1"
+                                               domain="[('warehouse_group_ids','in',warehouse_group_id)]"/>
+                                    </tree>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids"/>
+                        <field name="message_ids"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
+        <record id="advance_reorder_planner_search" model="ir.ui.view">
+            <field name="name">advance.reorder.planner.search</field>
+            <field name="model">advance.reorder.planner</field>
+            <field name="arch" type="xml">
+                <search string="Advance Reorder planner">
+                    <field name="product_ids"/>
+                    <field name="vendor_selection_strategy"/>
+                    <field name="next_execution_date"/>
+                    <field name="previous_execution_date"/>
+                    <filter name="archived" string="Archived" domain="[('active', '=', False)]"/>
+                    <separator/>
+                    <filter string="State" context="{'group_by':'state'}" name="state_groupby"/>
+                    <filter string="Responsible" context="{'group_by':'user_id'}" name="user_groupby"/>
+                    <filter string="Vendor Selection Strategy" context="{'group_by': 'vendor_selection_strategy'}"
+                            name="vendor_selection_strategy"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="actions_advance_reorder_planner" model="ir.actions.act_window">
+            <field name="name">Advance Reorder with Real Demand Planner</field>
+            <field name="res_model">advance.reorder.planner</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+    </data>
+</odoo>

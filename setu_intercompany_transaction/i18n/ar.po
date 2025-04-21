@@ -1,0 +1,859 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* setu_intercompany_transaction
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 15.0+e\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-04-18 05:18+0000\n"
+"PO-Revision-Date: 2022-04-18 05:18+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.form_wizard_import_ict_lines
+msgid ""
+"<i class=\"fa fa-download mr4\"/>\n"
+"                                    Download Inter Company Transfer Line Sample Template"
+msgstr ""
+"<i class=\"fa fa-download mr4\"/>\n"
+"                                    تنزيل نموذج خط التحويل بين الشركات"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.form_wizard_import_ict_lines
+msgid ""
+"<i class=\"fa fa-download mr4\"/>\n"
+"                                    Download Inter Warehouse Transfer Line Sample Template"
+msgstr ""
+"<i class=\"fa fa-download mr4\"/>\n"
+"                                    تنزيل نموذج خط نقل المستودعات الداخلية"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__active
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__active
+msgid "Active"
+msgstr "نشيط"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+msgid "Advance Configurations"
+msgstr "التكوينات المتقدمة"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_ict_option__always
+msgid "Always"
+msgstr "دائماً"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_iwt_option__always
+msgid "Always replenish stock"
+msgstr "قم دائمًا بتجديد المخزون"
+
+#. module: setu_intercompany_transaction
+#: model:ir.actions.act_window,name:setu_intercompany_transaction.setu_ict_auto_workflow_action
+#: model:ir.ui.menu,name:setu_intercompany_transaction.setu_ict_auto_workflow_menu
+msgid "Auto Workflow - ICT"
+msgstr "سير العمل التلقائي - تكنولوجيا المعلومات والاتصالات"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__validate_ict
+msgid "Auto validate Interwarehouse tansfer record?"
+msgstr "التحقق التلقائي من سجل Interwarehouse tansfer؟"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__auto_workflow_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__auto_workflow_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__auto_workflow_id
+msgid "Auto workflow"
+msgstr "سير العمل التلقائي"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product__file_data
+msgid "CSV File"
+msgstr "ملف CSV"
+
+#. module: setu_intercompany_transaction
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid ""
+"Can't create ICT for this order, because ICT channel not found for this "
+"company. Create ICT manually."
+msgstr ""
+
+#. module: setu_intercompany_transaction
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid ""
+"Can't create Inter Warehouse Transfer for this order, because Inter "
+"Warehouse Channel not found for this warehouse. Please create manually."
+msgstr ""
+"لا يمكن إنشاء تكنولوجيا المعلومات والاتصالات لهذا الطلب ، لأنه لم يتم العثور على قناة تكنولوجيا المعلومات والاتصالات لهذا الأمر"
+"شركة. إنشاء تكنولوجيا المعلومات والاتصالات يدويا."
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__setu_intercompany_transfer__state__cancel
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.form_wizard_import_ict_lines
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_form
+msgid "Cancel"
+msgstr "يلغي"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.form_wizard_import_ict_lines
+msgid "Columns name must be the same as described in the sample files"
+msgstr "يجب أن يكون اسم الأعمدة هو نفسه كما هو موضح في ملفات العينة"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.form_wizard_import_ict_lines
+msgid "Comma Separated Values (.CSV)"
+msgstr "قيم مفصولة بفواصل (.CSV)"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_form
+msgid "Common Configurations"
+msgstr "التكوينات المشتركة"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model,name:setu_intercompany_transaction.model_res_company
+msgid "Companies"
+msgstr "شركات"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_res_company__create_ict_option
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__create_ict_option
+msgid "Create Inter Company Transfer"
+msgstr "إنشاء تحويل بين الشركات"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_res_company__create_iwt_option
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__create_iwt_option
+msgid "Create Inter Warhouse Transfer"
+msgstr "إنشاء تحويل بين Warhouse"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__create_ict_invoices
+msgid "Create intercompany invoices?"
+msgstr "إنشاء فواتير بين الشركات الشقيقة؟"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__create_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__create_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__create_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__create_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__create_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product__create_uid
+msgid "Created by"
+msgstr "انشأ من قبل"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__create_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__create_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__create_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__create_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__create_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product__create_date
+msgid "Created on"
+msgstr "تم إنشاؤها على"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__customer_invoice_journal_id
+msgid "Customer Invoice Journal"
+msgstr "مجلة فاتورة العميل"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__ict_date
+msgid "Date"
+msgstr "تاريخ"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__location_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__location_id
+msgid "Destination location"
+msgstr "موقع وجهة"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__transfer_with_single_picking
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__transfer_with_single_picking
+msgid "Direct transfer to destination without transit location?"
+msgstr "النقل المباشر إلى الوجهة بدون موقع العبور؟"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__display_name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__display_name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__display_name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__display_name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__display_name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product__display_name
+msgid "Display Name"
+msgstr "اسم العرض"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__setu_intercompany_transfer__state__done
+msgid "Done"
+msgstr "منتهي"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product__file_name
+msgid "File Name"
+msgstr "اسم الملف"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_ict_option__stock_plus_intercompany
+msgid ""
+"First use available stock and create inter company transfer for remaining"
+msgstr ""
+"استخدم أولاً المخزون المتاح وقم بإنشاء تحويل بين الشركات للمتبقي"
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_iwt_option__stock_plus_interwarehouse
+msgid ""
+"First use available stock and create inter warehouse transfer for remaining"
+msgstr ""
+"استخدم أولاً المخزون المتاح وأنشئ تحويلاً بين المستودعات للمتبقي"
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__fulfiller_company_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__fulfiller_company_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_form
+msgid "Fulfiller"
+msgstr "المنجز"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__fulfiller_company_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_search
+msgid "Fulfiller Company"
+msgstr "شركة الوفاء"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__fulfiller_partner_id
+msgid "Fulfiller Partner"
+msgstr "الشريك المنجز"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__fulfiller_warehouse_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__fulfiller_warehouse_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__fulfiller_warehouse_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_search
+msgid "Fulfiller Warehouse"
+msgstr "مستودع الوفاء"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__ict_count
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__ict_ids
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.ict_sale_order_form
+msgid "ICT"
+msgstr "تكنولوجيا المعلومات والاتصالات"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_search
+msgid "ICT Auto Workflow"
+msgstr "سير عمل السيارات في تكنولوجيا المعلومات والاتصالات"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__ict_channel_ids
+msgid "ICT Channels"
+msgstr "قنوات تكنولوجيا المعلومات والاتصالات"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_transfer_search
+msgid "ICT Date"
+msgstr "تاريخ تكنولوجيا المعلومات والاتصالات"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__ict_transfer_type
+msgid "ICT Transfer Type"
+msgstr "نوع نقل تكنولوجيا المعلومات والاتصالات"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_transfer_search
+msgid "ICT User"
+msgstr "مستخدم تكنولوجيا المعلومات والاتصالات"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product__id
+msgid "ID"
+msgstr "بطاقة تعريف"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.ict_sale_order_form
+msgid "INTERCOMAPNY TRANFER"
+msgstr "النقل بين الشركات"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.ict_sale_order_form
+msgid "INTERWAREHOUSE TRANSFER"
+msgstr "نقل بيني"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.ict_sale_order_form
+msgid "IWT"
+msgstr "IWT"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,help:setu_intercompany_transaction.field_setu_intercompany_transfer__location_id
+#: model:ir.model.fields,help:setu_intercompany_transaction.field_setu_interwarehouse_channel__location_id
+msgid "IWT will be created for this location from the fulfiller warehouse."
+msgstr "سيتم إنشاء IWT لهذا الموقع من مستودع المنفذ."
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.form_wizard_import_ict_lines
+msgid "Import"
+msgstr "يستورد"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.form_wizard_import_ict_lines
+msgid "Import Intercompany Lines"
+msgstr "استيراد خطوط بين الشركات الشقيقة"
+
+#. module: setu_intercompany_transaction
+#: model:ir.actions.act_window,name:setu_intercompany_transaction.action_wizard_import_ict_product
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+msgid "Import Lines"
+msgstr "خطوط الاستيراد"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__setu_intercompany_transfer__transfer_type__inter_company
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.res_company_form
+msgid "Inter Company"
+msgstr "شركة إنتر"
+
+#. module: setu_intercompany_transaction
+#: model:ir.actions.act_window,name:setu_intercompany_transaction.setu_intercompany_channel_action
+#: model:ir.ui.menu,name:setu_intercompany_transaction.setu_intercompany_channel_menu
+msgid "Inter Company Channel"
+msgstr "قناة انتر كومباني"
+
+#. module: setu_intercompany_transaction
+#: model:ir.ui.menu,name:setu_intercompany_transaction.intercompany_main_menu
+msgid "Inter Company Transaction"
+msgstr "المعاملات بين الشركات"
+
+#. module: setu_intercompany_transaction
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid "Inter Company Transactions"
+msgstr "المعاملات بين الشركات"
+
+#. module: setu_intercompany_transaction
+#: model:ir.actions.act_window,name:setu_intercompany_transaction.setu_intercompany_transfer_action
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__intercompany_transfer_id
+#: model:ir.ui.menu,name:setu_intercompany_transaction.setu_intercompany_transfer_menu
+msgid "Inter Company Transfer"
+msgstr "التحويل بين الشركات"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__ict_user_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__ict_user_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__ict_user_id
+msgid "Inter Company User"
+msgstr "مستخدم مشترك بين الشركات"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__setu_intercompany_transfer__transfer_type__inter_warehouse
+msgid "Inter Warehouse"
+msgstr "مستودع إنتر"
+
+#. module: setu_intercompany_transaction
+#: model:ir.actions.act_window,name:setu_intercompany_transaction.setu_interwarehouse_channel_action
+#: model:ir.ui.menu,name:setu_intercompany_transaction.setu_interwarehouse_channel_menu
+msgid "Inter Warehouse Channel"
+msgstr "قناة مستودع إنتر"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+msgid "Inter Warehouse Transaction"
+msgstr "صفقة بين المستودعات"
+
+#. module: setu_intercompany_transaction
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid "Inter Warehouse Transactions"
+msgstr "معاملات المستودعات الداخلية"
+
+#. module: setu_intercompany_transaction
+#: model:ir.actions.act_window,name:setu_intercompany_transaction.setu_interwarehouse_transfer_action
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_stock_picking__ict_internal_transfer_id
+#: model:ir.ui.menu,name:setu_intercompany_transaction.setu_interwarehouse_transfer_menu
+msgid "Inter Warehouse Transfer"
+msgstr "نقل بين المستودعات"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+msgid "Inter Warehouse Transfer Lines"
+msgstr "خطوط نقل المستودعات الداخلية"
+
+#. module: setu_intercompany_transaction
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid "Inter company channel must be selected to create inter company record."
+msgstr "يجب تحديد القناة المشتركة بين الشركات لإنشاء سجل بين الشركات."
+
+#. module: setu_intercompany_transaction
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid "Inter company record has been already created."
+msgstr "تم إنشاء سجل الشركة الداخلي بالفعل."
+
+#. module: setu_intercompany_transaction
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid ""
+"Inter warehouse channel must be selected to create inter warehouse record."
+msgstr "يجب تحديد قناة المستودعات الداخلية لإنشاء سجل بين المستودعات."
+
+#. module: setu_intercompany_transaction
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid "Inter warehouse record has been already created."
+msgstr "تم إنشاء سجل المستودعات الداخلية بالفعل."
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+msgid "InterCompany Transfer Lines"
+msgstr "خطوط النقل بين الشركات"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_ict_auto_workflow_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_ict_auto_workflow_tree
+msgid "Intercompany Auto Workflow"
+msgstr "سير العمل التلقائي بين الشركات الشقيقة"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__intercompany_channel_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__intercompany_channel_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_tree
+msgid "Intercompany Channel"
+msgstr "قناة بين الشركات الشقيقة"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+msgid "Intercompany Transaction"
+msgstr "المعاملات بين الشركات الشقيقة"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_account_bank_statement_line__intercompany_transfer_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_account_move__intercompany_transfer_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_account_payment__intercompany_transfer_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_purchase_order__intercompany_transfer_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__intercompany_transfer_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_stock_picking__purchase_intercompany_transfer_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_stock_picking__sale_intercompany_transfer_id
+msgid "Intercompany Transfer"
+msgstr "التحويل بين الشركات الشقيقة"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__intercompany_transfer_line_ids
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+msgid "Intercompany Transfer Lines"
+msgstr "خطوط النقل بين الشركات الشقيقة"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__interwarehouse_channel_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__interwarehouse_channel_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_tree
+msgid "Interwarehouse Channel"
+msgstr "قناة Interwarehouse"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_ict_auto_workflow_form
+msgid "Invoice Auto Workflow"
+msgstr "سير عمل الفاتورة التلقائي"
+
+#. module: setu_intercompany_transaction
+#: model:ir.actions.act_window,name:setu_intercompany_transaction.action_move_invoice
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__invoice_ids
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+msgid "Invoices"
+msgstr "الفواتير"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model,name:setu_intercompany_transaction.model_account_move
+msgid "Journal Entry"
+msgstr "إفتتاحية المجلة"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow____last_update
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel____last_update
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer____last_update
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line____last_update
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel____last_update
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product____last_update
+msgid "Last Modified on"
+msgstr "تاريخ آخر تعديل"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__write_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__write_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__write_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__write_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__write_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product__write_uid
+msgid "Last Updated by"
+msgstr "آخر تحديث بواسطة"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__write_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__write_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__write_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__write_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__write_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product__write_date
+msgid "Last Updated on"
+msgstr "آخر تحديث في"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__manage_lot_serial
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__manage_lot_serial
+msgid "Manage serial / lot number in Inter Company Transactions?"
+msgstr "إدارة الرقم التسلسلي / الرقم في المعاملات بين الشركات؟"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_ict_option__manual
+msgid "Manual - Select ICT Channel manually in sale order"
+msgstr "يدوي - حدد قناة تكنولوجيا المعلومات والاتصالات يدويًا بترتيب البيع"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_iwt_option__manual
+msgid "Manual - Select Inter Warehouse Channel manually in sale order"
+msgstr "يدوي - حدد قناة المستودعات الداخلية يدويًا في أمر البيع"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__name
+msgid "Name"
+msgstr "اسم"
+
+#. module: setu_intercompany_transaction
+#: code:addons/setu_intercompany_transaction/models/setu_intercompany_transfer.py:0
+#: code:addons/setu_intercompany_transaction/models/setu_intercompany_transfer.py:0
+#: code:addons/setu_intercompany_transaction/models/setu_intercompany_transfer.py:0
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__setu_intercompany_transfer__state__draft
+#, python-format
+msgid "New"
+msgstr "جديد"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__origin_ict_id
+msgid "Origin ICT"
+msgstr "أصل تكنولوجيا المعلومات والاتصالات"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__origin_order_id
+msgid "Origin Sale Order"
+msgstr "أمر بيع المنشأ"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__picking_ids
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_form
+msgid "Pickings"
+msgstr "فضلات"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__unit_price
+msgid "Price"
+msgstr "السعر"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__pricelist_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__pricelist_id
+msgid "Pricelist"
+msgstr "قائمة الاسعار"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__sequence
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__sequence
+msgid "Priority"
+msgstr "أفضلية"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model,name:setu_intercompany_transaction.model_product_product
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__product_id
+msgid "Product"
+msgstr "المنتج"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__fulfiller_fiscal_position_id
+msgid "Purchase Fiscal Position"
+msgstr "شراء الموقف المالي"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model,name:setu_intercompany_transaction.model_purchase_order
+msgid "Purchase Order"
+msgstr "أمر شراء"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__purchase_ids
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+msgid "Purchases"
+msgstr "المشتريات"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__quantity
+msgid "Quantity"
+msgstr "كمية"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__stock_replenishment_priority__refill_from_intercomapny
+msgid "Replenish stock from another company's warehouse"
+msgstr "تجديد المخزون من مستودع شركة أخرى"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__stock_replenishment_priority__refill_from_interwarehouse
+msgid "Replenish stock from another warehouse of the same company"
+msgstr "تجديد المخزون من مستودع آخر لنفس الشركة"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__requestor_company_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__requestor_company_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_form
+msgid "Requestor"
+msgstr "الطالب"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__requestor_company_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_search
+msgid "Requestor Company"
+msgstr "الشركة الطالب"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__requestor_partner_id
+msgid "Requestor Partner"
+msgstr "الشريك الطالب"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__requestor_warehouse_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__requestor_warehouse_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_search
+msgid "Requestor Warehouse"
+msgstr "مستودع الطالب"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+msgid "Return"
+msgstr "يعود"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_tree
+msgid "Reverse Transaction"
+msgstr "عملية عكسية"
+
+#. module: setu_intercompany_transaction
+#: code:addons/setu_intercompany_transaction/models/setu_intercompany_transfer.py:0
+#, python-format
+msgid "Reverse Transactions"
+msgstr "المعاملات العكسية"
+
+#. module: setu_intercompany_transaction
+#: model:ir.actions.act_window,name:setu_intercompany_transaction.setu_reverse_transfer_action
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__setu_intercompany_transfer__transfer_type__reverse_transfer
+#: model:ir.ui.menu,name:setu_intercompany_transaction.setu_reverse_transfer_menu
+msgid "Reverse Transfer"
+msgstr "التحويل العكسي"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_form
+msgid "Reverse Transfer Lines"
+msgstr "خطوط التحويل العكسي"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_ict_auto_workflow_form
+msgid "Sale / Purchase Auto Workflow"
+msgstr "بيع / شراء سير عمل السيارات"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__sale_ids
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+msgid "Sales"
+msgstr "مبيعات"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__requestor_fiscal_position_id
+msgid "Sales Fiscal Position"
+msgstr "الموقف المالي للمبيعات"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model,name:setu_intercompany_transaction.model_sale_order
+msgid "Sales Order"
+msgstr "طلب المبيعات"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__sales_team_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__sales_team_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_search
+msgid "Sales Team"
+msgstr "فريق المبيعات"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_transfer_tree
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+msgid "Setu Inter Warehouse Transaction"
+msgstr "صفقة Setu Inter Warehouse"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_ict_auto_workflow_form
+msgid "Setu Intercompany Auto Workflow"
+msgstr "Setu Intercompany Auto Workflow"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_tree
+msgid "Setu Intercompany Transaction"
+msgstr "معاملة Setu بين الشركات الشقيقة"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_form
+msgid "Setu Reverse Transaction"
+msgstr "صفقة عكسية Setu"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__state
+msgid "State"
+msgstr "حالة"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_search
+msgid "Status"
+msgstr "حالة"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_res_company__stock_replenishment_priority
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__stock_replenishment_priority
+msgid "Stock Replenish source"
+msgstr "مصدر تجديد المخزون"
+
+#. module: setu_intercompany_transaction
+#: code:addons/setu_intercompany_transaction/wizard/wizard_import_ict_products.py:0
+#, python-format
+msgid "The file must have an extention .csv"
+msgstr "يجب أن يحتوي الملف على امتداد .csv"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__invoice_count
+msgid "Total Invoice"
+msgstr "إجمالي الفاتورة"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__delivery_count
+msgid "Total Pickings"
+msgstr "إجمالي المحصلات"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__purchase_count
+msgid "Total Purchase"
+msgstr "إجمالي الشراء"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__sale_count
+msgid "Total Sale"
+msgstr "إجمالي البيع"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model,name:setu_intercompany_transaction.model_stock_picking
+msgid "Transfer"
+msgstr "تحويل"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__transfer_type
+msgid "Transfer Type"
+msgstr "نوع التحويل"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_form
+msgid "Validate"
+msgstr "تحقق"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__validate_ict_invoices
+msgid "Validate intercompany invoices?"
+msgstr "التحقق من صحة الفواتير بين الشركات الشقيقة؟"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__validate_ict
+msgid "Validate intercompany record?"
+msgstr "التحقق من صحة السجل بين الشركات الشقيقة؟"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__validate_ict_so_po
+msgid "Validate intercompany sale / purchase?"
+msgstr "التحقق من صحة البيع / الشراء بين الشركات الشقيقة؟"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__vendor_bill_journal_id
+msgid "Vendor Bill Journal"
+msgstr "البائع بيل جورنال"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_ict_option__insufficient_stock_all_product
+msgid "When all products out of stock in requestor company"
+msgstr "عندما تكون جميع المنتجات غير متوفرة في الشركة الطالبة"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_iwt_option__insufficient_stock_all_product
+msgid "When all products out of stock in requestor warehouse"
+msgstr "عندما تكون جميع المنتجات غير متوفرة في مستودع الطالب"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_ict_option__insufficient_stock_single_product
+msgid "When any single product is out of stock in requestor company"
+msgstr "عند نفاد مخزون أي منتج في الشركة الطالبة"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_iwt_option__insufficient_stock_single_product
+msgid "When any single product is out of stock in requestor warehouse"
+msgstr "عند نفاد أي منتج من المخزون في مستودع مقدم الطلب"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,help:setu_intercompany_transaction.field_setu_intercompany_channel__fulfiller_fiscal_position_id
+msgid "select fiscal position for purchase order"
+msgstr "حدد الوضع المالي لأمر الشراء"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,help:setu_intercompany_transaction.field_setu_intercompany_channel__requestor_fiscal_position_id
+msgid "select fiscal position for sale order"
+msgstr "حدد الوضع المالي لأمر البيع"

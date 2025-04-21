@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="actions_reorder_fiscalyear" model="ir.actions.act_window">
+            <field name="name">Fiscal Years</field>
+            <field name="res_model">reorder.fiscalyear</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+        <record id="form_fiscal_year" model="ir.ui.view">
+            <field name="name">reorder.fiscalyear.form</field>
+            <field name="model">reorder.fiscalyear</field>
+            <field name="arch" type="xml">
+                <form>
+                    <header>
+                        <button name="create_monthly_period" string="Create Monthly Period" type="object"/>
+                        <button name="calculate_actual_sales_for_year" type="object"
+                                class="oe_highlight"
+                                help="Click here to calculate and update Actual Sales in sales forecasts for this year."
+                                string="Update Actual Sales"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name" required="1"/>
+                                <field name="code" required="1"/>
+                            </group>
+
+                            <group>
+                                <field name="fystartdate" required="1"/>
+                                <field name="fyenddate" required="1"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Fiscal Period" name="fiscal_period">
+                                <field name="fp_ids" nolabel="1">
+                                    <tree string="Fiscal Period" create="false">
+                                        <field name="code"/>
+                                        <field name="fpstartdate"/>
+                                        <field name="fpenddate"/>
+                                        <field name="sales_forecast_available" column_invisible="True"/>
+                                        <button name="calculate_actual_sales_for_period" type="object"
+                                                class="oe_highlight"
+                                                help="Click here to calculate and update Actual Sales in sales forecasts for this period."
+                                                string="Update Actual Sales"
+                                                invisible="not sales_forecast_available"/>
+                                    </tree>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="reorder_fiscal_year_tree" model="ir.ui.view">
+            <field name="name">reorder.fiscalyear.tree</field>
+            <field name="model">reorder.fiscalyear</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="code"/>
+                    <field name="name"/>
+                    <field name="fystartdate"/>
+                    <field name="fyenddate"/>
+                </tree>
+            </field>
+        </record>
+
+        <!--        search view-->
+
+        <record id="reorder_fiscal_year_search" model="ir.ui.view">
+            <field name="name">reorder.fiscalyear.search</field>
+            <field name="model">reorder.fiscalyear</field>
+            <field name="arch" type="xml">
+                <search string="Search Fiscal Years">
+                    <field name="code"/>
+                    <field name="name"/>
+                    <field name="fystartdate"/>
+                    <field name="fyenddate"/>
+
+                </search>
+            </field>
+        </record>
+
+
+        <record id="actions_reorder_fiscalperiod" model="ir.actions.act_window">
+            <field name="name">Fiscal Period</field>
+            <field name="res_model">reorder.fiscalperiod</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+        <record id="form_fiscal_period" model="ir.ui.view">
+            <field name="name">reorder.fiscalperiod.form</field>
+            <field name="model">reorder.fiscalperiod</field>
+            <field name="arch" type="xml">
+                <form>
+                    <sheet>
+                        <header>
+                            <field name="sales_forecast_available" invisible="1"/>
+                            <button name="calculate_actual_sales_for_period" type="object"
+                                    class="oe_highlight"
+                                    help="Click here to calculate and update Actual Sales in sales forecasts for this period."
+                                    string="Update Actual Sales"
+                                    invisible="not sales_forecast_available"/>
+                        </header>
+                        <group>
+                            <group>
+                                <field name="fy_id" readonly="1"/>
+                                <field name="code"/>
+                            </group>
+                            <group>
+                                <field name="fpstartdate" readonly="1"/>
+                                <field name="fpenddate" readonly="1"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="reorder_fiscal_period_tree" model="ir.ui.view">
+            <field name="name">reorder.fiscalperiod.tree</field>
+            <field name="model">reorder.fiscalperiod</field>
+            <field name="arch" type="xml">
+                <tree create="false" edit="false">
+                    <field name="fy_id"/>
+                    <field name="code"/>
+                    <field name="fpstartdate"/>
+                    <field name="fpenddate"/>
+                    <field name="sales_forecast_available" column_invisible="True"/>
+                    <!--<button name="calculate_actual_sales_for_period" type="object"
+                        class="oe_highlight"
+                        help="Click here to calculate and update Actual Sales in sales forecasts for this period."
+                        string="Update Actual Sales"
+                        attrs="{'invisible':[('sales_forecast_available','=',False)]}"/>-->
+                </tree>
+            </field>
+        </record>
+    </data>
+</odoo>

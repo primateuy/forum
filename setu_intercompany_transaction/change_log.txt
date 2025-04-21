@@ -1,0 +1,60 @@
+Date : 18 ARP 2025
+Version : '1.6' (in __manifest__.py)
+Odoo Version : 17
+Done by : Harshit Trivedi
+Tested by : Harshit Trivedi,Payal Kheradiya
+Module : setu_intercompany_transaction
+- Add changes of the showcase whole the ICT records in Sale Order
+- Add changes of the Channel Pricelist from the fulfiller Company
+
+
+
+Date : 13th Jan 2025
+Version : '17.0.0.5' (in __manifest__.py)
+Odoo Version : 17
+Done by : Aastha Vora
+Tested by : Aastha Vora
+Module : setu_intercompany_transaction
+ - done change if all picking are cancel then ICT or IWT will also cancel, and if one picking is done and one is cancel than it remains in in_progress.
+
+Date : 3rd Jan 2025
+Version : '17.0.0.4' (in __manifest__.py)
+Odoo Version : 17
+Done by : Aastha Vora
+Tested by : Aastha Vora
+Module : setu_intercompany_transaction
+ - added in_progress state for ICT and IWT.
+ 
+Date : 18th Dec 2024
+Version : '17.0.0.3' (in __manifest__.py)
+Odoo Version : 17
+Done by : Aastha Vora
+Tested by : Aastha Vora
+Module : setu_intercompany_transaction
+ - set operation types as per normal warehouse transfer in reverse transfer.
+
+Date : 12th Dec 2024
+Version : '17.0.0.2' (in __manifest__.py)
+Odoo Version : 17
+Done by : Aastha Vora
+Tested by : Aastha Vora
+Module : setu_intercompany_transaction
+ - Added UOM and Packaging to Reverse Transfer.
+
+Date : 26th Nov 2024
+Version : '17.0.0.1' (in __manifest__.py)
+Odoo Version : 17
+Done by : Aastha Vora
+Tested by : Aastha Vora, Payal Kheradiya
+Module : setu_intercompany_transaction
+ - Added UOM and Packaging to ICT and IWT.
+
+Date : 14th July 2023
+Version : '17.0' (in __manifest__.py)
+Odoo Version : 17
+Done by : Richisha Acharya
+Tested by : Richisha Acharya
+Module : setu_intercompany_transaction
+ -Added field and changed the code to create recursive ICT in sale order file,
+  added field and compute method to replace domain in onchange method of requestor
+   warehouse for location in inter-company-transfer and inter-warehouse-channel files.

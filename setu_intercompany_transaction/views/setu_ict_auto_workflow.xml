@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="setu_ict_auto_workflow_form" model="ir.ui.view">
+            <field name="name">setu.ict.auto.workflow.form</field>
+            <field name="model">setu.ict.auto.workflow</field>
+            <field name="arch" type="xml">
+                <form string="Setu Intercompany Auto Workflow">
+                    <sheet string="Intercompany Auto Workflow">
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" required="True"/>
+                            </h1>
+                        </div>
+                        <group expand="0" string="">
+                            <group expand="0" string="Sale / Purchase Auto Workflow">
+                                <field name="validate_ict"/>
+                                <field name="validate_ict_so_po" />
+                            </group>
+                            <group expand="0" string="Invoice Auto Workflow" invisible="not validate_ict_so_po">
+                                <field name="create_ict_invoices" invisible="not validate_ict_so_po"/>
+                                <field name="validate_ict_invoices" invisible="not create_ict_invoices"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="ict_channel_ids" widget="many2many_tags"/>
+                        </group>
+                    </sheet>
+
+                </form>
+            </field>
+        </record>
+
+        <record id="setu_ict_auto_workflow_tree" model="ir.ui.view">
+            <field name="name">setu.ict.auto.workflow.tree</field>
+            <field name="model">setu.ict.auto.workflow</field>
+            <field name="arch" type="xml">
+                <tree string="Intercompany Auto Workflow">
+                    <field name="name" />
+                    <field name="validate_ict" />
+                    <field name="validate_ict_so_po" />
+                    <field name="create_ict_invoices" />
+                    <field name="validate_ict_invoices" />
+                    <field name="ict_channel_ids" widget="many2many_tags" />
+                </tree>
+            </field>
+        </record>
+
+<!--        <record id="setu_ict_auto_workflow_search" model="ir.ui.view">-->
+<!--            <field name="name">setu.ict.auto.workflow.search</field>-->
+<!--            <field name="model">setu.ict.auto.workflow</field>-->
+<!--            <field name="arch" type="xml">-->
+<!--                <search string="Intercompany Auto Workflow">-->
+
+<!--                </search>-->
+<!--            </field>-->
+<!--        </record>-->
+
+        <record id="setu_ict_auto_workflow_action" model="ir.actions.act_window">
+            <field name="name">Auto Workflow - ICT</field>
+            <field name="res_model">setu.ict.auto.workflow</field>
+            <field name="binding_view_types">form</field>
+            <field name="view_mode">tree,form</field>
+<!--            <field name="search_view_id" ref="setu_ict_auto_workflow_search"/>-->
+        </record>
+
+        <menuitem id="setu_ict_auto_workflow_menu" action="setu_ict_auto_workflow_action"
+                  parent="setu_intercompany_transaction.intercompany_main_menu" sequence="10" />
+    </data>
+</odoo>

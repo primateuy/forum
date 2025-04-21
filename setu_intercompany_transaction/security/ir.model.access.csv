@@ -1,0 +1,11 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_m_SetuICTAutoWorkflow,setu.ict.auto.workflow,model_setu_ict_auto_workflow,stock.group_stock_manager,1,1,1,1
+access_SetuICTAutoWorkflow,setu.ict.auto.workflow,model_setu_ict_auto_workflow,stock.group_stock_user,1,1,1,0
+access_m_SetuIntercomapnyChannel,setu.intercompany.channel,model_setu_intercompany_channel,stock.group_stock_manager,1,1,1,1
+access_SetuIntercomapnyChannel,setu.intercompany.channel,model_setu_intercompany_channel,stock.group_stock_user,1,1,1,0
+access_SetuInterwarehouseChannel,setu.interwarehouse.channel,model_setu_interwarehouse_channel,stock.group_stock_user,1,1,1,0
+access_m_SetuIntercompanyTransfer,setu.intercompany.transfer,model_setu_intercompany_transfer,stock.group_stock_manager,1,1,1,1
+access_SetuIntercompanyTransfer,setu.intercompany.transfer,model_setu_intercompany_transfer,stock.group_stock_user,1,1,1,0
+access_m_SetuInterCompanyTransferLine,setu.intercompany.transfer.line,model_setu_intercompany_transfer_line,stock.group_stock_manager,1,1,1,1
+access_SetuInterCompanyTransferLine,setu.intercompany.transfer.line,model_setu_intercompany_transfer_line,stock.group_stock_user,1,1,1,0
+ImportICTProduct,wizard.import.ict.product,model_wizard_import_ict_product,,1,1,1,0

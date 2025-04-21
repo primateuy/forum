@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data noupdate="1">
+        <record model="ir.cron" id="product_sales_history_calculation_cron">
+            <field name="name">Product Sales, Purchase and IWT History calculation</field>
+            <field name="model_id" ref="setu_advance_reordering.model_product_sales_history"/>
+            <field name="state">code</field>
+            <field name="code">model.update_product_sales_history()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="numbercall">-1</field>
+            <field name="nextcall" eval="(datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="doall" eval="False"/>
+            <field name="active" eval="False"/>
+        </record>
+
+        <!--        <record model="ir.cron" id="product_purchase_history_calculation_cron">-->
+        <!--            <field name="name">Product Purchase History calculation</field>-->
+        <!--            <field name="model_id" ref="setu_advance_reordering.model_product_purchase_history"/>-->
+        <!--            <field name="state">code</field>-->
+        <!--            <field name="code">model.update_product_purchase_history()</field>-->
+        <!--            <field name="interval_number">1</field>-->
+        <!--            <field name="interval_type">days</field>-->
+        <!--            <field name="numbercall">-1</field>-->
+        <!--            <field name="nextcall" eval="(datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>-->
+        <!--            <field name="doall" eval="False"/>-->
+        <!--        </record>-->
+
+        <!--        <record model="ir.cron" id="orderpoint_calculation_cron">-->
+        <!--            <field name="name">Order Point calculation</field>-->
+        <!--            <field name="model_id" ref="setu_advance_reordering.model_stock_warehouse_orderpoint"/>-->
+        <!--            <field name="state">code</field>-->
+        <!--            <field name="code">model.scheduler_recalculate_data()</field>-->
+        <!--            <field name="interval_number">1</field>-->
+        <!--            <field name="interval_type">months</field>-->
+        <!--            <field name="numbercall">-1</field>-->
+        <!--            <field name="nextcall" eval="(datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>-->
+        <!--            <field name="doall" eval="False"/>-->
+        <!--        </record>-->
+
+        <record model="ir.cron" id="actual_sales_calculation_cron">
+            <field name="name">Forecast Product Actual Sales calculation</field>
+            <field name="model_id" ref="setu_advance_reordering.model_forecast_product_sale"/>
+            <field name="state">code</field>
+            <field name="code">model.calculate_actual_sales()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">months</field>
+            <field name="numbercall">-1</field>
+            <field name="nextcall" eval="(datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="doall" eval="False"/>
+            <field name="active" eval="False"/>
+        </record>
+
+        <record model="ir.cron" id="auto_create_reorder_with_real_demand_cron">
+            <field name="name">Auto Create Reorder with Real Demand</field>
+            <field name="model_id" ref="setu_advance_reordering.model_advance_reorder_planner"/>
+            <field name="state">code</field>
+            <field name="code">model.auto_create_real_demand_record()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="numbercall">-1</field>
+            <field name="nextcall" eval="(datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="doall" eval="False"/>
+            <field name="active" eval="False"/>
+        </record>
+    </data>
+</odoo>

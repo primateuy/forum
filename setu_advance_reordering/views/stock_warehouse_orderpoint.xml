@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_warehouse_orderpoint_form" model="ir.ui.view">
+            <field name="name">stock.warehouse.orderpoint.extended</field>
+            <field name="model">stock.warehouse.orderpoint</field>
+            <field name="inherit_id" ref="stock.view_warehouse_orderpoint_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="/form/sheet" position="before">
+                    <header>
+                        <button name="update_order_point_data" type="object" string="Update Order Point Data"
+                                class="oe_highlight"/>
+                        <button name="recalculate_data" type="object" string="Calculate Data" class="oe_highlight"/>
+                        <!--<button name="run_orderpoint_configuration" type="object" string="Run the scheduler" class="oe_highlight"/>-->
+                    </header>
+                </xpath>
+
+                <label for="product_max_qty" position="before">
+                    <field name="safety_stock"/>
+                    <field name="buffer_days"/>
+                </label>
+                <xpath expr="/form/sheet/group" position="after">
+                    <group>
+                        <group string="Reorder Fullfilment Strategy">
+                            <field name="partner_ids" invisible="1"/>
+                            <field name="document_creation_option" required="1" widget="radio"/>
+                            <field name="vendor_selection_strategy"
+                                   invisible="document_creation_option != 'po'"
+                                   required="document_creation_option == 'po'"/>
+                            <field name="partner_id" domain="[('id','in',partner_ids)]"
+                                   force_save="True"
+                                   required="vendor_selection_strategy == 'specific_vendor'"
+                                   invisible="vendor_selection_strategy != 'specific_vendor'"/>
+                            <field name="suggested_min_qty"/>
+                            <field name="suggested_max_qty"/>
+
+                            <separator string="Lead Time calculation" style="margin-top: 25px;"/>
+                            <field name="add_purchase_in_lead_calc"/>
+                            <field name="add_iwt_in_lead_calc"/>
+                        </group>
+                        <group string="Safety stock suggestion">
+                            <field name="average_sale_calculation_base" required="1"
+                                   widget="selection"/>
+                            <field name="consider_current_period_sales"/>
+                            <field name="ads_qty"/>
+                            <field name="max_daily_sale_qty"/>
+                            <field name="avg_lead_time"/>
+                            <field name="max_lead_time"/>
+                            <field name="suggested_safety_stock"/>
+                        </group>
+                    </group>
+                </xpath>
+
+                <xpath expr="/form/sheet" position="inside">
+                    <notebook>
+                        <page string="Sales History">
+                            <field name="product_sales_history_ids" readonly="1">
+                                <tree create="false" default_order="start_date desc">
+                                    <field name="start_date" readonly="1" optional="show"/>
+                                    <field name="end_date" readonly="1" optional="show"/>
+                                    <field name="duration" readonly="1" optional="show"/>
+                                    <field name="actual_sales_qty"/>
+                                    <field name="actual_sales_return_qty"/>
+                                    <field name="sales_qty" readonly="1" optional="show"/>
+                                    <field name="total_orders" readonly="1" optional="show"/>
+                                    <field name="average_daily_sale" readonly="1" optional="show"/>
+                                    <field name="max_daily_sale_qty" readonly="1" optional="show"/>
+                                    <field name="min_daily_sale_qty" readonly="1" optional="hide"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Purchase History">
+                            <field name="product_purchase_history_ids" readonly="1">
+                                <tree create="false" default_order="po_date desc">
+                                    <field name="purchase_id" readonly="1"/>
+                                    <field name="po_date" readonly="1" optional="show"/>
+                                    <field name="partner_id" readonly="1" optional="show"/>
+                                    <field name="po_qty" readonly="1" optional="show"/>
+                                    <field name="currency_id" readonly="1" optional="show"/>
+                                    <field name="purchase_price" readonly="1" optional="show"/>
+                                    <field name="lead_time" readonly="1" optional="show"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Warehouse Movement History">
+                            <field name="product_warehouse_movement_history_ids" readonly="1">
+                                <tree create="false" default_order="date desc">
+                                    <field name="picking_id" readonly="1"/>
+                                    <field name="product_id" readonly="1" optional="show"/>
+                                    <field name="date" readonly="1" optional="show"/>
+                                    <field name="qty" readonly="1" optional="show"/>
+                                    <field name="lead_time" readonly="1" optional="show"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </xpath>
+                <xpath expr="//form/sheet" position="after">
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids"/>
+                        <field name="activity_ids"/>
+                        <field name="message_ids"/>
+                    </div>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="view_warehouse_orderpoint_tree_editable_setu_adv_reordering" model="ir.ui.view">
+            <field name="name">orderpoint.editable.list</field>
+            <field name="model">stock.warehouse.orderpoint</field>
+            <field name="inherit_id" ref="stock.view_warehouse_orderpoint_tree_editable"/>
+            <field name="arch" type="xml">
+                <xpath expr="//tree" position="attributes">
+                    <attribute name="edit">0</attribute>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="stock.action_orderpoint" model="ir.actions.act_window">
+            <field name="name">Reordering with Order Points</field>
+        </record>
+    </data>
+</odoo>

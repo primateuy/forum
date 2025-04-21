@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="setu_interwareouse_transfer_form" model="ir.ui.view">
+            <field name="name">setu.interwarehouse.transfer.form</field>
+            <field name="model">setu.intercompany.transfer</field>
+            <field name="arch" type="xml">
+                <form string="Setu Inter Warehouse Transaction">
+                    <header>
+                        <button name="action_validate_internal_transfer" class="btn-primary"
+                                type="object" string="Validate"
+                                invisible="not id or state in ['done','in_progress','cancel']"/>
+                        <button name="action_cancel" type="object" string="Cancel"
+                                invisible="not id or state == 'cancel'"/>
+                        <button name="action_reverse_internal_transfer" invisible="state not in ['done','in_progress']" type="object" string="Return"/>
+                        <button name="action_import_ict_lines" type="object" string="Import Lines"
+                                invisible="not id or state in ['done','in_progress','cancel']"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,in_progress,done"/>
+                    </header>
+                    <sheet string="Inter Warehouse Transaction">
+                        <div class="oe_button_box" name="button_box">
+                            <field name="delivery_count" invisible="1"/>
+                            <button type="object"
+                                    name="action_view_delivery"
+                                    class="oe_stat_button"
+                                    icon="fa-truck"
+                                    invisible="delivery_count == 0">
+                                <field name="delivery_count" widget="statinfo" string="Pickings"/>
+                            </button>
+                        </div>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" readonly="1"/>
+                            </h1>
+                        </div>
+                        <group expand="0" string="">
+                            <group expand="0" string="">
+                                <field name="requestor_warehouse_id" readonly="state in ['done','in_progress']"
+                                       required="True"/>
+                                <field name="requestor_company_id" readonly="state in ['done','in_progress']"
+                                       invisible="1" force_save="1"/>
+                                <field name="requestor_partner_id" readonly="state in ['done','in_progress']"
+                                       invisible="1"/>
+                                <field name="origin_order_id" readonly="1" force_save="1"/>
+                                <field name="transfer_with_single_picking" readonly="state in ['done','in_progress']"/>
+                                <!--                                <field name="location_src_id" required="1" attrs="{'readonly':[('state','=','done')]}"/>-->
+                                <field name="locations_ids" invisible="1"/>
+                                <field name="location_id"
+                                       required="state == 'draft'" readonly="state in ['done','in_progress']" domain="[('id','in',locations_ids)]"/>
+
+                            </group>
+                            <group expand="0" string="">
+                                <field name="fulfiller_warehouse_id" readonly="state in ['done','in_progress']"
+                                       domain="[('id','!=',requestor_warehouse_id),('company_id','=',requestor_company_id)]"
+                                       required="True"/>
+                                <field name="fulfiller_company_id" invisible="1" force_save="1"/>
+                                <field name="fulfiller_partner_id" invisible="1" force_save="1"/>
+                                <field name="ict_user_id" readonly="state in ['done','in_progress']"
+                                       domain="[('company_ids','in',(requestor_company_id))]"/>
+                                <field name="ict_date" readonly="state in ['done','in_progress']" required="1"/>
+                                <field name="transfer_type" invisible="1"/>
+                            </group>
+                        </group>
+                        <notebook>
+                        <page string="Inter Warehouse Transfer Lines" name="interwarehouse_transfer_lines">
+                        <field name="intercompany_transfer_line_ids" readonly="state in ['done','in_progress']"
+                               nolabel="1">
+                            <tree string="Intercompany Transfer Lines" editable="top">
+                                <field name="product_id" required="True"/>
+                                <field name="quantity" required="True"/>
+                                <field name="product_uom_category_id" column_invisible="True"/>
+                                <field name="product_uom_id" domain="[('category_id', '=', product_uom_category_id)]" groups="uom.group_uom"/>
+                                <field name="product_packaging_qty"
+                                       invisible="not product_id or not product_packaging_id"
+                                       groups="product.group_stock_packaging" optional="show"/>
+                                <field name="product_packaging_id" invisible="not product_id"
+                                       context="{'default_product_id': product_id, 'tree_view_ref':'product.product_packaging_tree_view', 'form_view_ref':'product.product_packaging_form_view'}"
+                                       groups="product.group_stock_packaging" optional="show" />
+                            </tree>
+                        </field>
+                        </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="setu_interwarehouse_transfer_tree" model="ir.ui.view">
+            <field name="name">setu.interwarehouse.transfer.tree</field>
+            <field name="model">setu.intercompany.transfer</field>
+            <field name="arch" type="xml">
+                <tree string="Setu Inter Warehouse Transaction">
+                    <field name="name"/>
+                    <field name="ict_date"/>
+                    <field name="requestor_warehouse_id"/>
+                    <field name="fulfiller_warehouse_id"/>
+                    <field name="ict_user_id"/>
+                    <field name="state"/>
+                    <field name="origin_order_id" column_invisible="True"/>
+                    <field name="intercompany_channel_id" column_invisible="True"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="setu_interwarehouse_transfer_search" model="ir.ui.view">
+            <field name="name">setu.interwarehouse.transfer.search</field>
+            <field name="model">setu.intercompany.transfer</field>
+            <field name="arch" type="xml">
+                <search string="Setu Inter Warehouse Transaction">
+                    <field name="name"/>
+                    <field name="ict_date"/>
+                    <field name="requestor_warehouse_id"/>
+                    <field name="fulfiller_warehouse_id"/>
+                    <field name="ict_user_id"/>
+                    <separator/>
+
+                    <filter string="Requestor Warehouse" context="{'group_by':'requestor_warehouse_id'}"
+                            name="requestor_warehouse_id_groupby"/>
+                    <filter string="Fulfiller Warehouse" context="{'group_by':'fulfiller_warehouse_id'}"
+                            name="fulfiller_warehouse_id_groupby"/>
+                    <filter string="ICT User" context="{'group_by':'ict_user_id'}" name="ict_user_id_groupby"/>
+                    <filter string="ICT Date" context="{'group_by':'ict_date'}" name="ict_date_groupby"/>
+                    <filter string="Status" context="{'group_by':'state'}" name="state_groupby"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="setu_interwarehouse_transfer_action" model="ir.actions.act_window">
+            <field name="name">Inter Warehouse Transfer</field>
+            <field name="res_model">setu.intercompany.transfer</field>
+            <field name="binding_view_types">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('transfer_type','=','inter_warehouse')]</field>
+            <field name="context">{'default_transfer_type': 'inter_warehouse'}</field>
+            <field name="search_view_id" ref="setu_interwarehouse_transfer_search"/>
+            <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'tree', 'view_id': ref('setu_interwarehouse_transfer_tree')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('setu_interwareouse_transfer_form')})]"/>
+        </record>
+
+        <record model="ir.actions.act_url" id="action_ict_user_guide">
+            <field name="name">Open ICT User Guide</field>
+            <field name="url">https://www.setuconsulting.com/slides/inter-company-transfer-user-guide-12</field>
+            <field name="target">new</field>
+        </record>
+        <menuitem id="menu_ict_user_guide" name="ICT User Guide"
+                  parent="setu_intercompany_transaction.intercompany_main_menu" sequence="110"
+                  action="setu_intercompany_transaction.action_ict_user_guide"/>
+
+        <menuitem id="setu_interwarehouse_transfer_menu" action="setu_interwarehouse_transfer_action"
+                  parent="setu_intercompany_transaction.intercompany_main_menu" sequence="2"/>
+
+    </data>
+</odoo>

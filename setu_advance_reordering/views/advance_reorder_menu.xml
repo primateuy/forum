@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <menuitem id="menu_main_advance_reorder_process"
+                  name="Advance Reordering"
+                  web_icon="setu_advance_reordering,static/description/icon.png"/>
+
+        <!--        <menuitem id="menu_sub_reordering_dashboard" name="Dashboard"-->
+        <!--                  parent="setu_advance_reordering.menu_main_advance_reorder_process"-->
+        <!--                  action="setu_advance_reordering.advance_reorder_dashboard_action"-->
+        <!--                  sequence="1"/>-->
+
+        <!--   Reorder Process   -->
+        <menuitem id="menu_sub_reordering_process"
+                  name="Reordering Process"
+                  parent="setu_advance_reordering.menu_main_advance_reorder_process"
+                  sequence="1"/>
+
+        <menuitem id="reordering_rule"
+                  name="Reordering with Order Points"
+                  parent="setu_advance_reordering.menu_sub_reordering_process"
+                  action="stock.action_orderpoint"
+                  sequence="1"/>
+
+        <menuitem id="menu_advance_reorder_orderprocess"
+                  name="Reorder with Real Demand"
+                  parent="setu_advance_reordering.menu_sub_reordering_process"
+                  sequence="2"
+                  action="setu_advance_reordering.actions_advance_reorder_orderprocess"/>
+
+        <menuitem id="menu_advance_procurement_process"
+                  name="Replenishment from Warehouses"
+                  parent="setu_advance_reordering.menu_sub_reordering_process"
+                  sequence="3"
+                  action="setu_advance_reordering.actions_advance_procurement_process"/>
+
+        <menuitem id="menu_create_reordering"
+                  name="Create / Update Reordering Rule"
+                  parent="setu_advance_reordering.menu_sub_reordering_process"
+                  action="setu_advance_reordering.actions_create_reordering"
+                  sequence="4"/>
+
+        <!--    Sales Forecast    -->
+        <menuitem id="menu_sub_sales_forecasting"
+                  name="Sales Forecasting"
+                  parent="setu_advance_reordering.menu_main_advance_reorder_process"
+                  sequence="2"/>
+
+        <menuitem id="menu_forecast_product_sale"
+                  action="setu_advance_reordering.action_forecast_product_sale"
+                  parent="setu_advance_reordering.menu_sub_sales_forecasting"
+                  sequence="1"/>
+
+        <menuitem id="menu_sale_forecast_auto_import_wizard"
+                  name="Import / Export Sales Forecast"
+                  parent="setu_advance_reordering.menu_sub_sales_forecasting"
+                  sequence="2"
+                  action="setu_advance_reordering.action_sale_forecast_auto_import_wizard"/>
+
+        <!--   Inter Company Transfer     -->
+        <menuitem id="intercompany_main_menu"
+                  name="Inter Company Transaction"
+                  parent="setu_advance_reordering.menu_main_advance_reorder_process"
+                  sequence="3"/>
+
+        <menuitem id="setu_intercompany_transfer_menu"
+                  action="setu_intercompany_transaction.setu_intercompany_transfer_action"
+                  parent="setu_advance_reordering.intercompany_main_menu"
+                  sequence="1"/>
+
+        <menuitem id="setu_interwarehouse_transfer_menu"
+                  action="setu_intercompany_transaction.setu_interwarehouse_transfer_action"
+                  parent="setu_advance_reordering.intercompany_main_menu"
+                  sequence="2"/>
+
+        <menuitem id="setu_reverse_transfer_menu"
+                  action="setu_intercompany_transaction.setu_reverse_transfer_action"
+                  parent="setu_advance_reordering.intercompany_main_menu"
+                  sequence="3"/>
+
+        <menuitem id="setu_ict_auto_workflow_menu"
+                  action="setu_intercompany_transaction.setu_ict_auto_workflow_action"
+                  parent="setu_advance_reordering.intercompany_main_menu"
+                  sequence="4"/>
+
+        <menuitem id="setu_intercompany_channel_menu"
+                  action="setu_intercompany_transaction.setu_intercompany_channel_action"
+                  parent="setu_advance_reordering.intercompany_main_menu"
+                  sequence="5"/>
+
+        <menuitem id="setu_interwarehouse_channel_menu"
+                  action="setu_intercompany_transaction.setu_interwarehouse_channel_action"
+                  parent="setu_advance_reordering.intercompany_main_menu"
+                  sequence="6"/>
+
+        <!--  Configuration  -->
+        <menuitem id="menu_sub_reorder_configuration"
+                  name="Configuration"
+                  parent="setu_advance_reordering.menu_main_advance_reorder_process"
+                  sequence="5"/>
+
+        <menuitem id="menu_reorder_res_settings"
+                  name="Settings - Advance Reordering"
+                  parent="setu_advance_reordering.menu_sub_reorder_configuration"
+                  sequence="1"
+                  groups="group_setu_advance_reordering_manager"
+                  action="setu_advance_reordering.action_advance_reordering_settings"/>
+
+        <menuitem id="menu_stock_warehouse_group"
+                  name="Warehouse Group"
+                  parent="setu_advance_reordering.menu_sub_reorder_configuration"
+                  sequence="2"
+                  action="setu_advance_reordering.actions_stock_warehouse_group"/>
+
+        <menuitem id="reordering_fiscal_year"
+                  name="Fiscal Year"
+                  parent="setu_advance_reordering.menu_sub_reorder_configuration"
+                  action="setu_advance_reordering.actions_reorder_fiscalyear"
+                  sequence="3"/>
+
+        <menuitem id="menu_advance_reorder_planner"
+                  name="Reorder with Real Demand planner"
+                  parent="setu_advance_reordering.menu_sub_reorder_configuration"
+                  sequence="4"
+                  action="setu_advance_reordering.actions_advance_reorder_planner"/>
+
+        <menuitem id="menu_advance_reorder_process_auto_workflow"
+                  name="Reorder with Real Demand Auto Workflow"
+                  parent="setu_advance_reordering.menu_sub_reorder_configuration"
+                  sequence="5"
+                  action="setu_advance_reordering.actions_advance_reorder_process_auto_workflow"/>
+    </data>
+</odoo>

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="setu_interwarehouse_channel_form" model="ir.ui.view">
+            <field name="name">setu.interwarehouse.channel.form</field>
+            <field name="model">setu.interwarehouse.channel</field>
+            <field name="arch" type="xml">
+                <form string="Interwarehouse Channel">
+                    <sheet string="Interwarehouse Channel">
+                        <div class="oe_title">
+                            <h3>
+                                <field name="name" required="True"/>
+                            </h3>
+                        </div>
+                        <group expand="0" string="">
+                            <group expand="0" string="Requestor">
+                                <field name="requestor_warehouse_id" required="True"/>
+                                <field name="requestor_company_id"  readonly="True" force_save="1" />
+                            </group>
+                            <group expand="0" string="Fulfiller">
+                                <field name="fulfiller_warehouse_id" required="True" domain="[('id','!=',requestor_warehouse_id),('company_id','=',requestor_company_id)]" />
+                                <field name="fulfiller_company_id" readonly="True" force_save="1" />
+                            </group>
+                        </group>
+
+                        <group string="Common Configurations">
+                            <group>
+                                <field name="sequence" />
+                                <field name="ict_user_id" required="1" domain="[('company_ids','in',(requestor_company_id)),('company_ids','in',(fulfiller_company_id))]"/>
+                            </group>
+                            <group>
+                                <field name="transfer_with_single_picking"/>
+<!--                                <field name="location_src_id" required="1"/>-->
+                                <field name="location_id" required="1" domain="[('id','in',locations_ids)]"/>
+                                <field name="locations_ids" invisible="1"/>
+                                <field name="validate_ict" />
+                                <field name="active"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="setu_interwarehouse_channel_tree" model="ir.ui.view">
+            <field name="name">setu.interwarehouse.channel.tree</field>
+            <field name="model">setu.interwarehouse.channel</field>
+            <field name="arch" type="xml">
+                <tree string="Interwarehouse Channel">
+                    <field name="name"/>
+                    <field name="requestor_warehouse_id"/>
+                    <field name="fulfiller_warehouse_id" />
+                    <field name="ict_user_id" optional="show"/>
+                    <field name="transfer_with_single_picking" />
+                    <field name="validate_ict" />
+                    <field name="active" optional="hide"/>
+                    <field name="sequence" />
+                </tree>
+            </field>
+        </record>
+
+        <record id="setu_interwarehouse_channel_search" model="ir.ui.view">
+            <field name="name">setu.interwarehouse.channel.search</field>
+            <field name="model">setu.interwarehouse.channel</field>
+            <field name="arch" type="xml">
+                <search string="Interwarehouse Channel">
+                    <field name="name"/>
+                    <field name="requestor_warehouse_id"/>
+                    <field name="fulfiller_warehouse_id" />
+                    <field name="ict_user_id" />
+
+                    <separator/>
+
+                    <filter string="Requestor Warehouse" context="{'group_by':'requestor_warehouse_id'}" name="requestor_warehouse_id_groupby"/>
+                    <filter string="Fulfiller Warehouse" context="{'group_by':'fulfiller_warehouse_id'}" name="fulfiller_warehouse_id_groupby"/>
+                    <filter string="ICT User" context="{'group_by':'ict_user_id'}" name="ict_user_id_groupby"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="setu_interwarehouse_channel_action" model="ir.actions.act_window">
+            <field name="name">Inter Warehouse Channel</field>
+            <field name="res_model">setu.interwarehouse.channel</field>
+            <field name="binding_view_types">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="search_view_id" ref="setu_interwarehouse_channel_search"/>
+        </record>
+
+        <menuitem id="setu_interwarehouse_channel_menu" action="setu_interwarehouse_channel_action"
+                  parent="setu_intercompany_transaction.intercompany_main_menu" sequence="11" />
+
+    </data>
+</odoo>

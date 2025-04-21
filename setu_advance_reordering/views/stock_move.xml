@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="tree_advance_reorder_stock_move" model="ir.ui.view">
+            <field name="name">advance.reorder.stock.move.tree</field>
+            <field name="model">stock.move</field>
+            <field name="arch" type="xml">
+                <tree create="0">
+                    <field name="name"/>
+                    <field name="picking_id" widget="many2onebutton"/>
+                    <field name="location_id"/>
+                    <field name="location_dest_id"/>
+                    <field name="company_id"/>
+                    <field name="product_id"/>
+                    <field name="product_uom_qty"/>
+                    <field name="date"/>
+                    <field name="state" widget="badge" decoration-success="state == 'done'"
+                           decoration-info="state not in ('done', 'cancel')"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="actions_advance_reorder_stock_move" model="ir.actions.act_window">
+            <field name="name">Stock Moves</field>
+            <field name="res_model">stock.move</field>
+            <field name="view_mode">tree</field>
+            <field name="view_id" ref="tree_advance_reorder_stock_move"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No stock move found
+                </p>
+                <p>
+                    This menu gives you the full traceability of inventory
+                    operations on a specific product. You can filter on the product
+                    to see all the past or future movements for the product.
+                </p>
+            </field>
+        </record>
+    </data>
+</odoo>

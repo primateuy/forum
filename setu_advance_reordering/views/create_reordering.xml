@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="form_create_reordering" model="ir.ui.view">
+            <field name="name">create.reordering.wizard</field>
+            <field name="model">create.reordering</field>
+            <field name="arch" type="xml">
+                <form string="Create / Update Order Point Data">
+                    <sheet>
+                        <group>
+                            <div style="color: red;width: max-content;margin-bottom: 20px;background: bisque;"
+                                 invisible="operation != 'orderpoint' or orderpoint_operation != 'create_order_point'">
+                                Please check and make sure that you are not going to create duplicate orderpoint for the
+                                same product with different location.
+                            </div>
+                            <group>
+                                <field name="operation" widget="radio"/>
+                                <separator
+                                        invisible="operation != 'orderpoint' or orderpoint_operation != 'create_order_point'"
+                                        string="Warehouse Mapping" style="margin-top: 42px; font-size: 18px;"/>
+                                <field name="location_selection_strategy" widget="radio"
+                                       invisible="operation != 'orderpoint' or orderpoint_operation != 'create_order_point'"/>
+                            </group>
+                            <group>
+                                <field name="orderpoint_operation" widget="radio"
+                                       invisible="operation != 'orderpoint'"/>
+                                <field name="consider_current_period_sales"
+                                       invisible="operation != 'orderpoint'"/>
+                                <field name="buffer_days"
+                                       invisible="operation != 'orderpoint'"/>
+                                <field name="average_sale_calculation_base" required="1"
+                                       invisible="operation != 'orderpoint'"/>
+                                <field name="document_creation_option" required="1"
+                                       invisible="operation != 'orderpoint'"/>
+                                <field name="vendor_selection_strategy" required="1"
+                                       invisible="operation != 'orderpoint' or document_creation_option != 'po'"/>
+                                <field name="partner_id"
+                                       invisible="operation != 'orderpoint' or document_creation_option != 'po' or vendor_selection_strategy != 'specific_vendor'"
+                                               required="operation == 'orderpoint' and document_creation_option == 'po' and vendor_selection_strategy == 'specific_vendor'"/>
+                                <separator string="Lead Time calculation"
+                                           invisible="operation != 'orderpoint'"
+                                           style="margin-top: 25px; font-size: 18px;"/>
+                                <field name="add_purchase_in_lead_calc"
+                                       invisible="operation != 'orderpoint'"/>
+                                <field name="add_iwt_in_lead_calc"
+                                       invisible="operation != 'orderpoint'"/>
+                                <field name="purchase_lead_calc_base_on" invisible="1"/>
+                                <field name="static_average_lead_time"
+                                       invisible="operation != 'orderpoint' or purchase_lead_calc_base_on != 'static_lead_time'"/>
+                                <field name="static_maximum_lead_time"
+                                       invisible="operation != 'orderpoint' or purchase_lead_calc_base_on != 'static_lead_time'"/>
+                            </group>
+                        </group>
+                        <group invisible="operation != 'orderpoint' or orderpoint_operation != 'create_order_point'">
+                            <field name="specific_location_mapping_ids"
+                                   invisible="location_selection_strategy != 'specific'" required="location_selection_strategy == 'specific'">
+                                <tree editable="bottom">
+                                    <field name="warehouse_id" required="1"/>
+                                    <field name="specific_location_id" required="1"
+                                           readonly="not warehouse_id" domain="[('id','in',specific_location_ids)]"/>
+                                    <field name="specific_location_ids" column_invisible="1"/>
+                                </tree>
+                            </field>
+                        </group>
+                        <group string="Choose periods To calculate reordering rule's sales, purchase and IWT history"
+                               invisible="orderpoint_operation not in ['create_order_point','update_order_point'] or operation == 'orderpoint'"
+                               colspan="4">
+                            <group colspan="4">
+                                <field name="period_ids" widget="many2many_tags"
+                                       invisible="orderpoint_operation not in ['create_order_point','update_order_point'] or operation == 'orderpoint'"
+                                required="operation != 'orderpoint'"
+                                       options="{'no_create':1, 'no_create_edit': 1}"/>
+                            </group>
+                        </group>
+                        <group string="Filters">
+                            <group string="Select warehouses" invisible="location_selection_strategy == 'specific' and orderpoint_operation == 'create_order_point' and operation == 'orderpoint'">
+                                <field name="warehouse_ids" widget="many2many_tags"
+                                       options="{'no_create':1, 'no_create_edit': 1}"/>
+                            </group>
+                            <group string="Select products">
+                                <field name="product_ids" widget="many2many_tags"
+                                       options="{'no_create':1, 'no_create_edit': 1}"/>
+                            </group>
+                        </group>
+                    </sheet>
+                    <footer>
+                        <button name="perform_operation" invisible="operation != 'orderpoint'"
+                                string="EXECUTE" type="object" class="oe_highlight"/>
+                        <button name="update_sales_history" string="Update Sales History"
+                                invisible="operation != 'sales_history'" type="object"
+                                class="oe_highlight"/>
+                        <button name="update_purchase_history" string="Update Purchase History"
+                                invisible="operation != 'purchase_history'" type="object"
+                                class="oe_highlight"/>
+                        <button name="update_iwt_history" string="Update iwt History"
+                                invisible="operation != 'iwt_history'" type="object"
+                                class="oe_highlight"/>
+                        <!--                        <button name="create_update_cancel" string="Cancel" type="object" />-->
+                        <button string="Cancel" class="oe_link" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record id="actions_create_reordering" model="ir.actions.act_window">
+            <field name="name">Create / Update Reordering Rule</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">create.reordering</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="view_id" ref="form_create_reordering"/>
+        </record>
+    </data>
+</odoo>

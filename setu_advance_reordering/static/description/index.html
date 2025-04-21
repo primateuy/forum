@@ -1,0 +1,2348 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="utf-8"/>
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<title>Advance Reordering / Advance Purchase Reordering | Setu Consulting Services Pvt. Ltd. | Odoo</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<link href="https://www.setuconsulting.com/css/fonts.css" rel="stylesheet">
+	<link href="https://www.setuconsulting.com/css/plugins.css" rel="stylesheet">
+	<!-- <link href="https://www.setuconsulting.com/css/style.css" rel="stylesheet"> -->
+
+	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+	<link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
+	
+	<link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700&display=swap" rel="stylesheet">
+	<!-- <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"> -->
+	<link rel="stylesheet" type="text/css" href="main.css">
+</head>
+<!-- odoo description page css -->
+<style>
+	h1,h2,h3,h4,h5,h6,
+	.h1,.h2,.h3,.h4,.h5,
+	.h6 {
+		font-family: "Montserrat", sans-serif;
+		font-weight: 400;
+		line-height: 1.1;
+		color: #21272b;
+	}
+
+	ul {
+		color: #222020;
+	}
+
+	* {
+		font-family: "Montserrat", sans-serif;
+	}
+</style>
+<body>
+<div class="container">
+	<!-- Header -->
+	<div class="text-right">
+		<div class="col-md-12 " style="margin-left: 0px; margin: 0px 0px;" >
+			<b>User Guide:</b>
+			<span class="btn btn-info" style="padding: 7px 7px 7px 7px; font-size: 14px; border-radius: 5px;" title="Copy this link and paste it to new tab or window">
+				<strong>https://www.setuconsulting.com/slides/advance-reordering-user-guide-13</strong></span></strong>
+			</span>
+		</div>  
+	</div>
+
+	<section class="index-banner shadow-sm position-relative mt40" style="border-top:4px solid #37bbf9; border-radius: 10px;">
+		<img class="w-100 h-100 position-absolute img-fluid mb16" src="images/etc/1-background.jpg" style="border-radius: 10px;" />
+		<div class="container p-md-4 p-4 position-relative">
+			<div class="row align-items-center">
+				<div class="col-md-2 text-center text-md-left">
+					<img src="images/odoo_images/setu.png" alt="Setu Consulting Services Pvt. Ltd." title="Setu Consulting Services Pvt. Ltd." class="img img-fluid" >
+				</div>
+				<div class="col-md-4 text-center" style="margin-left: auto; padding-right: 10px; padding-left: 10px;">
+					<img src="images/odoo15.png" width="80px" alt="Odoo 15 Certified" title="Odoo 15 Certified"> 
+					<img src="images/odoo16.png" width="80px" alt="Odoo 16 Certified" title="Odoo 16 Certified"> 
+					<img src="images/odoo17.png" width="80px" alt="Odoo 16 Certified" title="Odoo 17 Certified"> 
+				</div>
+				<div class="col-md-2 text-center text-md-left" style="margin-left: auto;padding-right: 10px; padding-left: 10px;">
+					<h6 style="font-size:18px;margin:10px 0">
+						<span class="btn btn-danger w-md-100 w-auto" style="color:#ffffff; background-color:#f62943; border-radius:0.5rem;"><i class="fa fa-check"></i> Community </span>
+					</h6>
+				</div>
+				<div class="col-md-2 text-center text-md-left" style="padding-right: 10px; padding-left: 10px;">
+					<h6 style="font-size:18px;margin:10px 0">
+						<span class="btn btn-warning w-md-100 w-auto" style="color:#ffffff; background-color:#dab000; border-radius:0.5rem;"><i class="fa fa-check"></i> Enterprise </span>
+					</h6>
+				</div>
+				<div class="col-md-2 text-center text-md-left" style="padding-right: 10px; padding-left: 10px;">
+					<h6 style="font-size:18px;margin:10px 0">
+						<span class="btn btn-success w-md-100 w-auto" style="color:#ffffff; background-color:#00c157; border-radius:0.5rem;"><i class="fa fa-check"></i> Odoo.sh</span>
+					</h6>
+				</div>
+			</div>
+		</div>
+	</section>
+	
+	<div class="col-lg-12 col-md-12">
+		<!-- Title START -->
+		<div class="container p-4 position-relative">
+			<div class="row align-items-center">
+				<div class="row align-items-center">
+					<div class="col-md-8 text-center text-md-left" style="margin-left: auto;padding-right: 10px; padding-left: 10px;">
+						<h6 style="font-size:18px;">
+							<span class="btn btn-primary" style="color:#ffffff; font-size: 38px; font-weight: bold; background-color:#0298FF; border-radius:0.5rem;">
+								Advanvce Reordering
+							</span>
+						</h6>
+					</div>
+					<div class="col-md-2 text-center text-md-left" style="margin-left: auto;padding-right: 140px; padding-left: 10px;">
+						<a href="mailto:apps@setuconsulting.com?subject=Advance Reordering Version 18.0 - Demo Request" target="_blank">
+							<img src="images/requestdemo1.png" title="Request a Demo" alt="Request a Demo" width="200px" class="ml-4" >
+						</a>
+					</div>
+					<div class="col-md-2 text-center text-md-left" style="margin-left: auto; padding-left: 70px;">
+						<a href="https://www.youtube.com/playlist?list=PLH6xCEY0yCICqQFq_m64Boo-11RkLVIfM" target="_blank">
+							<img src="images/video_userguide1.png" title="Video user guide" alt="Video user guide" width="110px" class="ml-4" >
+						</a>
+					</div>
+				</div>
+			</div>
+		</div>
+		<!-- Title END -->
+		<section class="index-banner shadow-sm position-relative" style="border-top:4px solid #37bbf9; border-radius: 10px;">
+			<img class="w-100 h-100 position-absolute img-fluid mb16" src="images/etc/1-background.jpg" style="border-radius: 10px;" />
+			<div class="container p-md-3 p-4 position-relative">
+				<p class="text-justify"><!-- <span class="dropcap dropcap-colored"> B </span> --> 
+					<font size="4" style="font-family: Roboto;font-weight: 500;">
+						<strong>
+							Mastering the art of supply chain excellence is the key to unlocking unparalleled business success. As the saying goes, 'Better the supply chain, Better the Business.'
+						</strong>
+					</font>
+				</p><br>
+			</div>
+		</section>
+		
+		<section class="index-banner shadow-sm position-relative mt40" style="border-top:4px solid #37bbf9; border-radius: 10px; margin-top: 15px;">
+			<img class="w-100 h-100 position-absolute img-fluid mb16" src="images/etc/1-background.jpg" style="border-radius: 10px;" />
+			<div class="col-lg-12 col-md-12">
+				<div class="row align-items-center">
+					<div class="col-md-12" style="margin-left: auto;padding-right: 10px; padding-left: 10px;">
+						<div class="container p-md-3 p-4 position-relative">
+							<p class="text-justify " data-animate="fadeIn" data-animate-delay="400">
+								<font size="4" style="font-family: Roboto;font-weight: 500;">
+									For this, Purchasing <span class="btn btn-warning" style="padding: 7px 7px 7px 7px; font-size: 14px; border-radius: 5px;"><strong>“ Right quantity of Inventory at Right time ”</strong></span> is the key point :  Not only for Warehouses but at every stage of Supply Chain from Supplier, Manufacturer, Distributor, Retailer to Customer,and hence efficient inventory management is crucial for this smooth supply chain operations. Hence maintaining accurate stock levels are vital for success. Inaccurate quantities purchased at the wrong time results in Overstock nightmare, tying up capital, or Out of Stock situations, disrupting revenue channels. <br><br>
+
+									Get rid of these headaches with the cutting-edge <span class="btn btn-success" style="padding: 7px 7px 7px 7px; font-size: 14px; border-radius: 5px;"><strong>Advance Reordering Application!</strong></span> <br><br>
+
+									Our game-changing Advance Reordering solution takes your business to the next level by accurately suggesting the perfect quantities to reorder, avoiding those dreaded stock issues altogether alongside many of the automated processes.
+
+									<p style="font-size: 18px; letter-spacing: 0.2px; text-align: justify; margin-top:10px">
+										But that's not all - our app also helps you fulfill :
+									</p>
+								</font>
+							</p>
+						</div>
+					</div>
+					<!-- <div class="col-md-4 text-center text-md-left" style="margin-left: auto;padding-right: 140px; padding-left: 10px;">
+						<img src="images/advance_reordering_overview.jpeg" alt="Reordering Order Point" class="w-100" style="border-radius: 10px; box-shadow: 0px 2px 9px 4px #d0cecb;">
+					</div> -->
+				</div>
+			</div>
+
+			<div class="container p-md-3 p-4 position-relative">
+				<p class="text-justify " data-animate="fadeIn" data-animate-delay="400">
+					<font size="4" style="font-family: Roboto;font-weight: 500;">
+						For this, Purchasing <span class="btn btn-warning" style="padding: 7px 7px 7px 7px; font-size: 14px; border-radius: 5px;"><strong>“ Right quantity of Inventory at Right time ”</strong></span> is the key point :  Not only for Warehouses but at every stage of Supply Chain from Supplier, Manufacturer, Distributor, Retailer to Customer,and hence efficient inventory management is crucial for this smooth supply chain operations. Hence maintaining accurate stock levels are vital for success. Inaccurate quantities purchased at the wrong time results in Overstock nightmare, tying up capital, or Out of Stock situations, disrupting revenue channels. <br><br>
+
+						Get rid of these headaches with the cutting-edge <span class="btn btn-success" style="padding: 7px 7px 7px 7px; font-size: 14px; border-radius: 5px;"><strong>Advance Reordering Application!</strong></span> <br><br>
+
+						Our game-changing Advance Reordering solution takes your business to the next level by accurately suggesting the perfect quantities to reorder, avoiding those dreaded stock issues altogether alongside many of the automated processes.
+
+						<p style="font-size: 18px; letter-spacing: 0.2px; text-align: justify; margin-top:10px">
+							But that's not all - our app also helps you fulfill :
+						</p>
+					</font>
+				</p>
+			</div>
+			<div class="container position-relative p-4">
+				<section id="sh_hot_feature" style="background-color: transparent;">
+					<div class="container">
+						<div class="row">
+							<div class="col-md-6 mb-2">
+								<div class="sh_icon d-flex justify-content-center align-items-center rounded shadow" style="padding: 15px;border: 1px solid #9ebdfb;border-bottom: 4px solid #9ebdfb;background-color: #ebf0fb;border-radius: 0.25rem !important;min-height: 83px;">
+									<span style="color: #212121;font-weight: 600;vertical-align: middle;padding-left: 10px;text-align: left;">
+										Fulfill minimum order quantities of vendors across multiple warehouses simultaneously.
+									</span>
+								</div>
+							</div>
+							<div class="col-md-6 mb-2">
+								<div class="sh_icon d-flex justify-content-center align-items-center rounded shadow" style="padding: 15px;border: 1px solid #9ebdfb;border-bottom: 4px solid #9ebdfb;background-color: #ebf0fb;border-radius: 0.25rem !important;">
+									<span style="color: #212121;font-weight: 600;vertical-align: middle;padding-left: 10px;text-align: left;">
+										Automate replenishment of surplus stock from warehouses instead of placing orders every time.
+									</span>
+								</div>
+							</div>
+							<div class="col-md-6 mb-2">
+								<div class="sh_icon d-flex justify-content-center align-items-center rounded shadow" style="padding: 15px;border: 1px solid #9ebdfb;border-bottom: 4px solid #9ebdfb;background-color: #ebf0fb;border-radius: 0.25rem !important;">
+									<span style="color: #212121;font-weight: 600;vertical-align: middle;padding-left: 10px;text-align: left;">
+										Forecast future sales accurately.
+									</span>
+								</div>
+							</div>
+							<div class="col-md-6 mb-2">
+								<div class="sh_icon d-flex justify-content-center align-items-center rounded shadow" style="padding: 15px;border: 1px solid #9ebdfb;border-bottom: 4px solid #9ebdfb;background-color: #ebf0fb;border-radius: 0.25rem !important;">
+									<span style="color: #212121;font-weight: 600;vertical-align: middle;padding-left: 10px;text-align: left;">  Gain visibility into your entire inventory pipeline
+										And much more...
+									</span>
+								</div>
+							</div>
+						</div>
+					</div>
+				</section>
+			</div>
+		</section>
+	</div>
+
+	<div class="container mt-4">
+		<span class="badge badge-pill badge-light" style="color:#000000; font-size: 32px; font-weight: bold; background-color:#ffffff; border-radius:0.5rem; padding:1rem;">KEY FEATURES
+		</span>
+	</div>
+
+	<!-- ORDER POINT - START -->
+	<section class="index-banner shadow-sm position-relative mt40" style="border-top:4px solid #37bbf9; border-radius: 10px;">
+		<img class="w-100 h-100 position-absolute img-fluid mb16" src="images/etc/5-background.jpg" style="border-radius: 10px; opacity:0.1" />
+		<div class="container p-md-3 p-4 position-relative">
+			<!-- KEY FEATURES START -->
+			<div class="row">
+				<div class="col-lg-12 col-md-12">
+					<div class="container p-4 position-relative">
+						<div class="row align-items-center">
+							<div class="row align-items-center">
+								<div class="col-md-8 text-center text-md-left" style="margin-left: auto;padding-right: 10px; padding-left: 10px;">
+									<h2 class="text-center mb-3" style="font-family: Roboto;font-weight: 500">Advance reordering based on <br> ORDER POINTS</h2>
+									<div class="text-center mb-3">
+										<img src="images/line.png" alt="Advance reordering based on ORDER POINTS" width="40%" height="40%">
+									</div>
+								</div>
+								<div class="col-md-4 text-center text-md-left" style="margin-left: auto;padding-right: 140px; padding-left: 10px;">
+									<img src="images/reorder-level.png" alt="Reordering Order Point" class="w-100" style="border-radius: 10px; box-shadow: 0px 2px 9px 4px #d0cecb;">
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col-lg-12">
+					<div class="row text-left">
+						<div class="col-lg-6">
+							 <div class="img_dec shadow mt-4"
+								style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									  <span class="fa fa-hand-o-right"
+										 style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									  <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Streamlined Reordering Rule Management</h5>
+									  <p style="color:#616060; text-align:justify;">
+										 Automated/manual creation of Reordering Rule for Multiple Products, Warehouses, and Companies simultaneously, ensuring efficient inventory management across the supply chain.
+									  </p>
+								   </div>
+								</div>
+							 </div>
+							 <div class="img_dec shadow mt-4"
+								style="padding: 20px;align-items: center; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									  <span class="fa fa-hand-o-right"
+										 style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									  <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Automated Reorder Level Scheduler</h5>
+									  <p style="color:#616060">
+										Automated scheduler to update Minimum and Maximum reorder levels.
+									  </p>
+								   </div>
+								</div>
+							 </div>
+							 <div class="img_dec shadow mt-4"
+								style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									  <span class="fa fa-hand-o-right"
+										 style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									  <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Enhanced Reordering Rule Optimization</h5>
+									  <p style="color:#616060">
+										Optimize Reordering Rule Quantity by dynamically calculating Minimum and Maximum reorder thresholds from historical Sales and Purchase data.
+									  </p>
+								   </div>
+								</div>
+							 </div>
+							 <div class="img_dec shadow mt-4"
+								style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									  <span class="fa fa-hand-o-right"
+										 style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									  <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Customizable Maximum Stock Management</h5>
+									  <p style="color:#616060">
+										Tailor maximum stock quantities to your business needs with customizable options and user-defined buffer days, thereby minimizing excess stock holding costs.
+									  </p>
+								   </div>
+								</div>
+							 </div>
+						</div>
+						<div class="col-lg-6">
+							 <div class="img_dec shadow mt-4"
+								style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									  <span class="fa fa-hand-o-right"
+										 style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									  <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Sales Performance Insights</h5>
+									  <p style="color:#616060">
+										Gain valuable insights into product performance with access to average daily sales and maximum daily sales information.<br><br>
+									  </p>
+								   </div>
+								</div>
+							 </div>
+							 <div class="img_dec shadow mt-4"
+								style="padding: 20px;align-items: center; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									  <span class="fa fa-hand-o-right"
+										 style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									  <h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Lead Time Analysis</h5>
+									  <p style="color:#616060">
+										Access Products’ average lead time and maximum lead time information.
+									  </p>
+								   </div>
+								</div>
+							 </div>
+							 <div class="img_dec shadow mt-4"
+								style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									  <span class="fa fa-hand-o-right"
+										 style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									  <h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Strategic Warehouse Location Selection</h5>
+									  <p style="color:#616060">
+										Streamlined Warehouse Location Selection strategy post - purchase or stock replenishment.<br><br>
+									  </p>
+								   </div>
+								</div>
+							 </div>
+							 <div class="img_dec shadow mt-4"
+								style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									  <span class="fa fa-hand-o-right"
+										 style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									  <h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Adaptive Safety Stock Calculation</h5>
+									  <p style="color:#616060">
+										Improve inventory resilience with a flexible timeline to calculate safety stock, ensuring uninterrupted supply chain operations.
+									  </p>
+								   </div>
+								</div>
+							 </div>
+						</div>
+						<div class="col-lg-12">
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+									<div class="sh_icon">
+										<span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+									</div>
+									<div class="sh_dec">
+										<h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Proactive Safety Stock Management</h5>
+										<p style="color:#616060">
+											Enhance inventory resilience with safety stock recommendations, mitigating the risk of stockouts and ensuring uninterrupted supply chain operations.
+										</p>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="col-lg-12">
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px; width: 100%">
+								<div class="sh_inner_box d-flex align-items-baseline">
+									<div class="sh_icon">
+										<span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+									</div>
+									<div class="sh_dec">
+										<h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Efficient Sales,  Purchase & IWT History Management</h5>
+										<ul class="list-unstyled pl-0" style="font-size:15px;">
+										<font size="4">
+											<li class="mb-4" style="list-style: none"><img src="images/forward-arrow.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Automated/Manual update of Sales History Data for multiple Products, Warehouses, and Companies.</li>
+										</font>
+										<font size="4">
+											<li class="mb-4" style="list-style: none"><img src="images/forward-arrow.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Automated/Manual update of Purchase History Data for multiple Products, Warehouses, and Companies.</li>
+										</font>
+										<font size="4">
+											<li class="mb-4" style="list-style: none"><img src="images/forward-arrow.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Automated/Manual update of IWT History Data for multiple Products, Warehouses, and Companies.</li>
+										</font>
+										</ul>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="col-lg-12">
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+									<div class="sh_icon">
+										<span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+									</div>
+									<div class="sh_dec">
+										<h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Versatile Reorder Fulfillment Options</h5>
+										<p style="color:#616060">
+										Choose from a range of fulfillment options based on your specific supply chain requirements, enhancing flexibility and responsiveness.</p>
+										<ul class="list-unstyled pl-0" style="font-size:15px;">
+										<font size="4">
+											<li class="mb-4" style="list-style: none"><img src="images/forward-arrow.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Create Inter company transaction from Order points.</li>
+										</font>
+										<font size="4">
+											<li class="mb-4" style="list-style: none"><img src="images/forward-arrow.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Create Inter warehouse transaction from Order points.</li>
+										</font>
+										<font size="4">
+											<li class="mb-4" style="list-style: none"><img src="images/forward-arrow.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Create Purchase order from order points.</li>
+										</font>
+										<font size="4">
+											<li class="mb-4" style="list-style: none"><img src="images/forward-arrow.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Proceed with Odoo default flow.</li>
+										</font>
+										</ul>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="col-lg-12">
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px; width: 100%;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+									<div class="sh_icon">
+										<span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+									</div>
+									<div class="sh_dec">
+										<h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Strategic Supplier Selection</h5>
+										<p style="color:#616060">
+										Improve procurement efficiency with strategic vendor/supplier selection options.</p>
+										<ul class="list-unstyled pl-0" style="font-size:15px;">
+										<font size="4">
+											<li class="mb-4" style="list-style: none"><img src="images/forward-arrow.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Select the Cheapest Supplier.</li>
+										</font>
+										<font size="4">
+											<li class="mb-4" style="list-style: none"><img src="images/forward-arrow.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Select the Quickest Supplier.</li>
+										</font>
+										<font size="4">
+											<li class="mb-4" style="list-style: none"><img src="images/forward-arrow.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Select a Specific Supplier.</li>
+										</font>
+										</ul>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+	<!-- ORDER POINT - END -->
+
+	<!-- REAL DEMAND - START -->
+	<section class="index-banner shadow-sm position-relative mt40" style="border-top:4px solid #37bbf9; border-radius: 10px; margin-top:20px">
+		<img class="w-100 h-100 position-absolute img-fluid mb16" src="images/etc/5-background.jpg" style="border-radius: 10px; opacity:0.1" />
+		<div class="container p-md-3 p-4 position-relative">
+			<!-- KEY FEATURES START -->
+			<div class="row">
+				<div class="col-lg-12 col-md-12">
+					<div class="container p-4 position-relative">
+						<div class="row align-items-center">
+							<div class="row align-items-center">
+								<div class="col-md-8 text-center text-md-left" style="margin-left: auto;padding-right: 10px; padding-left: 10px;">
+									<h2 class="text-center mb-3" style="font-family: Roboto;font-weight: 500">Advance reordering with <br> DEMAND GENERATION</h2>
+									<div class="text-center mb-3">
+										<img src="images/line.png" alt="Advance reordering based on ORDER POINTS" width="40%" height="40%">
+									</div>
+								</div>
+								<div class="col-md-4 text-center text-md-left" style="margin-left: auto;padding-right: 140px; padding-left: 10px;">
+									<img src="images/demand-generation.png" alt="Reordering Demand Generation" class="w-100" style="border-radius: 10px; box-shadow: 0px 2px 9px 4px #d0cecb;">
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col-lg-12">
+					<div class="row text-left">
+						<div class="col-lg-6">
+							 <div class="img_dec shadow mt-4"
+								style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									  <span class="fa fa-hand-o-right"
+										 style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									  <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Facilitate Vendor MOQ Fulfillment</h5>
+									  <p style="color:#616060; text-align:justify;">
+										 Create Purchase Orders for <b>multiple warehouse groups</b> altogether, ensuring efficient procurement.
+									  </p>
+								   </div>
+								</div>
+							 </div>
+							 <div class="img_dec shadow mt-4"
+								style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									  <span class="fa fa-hand-o-right"
+										 style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									  <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Customizable Past Sales Analysis</h5>
+									  <p style="color:#616060">
+										Customize your date range for past sales analysis, empowering you to refine predictions based on your business needs for enhanced accuracy.<br><br>
+									  </p>
+								   </div>
+								</div>
+							 </div>
+							 <div class="img_dec shadow mt-4"
+								style="padding: 20px;align-items: center; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									  <span class="fa fa-hand-o-right"
+										 style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									  <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Optimize Demand Generation</h5>
+									  <p style="color:#616060">
+										Utilize past sales or forecasted sales to generate demands
+									  </p>
+								   </div>
+								</div>
+							 </div>
+							 <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+									<div class="sh_icon">
+										<span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+									</div>
+									<div class="sh_dec">
+										<h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Real-Time Demand-Driven Multi-Warehouse Replenishment</h5>
+										<p style="color:#616060">
+											Replenish stock across multiple warehouses based on real demand from the main warehouse. <br><br>
+										</p>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="col-lg-6">
+							<div class="img_dec shadow mt-4"
+								style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									  <span class="fa fa-hand-o-right"
+										 style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									  <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Optimized Purchase Orders</h5>
+									  <p style="color:#616060">
+										Adjust Purchase Orders as per real demand from calculation by utilizing historical data.
+									  </p>
+								   </div>
+								</div>
+							 </div>
+							 <div class="img_dec shadow mt-4"
+								style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									  <span class="fa fa-hand-o-right"
+										 style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									  <h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Customized Sales Quantity Insights</h5>
+									  <p style="color:#616060">
+										Access information about exact sales quantities during user-defined Coverage Days.
+									  </p>
+								   </div>
+								</div>
+							 </div>
+
+							 <div class="img_dec shadow mt-4"
+								style="padding: 20px;align-items: center; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									  <span class="fa fa-hand-o-right"
+										 style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									  <h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Real-time Sales Tracking</h5>
+									  <p style="color:#616060">
+										Access information about products’ quantity sold during transit time.<br><br>
+									  </p>
+								   </div>
+								</div>
+							 </div>
+							 <div class="img_dec shadow mt-4"
+								style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									  <span class="fa fa-hand-o-right"
+										 style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									  <h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Storage Capacity-Cost Driven Warehouse Selection for restocking</h5>
+									  <p style="color:#616060">
+										Select preferred warehouse for incoming stock as per storage capacity and convenience during multi-warehouse reordering.
+									  </p>
+								   </div>
+								</div>
+							 </div>
+						</div>
+					</div>
+					<div class="col-lg-12">
+						<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center; border-radius: 10px;">
+							<div class="sh_inner_box d-flex align-items-baseline">
+							   <div class="sh_icon">
+								  <span class="fa fa-hand-o-right"
+									 style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+							   </div>
+							   <div class="sh_dec">
+								  <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Strategic Reordering for Financial and Storage Optimization</h5>
+								  <p style="color:#616060">
+									With customizable coverage days, tailor reordering to match financial and storage capacities, enhancing cost-efficiency, and operations while reducing overheads.
+								  </p>
+							   </div>
+							</div>
+						 </div>
+					 </div>
+				</div>
+			</div>
+		</div>
+	</section>
+	<!-- REAL DEMAND - END -->
+
+	<!-- STOCK REPLENISHMENT - START -->
+	<section class="index-banner shadow-sm position-relative mt40" style="border-top:4px solid #37bbf9; border-radius: 10px; margin-top:20px">
+		<img class="w-100 h-100 position-absolute img-fluid mb16" src="images/etc/5-background.jpg" style="border-radius: 10px; opacity:0.1" />
+		<div class="container p-md-3 p-4 position-relative">
+		<!-- KEY FEATURES START -->
+			<div class="row">
+				<div class="col-lg-12">
+					<div class="container p-4 position-relative">
+						<div class="row align-items-center">
+							<div class="row align-items-center">
+								<div class="col-md-8 text-center text-md-left" style="margin-left: auto;padding-right: 10px; padding-left: 10px;">
+									<h2 class="text-center mb-3" style="font-family: Roboto;font-weight: 500">STOCK REPLENISHMENT</h2>
+									<div class="text-center mb-3">
+										<img src="images/line.png" alt="Advance reordering based on STOCK REPLENISHMENT" width="40%" height="40%">
+									</div>
+								</div>
+								<div class="col-md-4 text-center text-md-left" style="margin-left: auto;padding-right: 140px; padding-left: 10px;">
+									<img src="images/reorder-stock-replenishment.png" alt="Reordering Stock Replenishment" class="w-100" style="border-radius: 10px; box-shadow: 0px 2px 9px 4px #d0cecb;">
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="row text-left">
+                        <div class="col-lg-6">
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Strategic Stock Replenishment</h5>
+                                        <p style="color:#616060; text-align:justify;">
+                                            Prioritize internal demand fulfillment based on real-time sales data, then allocate surplus stock to other warehouses, ensuring optimal resource utilization..
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Custom Warehouse Channels for Internal Logistics</h5>
+                                        <p style="color:#616060">
+                                            Define warehouse channels within the same company to prioritize stock distribution, optimizing internal logistics for an efficient supply chain.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Custom Company Channels for External Warehouses</h5>
+                                        <p style="color:#616060">
+                                            Establish company channels to prioritize stock distribution across warehouses of different companies, fostering enhanced supply chain effectiveness.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Efficient Inventory Distribution</h5>
+                                        <p style="color:#616060">
+                                            Multiple transfers of stock replenishment to multiple warehouses created from the single record.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right"
+                                        style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Strategic Stock Management Options</h5>
+                                        <p style="color:#616060">
+                                            Optimize supply chain with flexible actions, such as prioritizing available stock usage, automating transfers when product/products are out of stock, or allowing manual selection of transfer channels.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right"
+                                        style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Optimized Sales Order Fulfillment</h5>
+                                        <p style="color:#616060">
+                                            Ensures timely fulfillment of customer orders and minimizes stock shortages by automatically replenishing stock from alternate sources when required, improving overall supply chain efficiency.<br><br>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-6">
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center; border-radius: 10px;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right"
+                                        style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Versatile Demand Generation option</h5>
+                                        <p style="color:#616060">
+                                            Utilize Past Sales or Forecasted Sales to generate demands
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right"
+                                        style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Inter Warehouse Transfer</h5>
+                                        <p style="color:#616060">
+                                            Facilitate seamless stock movements between warehouses of the same company through two-step pickings <b>(Source -> Transit -> Destination)</b> or direct transfers <b>(Source -> Destination)</b>, streamlining operations for enhanced efficiency.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Inter Company Transfer</h5>
+                                        <p style="color:#616060">
+                                            It allows stock movements between companies by creating sales orders in the fulfiller company and purchase orders in the requestor company. Along with stock movement it will take care about accounting documents.<br><br>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Easy import feature</h5>
+                                        <p style="color:#616060">
+                                            Create InterCompany and Inter Warehouse Transactions record by importing simple csv files.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                </div>
+                                <div class="sh_dec">
+                                    <h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Easy Return Management</h5>
+                                    <p style="color:#616060">
+                                        Easy interface to return stock back from requestor warehouse to fulfiller warehouse of same company or different company, ensuring flexible inventory management.
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Dropship Efficiency Enhancement</h5>
+                                        <p style="color:#616060">
+                                            Maximize customer satisfaction and minimize transit times by enabling direct delivery from the fulfiller warehouse to customers, if the requestor warehouse desires to deliver orders directly.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-12">
+                    <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center; border-radius: 10px;">
+                        <div class="sh_inner_box d-flex align-items-baseline">
+                            <div class="sh_icon">
+                                <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                            </div>
+                            <div class="sh_dec">
+                                <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Automated Order Fulfillment Amidst Out-of-Stock Situations</h5>
+                                <p style="color:#616060">
+                                    Fulfill orders seamlessly, even when stock is unavailable, by automatically replenishing from alternative warehouses within or outside the company.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-12">
+                    <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px; width: 100%">
+                        <div class="sh_inner_box d-flex align-items-baseline">
+                            <div class="sh_icon">
+                                <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                            </div>
+                            <div class="sh_dec">
+                                <h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Automatic Intercompany Document Processing</h5>
+                                <ul class="list-unstyled pl-0" style="font-size:15px;">
+                                    <font size="4">
+                                        <li class="mb-4" style="list-style: none"><img src="images/forward-arrow.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Automatically process all documents within channels/intercompany transactions based on configurations.</li>
+                                    </font>
+                                    <font size="4">
+                                        <li class="mb-4" style="list-style: none"><img src="images/forward-arrow.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">System will Create / Validate all documents as per configured settings, ensuring smooth workflow execution.</li>
+                                    </font>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+	<!-- STOCK REPLENISHMENT - END -->
+
+
+	<!-- SALES FORECAST - START -->
+    <section class="index-banner shadow-sm position-relative mt40" style="border-top:4px solid #37bbf9; border-radius: 10px; margin-top:20px">
+        <img class="w-100 h-100 position-absolute img-fluid mb16" src="images/etc/5-background.jpg" style="border-radius: 10px; opacity:0.1" />
+        <div class="container p-md-3 p-4 position-relative">
+            <!-- KEY FEATURES START -->
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="container p-4 position-relative">
+						<div class="row align-items-center">
+							<div class="row align-items-center">
+								<div class="col-md-8 text-center text-md-left" style="margin-left: auto;padding-right: 10px; padding-left: 10px;">
+									<h2 class="text-center mb-3" style="font-family: Roboto;font-weight: 500">SALES FORECAST</h2>
+									<div class="text-center mb-3">
+										<img src="images/line.png" alt="SALES FORECAST" width="40%" height="40%">
+									</div>
+								</div>
+								<div class="col-md-4 text-center text-md-left" style="margin-left: auto;padding-right: 140px; padding-left: 10px;">
+									<img src="images/reorder-sales-forecasting.png" alt="SALES FORECAST" class="w-100" style="border-radius: 10px; box-shadow: 0px 2px 9px 4px #d0cecb;">
+								</div>
+							</div>
+						</div>
+					</div>
+                    <div class="row text-left">
+                        <div class="col-lg-6">
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center; border-radius: 10px; width: 100%;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Efficient Historical Sales Data Import</h5>
+                                        <p style="color:#616060; text-align:justify;">
+                                            Import past sales data into the system from csv file.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 19px;line-height: 1.455;font-weight: 600;color: #1e266d;">Diverse Sales Forecasting</h5>
+                                        <p style="color:#616060">
+                                            Customize forecasts to accurately predict future sales for both regular and seasonal sales.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center; border-radius: 10px; width: 100%;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Flexible Sales Data Export</h5>
+                                        <p style="color:#616060">
+                                            Export normal sales or forecast sales
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px";>
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right"
+                                        style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Auto Create  Forecast calculation for Multiple Warehouses</h5>
+                                        <p style="color:#616060">
+                                            Calculate forecasts across multiple warehouses simultaneously.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-12">
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center; border-radius: 10px;">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Sales Forecast Report</h5>
+                                        <ul class="list-unstyled pl-0" style="font-size:15px;">
+                                            <font size="4">
+                                                <li class="mb-4" style="list-style: none"><img src="images/forward-arrow.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Track monthly forecasted sales quantities for each product, providing a clear understanding of potential sales opportunities.</li>
+                                            </font>
+                                            <font size="4">
+                                                <li class="mb-4" style="list-style: none"><img src="images/forward-arrow.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Compare forecasted sales quantities across months for individual products, enhancing performance analysis.</li>
+                                            </font>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-12">
+                            <div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px; width: 100%">
+                                <div class="sh_inner_box d-flex align-items-baseline">
+                                    <div class="sh_icon">
+                                        <span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+                                    </div>
+                                    <div class="sh_dec">
+                                        <h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Sales Forecast v/s Actual Sales</h5>
+                                        <ul class="list-unstyled pl-0" style="font-size:15px;">
+                                            <font size="4">
+                                                <li class="mb-4" style="list-style: none"><img src="images/forward-arrow.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Monthly Forecast Comparison: Analyze forecasted sales for each product across every month.</li>
+                                            </font>
+                                            <font size="4">
+                                                <li class="mb-4" style="list-style: none"><img src="images/forward-arrow.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Monthly Actual Sales Tracking: Stay informed with precise tracking of actual sales data for each product on a monthly basis.</li>
+                                            </font>
+                                            <font size="4">
+                                                <li class="mb-4" style="list-style: none"><img src="images/forward-arrow.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Product-wise Forecast vs. Actual Comparison: Maximize decision-making potential by easily comparing forecasted and actual sales quantities for each product, ensuring optimal performance evaluation.</li>
+                                            </font>
+                                            <font size="4">
+                                                <li class="mb-4" style="list-style: none"><img src="images/forward-arrow.svg" alt="arrow" style="width:15px;margin-right:10px" class="ml-4">Optimize future strategies : Identify discrepancies between forecasted and actual sales to optimize future strategies.</li>
+                                            </font>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+	<!-- SALES FORECAST - END -->
+
+	<!-- REAL DEMAND PLANNER - START -->
+	<section class="index-banner shadow-sm position-relative mt40" style="border-top:4px solid #37bbf9; border-radius: 10px; margin-top:20px">
+		<img class="w-100 h-100 position-absolute img-fluid mb16" src="images/etc/5-background.jpg" style="border-radius: 10px; opacity:0.1" />
+		<div class="container p-md-3 p-4 position-relative">
+			<div class="row">
+				<div class="col-lg-12">
+					<div class="container p-4 position-relative">
+						<div class="row align-items-center">
+							<div class="row align-items-center">
+								<div class="col-md-8 text-center text-md-left" style="margin-left: auto;padding-right: 10px; padding-left: 10px;">
+									<h2 class="text-center mb-3" style="font-family: Roboto;font-weight: 500">SALES FORECAST</h2>
+									<div class="text-center mb-3">
+										<img src="images/line.png" alt="SALES FORECAST" width="40%" height="40%">
+									</div>
+								</div>
+								<div class="col-md-4 text-center text-md-left" style="margin-left: auto;padding-right: 140px; padding-left: 10px;">
+									<img src="images/reorder-real-demand.png" alt="SALES FORECAST" class="w-100" style="border-radius: 10px; box-shadow: 0px 2px 9px 4px #d0cecb;">
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="row text-left">
+						<div class="col-lg-6">
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+									<div class="sh_icon">
+										<span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+									</div>
+									<div class="sh_dec">
+										<h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Automated Reordering with Real Demand</h5>
+										<p style="color:#616060; text-align:justify;">
+											Resolve inventory stockouts and streamline supply chain operations by automating reorder processes based on real demand calculations through a scheduled planner.
+										</p>
+									</div>
+								</div>
+							</div>
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+									<div class="sh_icon">
+										<span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+									</div>
+									<div class="sh_dec">
+										<h5 style="font-size: 19px;line-height: 1.455;font-weight: 600;color: #1e266d;">Ensure Operational Efficiency</h5>
+										<p style="color:#616060">
+											Customize your planning schedule to align with your business needs, specifying how often automated calculations for reordering with real demand should occur.
+										</p>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="col-lg-6">
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+									<div class="sh_icon">
+										<span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+									</div>
+									<div class="sh_dec">
+										<h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Automated Reorder Validation</h5>
+										<p style="color:#616060">
+											Ensure seamless and efficient workflow execution by automating the validation of Reorder based on Real Demand processes, enhancing operational efficiency.
+										</p>
+									</div>
+								</div>
+							</div>
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px";>
+								<div class="sh_inner_box d-flex align-items-baseline">
+									<div class="sh_icon">
+										<span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+									</div>
+									<div class="sh_dec">
+										<h5 style="font-size: 22px;line-height: 1.455;font-weight: 600;color: #1e266d;">Coverage Days Customization</h5>
+										<p style="color:#616060">
+											Specify the duration for inventory maintenance to ensure optimal stock levels, effectively meeting demand fluctuations and minimizing shortages.
+										</p>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="col-lg-12">
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+									<div class="sh_icon">
+										<span class="fa fa-hand-o-right" style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+									</div>
+									<div class="sh_dec">
+										<h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">Customized Vendor Selection</h5>
+										<p style="color:#616060">
+											Enhance performance and profitability by sourcing products from the best vendors tailored to your specific needs, whether for cost savings, quick delivery, or other requirements.
+										</p>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+	<!-- REAL DEMAND PLANNER - END -->
+
+	<!-- ADVANTAGES - START -->
+	<section class="index-banner shadow-sm position-relative mt40" style="border-top:4px solid #37bbf9; border-radius: 10px; margin-top:20px">
+		<img class="w-100 h-100 position-absolute img-fluid mb16" src="images/etc/5-background.jpg" style="border-radius: 10px; opacity:0.1" />
+		<div class="container p-md-3 p-4 position-relative">
+			<div class="row">
+				<div class="col-lg-12">
+					<h2 class="text-center mb-3" style="font-family: Roboto;font-weight: 500">ADVANTAGES</h2>
+					<div class="text-center mb-3">
+						<img src="images/line.png" alt="Advance reordering based on STOCK REPLENISHMENT" width="40%" height="40%">
+					</div>
+					<!-- <div class="col-lg-2">
+					<img src="images/reorder-level.png" alt="Reordering Order Point" class="w-100" style="border-radius: 10px; box-shadow: 0px 2px 9px 4px #d0cecb;">
+					</div> -->
+					<div class="row text-left">
+						<div class="col-lg-6">
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-left: 4px solid #37bbf9; border-radius: 10px; width: 100%;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+									<div class="sh_icon">
+										<span class="fa fa-hand-o-right"
+										style="color:#1e266d; font-weight:600; font-size:22px; padding-right:10px"></span>
+									</div>
+									<div class="sh_dec">
+										<p style="color:#616060; text-align:justify; font-family: Roboto;font-weight: 500;">
+											Avoid bottlenecks throughout the supply chain.
+										</p>
+									</div>
+								</div>
+							</div>
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-left: 4px solid #37bbf9; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+									<div class="sh_icon">
+										<span class="fa fa-hand-o-right"
+										style="color:#1e266d; font-weight:600; font-size:22px; padding-right:10px"></span>
+									</div>
+									<div class="sh_dec">
+										<p style="color:#616060; text-align:justify; font-family: Roboto;font-weight: 500;">
+											Enhance supply chain resilience and avoid nightmares by ensuring the right level of inventory and a reliable, efficient supplier network.
+										</p>
+									</div>
+								</div>
+							</div>
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-left: 4px solid #37bbf9; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+									<div class="sh_icon">
+										<span class="fa fa-hand-o-right"
+										style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+									</div>
+									<div class="sh_dec">
+										<p style="color:#616060; text-align:justify; font-family: Roboto;font-weight: 500;">
+											Avoid out-of-stock nightmares by maintaining the right level of Minimum Quantity.
+										</p>
+									</div>
+								</div>
+							</div>
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-left: 4px solid #37bbf9; border-radius: 10px;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+									<div class="sh_icon">
+										<span class="fa fa-hand-o-right"
+										style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+									</div>
+									<div class="sh_dec">
+										<p style="color:#616060; text-align:justify; font-family: Roboto;font-weight: 500;">
+											Avoid overstock nightmares by maintaining the right level of Maximum Quantity.
+										</p>
+									</div>
+								</div>
+							</div>
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-left: 4px solid #37bbf9; border-radius: 10px;">
+							   <div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									   <span class="fa fa-hand-o-right"
+									   style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									   <p style="color:#616060; text-align:justify; font-family: Roboto;font-weight: 500;">
+										   Adding buffer days aids in avoiding out-of-stock situations during unpredictable shipping delays.
+									   </p>
+								   </div>
+							   </div>
+							</div>
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-left: 4px solid #37bbf9; border-radius: 10px;">
+							   <div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									   <span class="fa fa-hand-o-right"
+									   style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									   <p style="color:#616060; text-align:justify; font-family: Roboto;font-weight: 500;">
+										   Optimize inventory management by aligning reorder levels with current demand patterns and actual sales, enhancing efficiency.
+									   </p>
+								   </div>
+							   </div>
+							</div>
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-left: 4px solid #37bbf9; border-radius: 10px; width: 100%;">
+							   <div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									   <span class="fa fa-hand-o-right"
+									   style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									   <p style="color:#616060; text-align:justify; font-family: Roboto;font-weight: 500;">
+										   Predict future sales of products automatically.
+									   </p>
+								   </div>
+							   </div>
+							</div>
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center; border-left: 4px solid #37bbf9; border-radius: 10px;">
+							   <div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									   <span class="fa fa-hand-o-right"
+									   style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									   <p style="color:#616060; text-align:justify; font-family: Roboto;font-weight: 500;">
+										   Maximize benefits from suppliers by purchasing products in bulk.
+									   </p>
+								   </div>
+							   </div>
+							</div>
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-left: 4px solid #37bbf9; border-radius: 10px; width: 100%;">
+							   <div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									   <span class="fa fa-hand-o-right"
+									   style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									   <p style="color:#616060; text-align:justify; font-family: Roboto;font-weight: 500;">
+										   Free up warehouse space and increase revenue.
+									   </p>
+								   </div>
+							   </div>
+							</div>
+						</div>
+						<div class="col-lg-6">
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-left: 4px solid #37bbf9; border-radius: 10px; width: 100%;">
+								<div class="sh_inner_box d-flex align-items-baseline">
+									<div class="sh_icon">
+										<span class="fa fa-hand-o-right"
+										style="color:#1e266d; font-weight:600; font-size:22px; padding-right:10px"></span>
+									</div>
+									<div class="sh_dec">
+										<p style="color:#616060; text-align:justify; font-family: Roboto;font-weight: 500;">
+											Efficiently utilize warehouse space.
+										</p>
+									</div>
+								</div>
+							</div>
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-left: 4px solid #37bbf9; border-radius: 10px;">
+							   <div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									   <span class="fa fa-hand-o-right"
+									   style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									   <p style="color:#616060; text-align:justify; font-family: Roboto;font-weight: 500;">
+										   Enhance profitability by minimizing unnecessary expenses such as transportation and maintenance, while maximizing profit margins through efficient inventory management.
+									   </p>
+								   </div>
+							   </div>
+							</div>
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-left: 4px solid #37bbf9; border-radius: 10px;">
+							   <div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									   <span class="fa fa-hand-o-right"
+									   style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									   <p style="color:#616060; text-align:justify; font-family: Roboto;font-weight: 500;">
+										   Maintain the best reputation for your business by fostering strong relationships with suppliers.
+									   </p>
+								   </div>
+							   </div>
+							</div>
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center; border-left: 4px solid #37bbf9; border-radius: 10px;">
+							   <div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									   <span class="fa fa-hand-o-right"
+									   style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									   <p style="color:#616060; text-align:justify; font-family: Roboto;font-weight: 500;">
+										   Estimate accurate demand for the selling of seasonal products in the future.
+									   </p>
+								   </div>
+							   </div>
+							</div>
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-left: 4px solid #37bbf9; border-radius: 10px;">
+							   <div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									   <span class="fa fa-hand-o-right"
+									   style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									   <p style="color:#616060; text-align:justify; font-family: Roboto;font-weight: 500;">
+										   The risk of holding obsolete stock is minimized, optimizing capital utilization and reducing write-offs.
+									   </p>
+								   </div>
+							   </div>
+							</div>
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center; border-left: 4px solid #37bbf9; border-radius: 10px;">
+							   <div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									   <span class="fa fa-hand-o-right"
+									   style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									   <p style="color:#616060; text-align:justify; font-family: Roboto;font-weight: 500;">
+										   Reduce inventory holding costs by mitigating overstock situations.
+									   </p>
+								   </div>
+							   </div>
+							</div>
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-left: 4px solid #37bbf9; border-radius: 10px; width: 100%;">
+							   <div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									   <span class="fa fa-hand-o-right"
+									   style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									   <p style="color:#616060; text-align:justify; font-family: Roboto;font-weight: 500;">
+										   Predict future revenue generation.
+									   </p>
+								   </div>
+							   </div>
+							</div>
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-left: 4px solid #37bbf9; border-radius: 10px; width: 100%;">
+							   <div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									   <span class="fa fa-hand-o-right"
+									   style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									   <p style="color:#616060; text-align:justify; font-family: Roboto;font-weight: 500;">
+										   Order based on your financial position and cash availability.
+									   </p>
+								   </div>
+							   </div>
+							</div>
+							<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-left: 4px solid #37bbf9; border-radius: 10px; width: 100%;">
+							   <div class="sh_inner_box d-flex align-items-baseline">
+								   <div class="sh_icon">
+									   <span class="fa fa-hand-o-right"
+									   style="color:#1e266d; font-weight:600; font-size:18px; padding-right:10px"></span>
+								   </div>
+								   <div class="sh_dec">
+									   <p style="color:#616060; text-align:justify; font-family: Roboto;font-weight: 500;">
+										   Ensure higher service levels to customers.
+									   </p>
+								   </div>
+							   </div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+	<!-- ADVANTAGES - END -->
+	
+	<!-- SCREENSHOT - START -->
+	<section class="index-banner shadow-sm position-relative mt40" style="border-top:4px solid #37bbf9; border-radius: 10px;">
+		<img class="w-100 h-100 position-absolute img-fluid mb16" src="images/etc/2-background.jpg" style="border-radius: 10px;" />
+		<div class="container position-relative">
+		<div class="position-relative mb-5">
+			<div class="row mb-3 deep-2 overflow-hidden" style="margin:0px; ">
+				<div class="col-md-12 p-0 overflow-hidden">
+					<ul class="nav nav-tabs nav-fill" style="margin-top: 0px !important;text-align: center;margin: auto;justify-content: space-around;background-color: transparent;" id="myTab" role="tablist">
+						<li class="nav-item" role="presentation">
+							<a class="nav-link active" id="configuration-tab" data-bs-toggle="tab" data-bs-target="#configuration"
+								role="tab" aria-controls="configuration" aria-selected="true" style="color: #0080ff; font-weight: bold;">
+								Configuration
+							</a>
+						</li>
+						<li class="nav-item" role="presentation">
+							<a class="nav-link" id="order-point-tab" data-bs-toggle="tab" data-bs-target="#order-point"
+								role="tab" aria-controls="order-point" aria-selected="false" style="color: #0080ff; font-weight: bold;">
+								Order Point
+							</a>
+						</li>
+						<li class="nav-item" role="presentation">
+							<a class="nav-link" id="real-demand-tab" data-bs-toggle="tab" data-bs-target="#real-demand"
+								role="tab" aria-controls="real-demand" aria-selected="false" style="color: #0080ff; font-weight: bold;">
+								Demand Generation
+							</a>
+						</li>
+						<li class="nav-item" role="presentation">
+							<a class="nav-link" id="stockreplenishment-tab" data-bs-toggle="tab" data-bs-target="#stockreplenishment"
+								role="tab" aria-controls="stockreplenishment" aria-selected="false" style="color: #0080ff; font-weight: bold;">
+								Stock Replenishment
+							</a>
+						</li>
+						<li class="nav-item" role="presentation">
+							<a class="nav-link" id="sales-forecast-tab" data-bs-toggle="tab" data-bs-target="#sales-forecast"
+								role="tab" aria-controls="sales-forecast" aria-selected="false" style="color: #0080ff; font-weight: bold;">
+								Sales Forecast
+							</a>
+						</li>
+						<li class="nav-item" role="presentation">
+							<a class="nav-link" id="smart-reporting-tab" data-bs-toggle="tab" data-bs-target="#smart-reporting"
+								role="tab" aria-controls="smart-reporting" aria-selected="false" style="color: #0080ff; font-weight: bold;">
+								Smart Reporting
+							</a>
+						</li>
+					</ul>
+					
+					<div class="tab-content tab-content text-left px-3 py-5 px-md-5 border border-top-0 bg-white" id="myTabContent">
+						<!-- Configuration START-->
+						<div class="tab-pane fade show active" id="configuration" role="tabpanel" aria-labelledby="configuration-tab">
+							<div class="row o_v_align_col_sm">
+								<div class="col-sm-12">
+									<ul class="list-unstyled pl-0  bg-white" style="font-size:15px;">
+									<li class="d-flex align-items-baseline mb-2 p-3 font-weight-bold" style="border-radius: 10px;font-size: 16px;">
+										<span class="text-center " style="font-size: 40px;font-weight: 400;color: #8482b2;">
+											<section class="oe_container mt32">
+												<div id="demo" class="row carousel slide mt64 mb32" data-bs-ride="carousel">
+													<div class="carousel-inner">
+														<div class="carousel-item active" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/configuration/1.jpg" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/configuration/2.jpg" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/configuration/3.jpg" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/configuration/4.jpg" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/configuration/5.jpg" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+													</div>
+													<a class="carousel-control-prev" href="#demo" data-bs-slide="prev" style="margin-left:-30px; width:35px; color:#000">
+														<span class="carousel-control-prev-icon">
+															<i class="fa fa-arrow-circle-left" style="font-size:24px; color:#704A66"></i>
+														</span>
+													</a>
+													<a class="carousel-control-next" href="#demo" data-bs-slide="next" style="margin-right:-30px; width:35px; color:#000">
+														<span class="carousel-control-next-icon">
+															<i class="fa fa-arrow-circle-right" style="font-size:24px; color:#704A66"></i>
+														</span>
+													</a>
+												</div>
+											</section>
+										</span>
+									</li>
+									</ul>
+								</div>
+							</div>
+						</div>
+						<!-- Configuration END -->
+						
+						<!-- Order Point START -->
+						<div class="tab-pane fade" id="order-point" role="tabpanel" aria-labelledby="order-point-tab">
+							<div class="row o_v_align_col_sm">
+								<div class="col-sm-12">
+									<ul class="list-unstyled pl-0  bg-white" style="font-size:15px;">
+										<li class="d-flex align-items-baseline mb-2 p-3 font-weight-bold" style="border-radius: 10px;font-size: 16px;">
+											<span class="text-center " style="font-size: 40px;font-weight: 400;color: #8482b2;">
+											<section class="oe_container mt32">
+												<div id="demo2" class="row carousel slide mt64 mb32" data-bs-ride="carousel">
+													<div class="carousel-inner">
+														<div class="carousel-item active" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/orderpoint/1.jpg" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/orderpoint/2.jpg" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/orderpoint/3.jpg" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/orderpoint/4.jpg" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/orderpoint/5.jpg" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/orderpoint/6.jpg" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/orderpoint/7.jpg" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/orderpoint/8.jpg" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+													</div>
+													<a class="carousel-control-prev" href="#demo2" data-bs-slide="prev" style="margin-left:-30px; width:35px; color:#000">
+														<span class="carousel-control-prev-icon">
+															<i class="fa fa-arrow-circle-left" style="font-size:24px; color:#704A66"></i>
+														</span>
+													</a>
+													<a class="carousel-control-next" href="#demo2" data-bs-slide="next" style="margin-right:-30px; width:35px; color:#000">
+														<span class="carousel-control-next-icon">
+															<i class="fa fa-arrow-circle-right" style="font-size:24px; color:#704A66"></i>
+														</span>
+													</a>
+												</div>
+											</section>
+											</span>
+										</li>
+									</ul>
+								</div>
+							</div>
+						</div>
+						<!-- Order Point END -->
+
+						<!-- Real Demand START -->
+						<div class="tab-pane fade" id="real-demand" role="tabpanel" aria-labelledby="real-demand-tab">
+							<div class="row o_v_align_col_sm">
+								<div class="col-sm-12">
+									<ul class="list-unstyled pl-0  bg-white" style="font-size:15px;">
+										<li class="d-flex align-items-baseline mb-2 p-3 font-weight-bold" style="border-radius: 10px;font-size: 16px;">
+											<span class="text-center " style="font-size: 40px;font-weight: 400;color: #8482b2;">
+											<!-- Screenshots start -->
+											<section class="oe_container mt32">
+												<div id="demo3" class="row carousel slide mt64 mb32" data-bs-ride="carousel">
+													<div class="carousel-inner">
+														<div class="carousel-item active" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/realdemand/1.jpg" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/realdemand/2.jpg" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/realdemand/3.jpg" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/realdemand/4.jpg" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/realdemand/5.jpg" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/realdemand/6.jpg" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/realdemand/7.jpg" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/realdemand/8.jpg" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/realdemand/9.jpg">
+																</div>
+															</div>
+														</div>
+													</div>
+													<a class="carousel-control-prev" href="#demo3" data-bs-slide="prev" style="margin-left:-30px; width:35px; color:#000">
+														<span class="carousel-control-prev-icon">
+															<i class="fa fa-arrow-circle-left" style="font-size:24px; color:#704A66"></i>
+														</span>
+													</a>
+													<a class="carousel-control-next" href="#demo3" data-bs-slide="next" style="margin-right:-30px; width:35px; color:#000">
+														<span class="carousel-control-next-icon">
+															<i class="fa fa-arrow-circle-right" style="font-size:24px; color:#704A66"></i>
+														</span>
+													</a>
+												</div>
+											</section>
+											</span>
+										</li>
+									</ul>
+								</div>
+							</div>
+						</div>
+						<!-- Real Demand END -->
+
+						<!-- Stock Replenishment START -->
+						<div class="tab-pane fade" id="stockreplenishment" role="tabpanel" aria-labelledby="stockreplenishment-tab">
+							<div class="row o_v_align_col_sm">
+								<div class="col-sm-12">
+									<ul class="list-unstyled pl-0  bg-white" style="font-size:15px;">
+										<li class="d-flex align-items-baseline mb-2 p-3 font-weight-bold" style="border-radius: 10px;font-size: 16px;">
+											<span class="text-center " style="font-size: 40px;font-weight: 400;color: #8482b2;">
+											<!-- Screenshots start -->
+											<section class="oe_container mt32">
+												<div id="demo4" class="row carousel slide mt64 mb32" data-bs-ride="carousel">
+													<div class="carousel-inner">
+														<div class="carousel-item active" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/replenishment/1.jpg"width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/replenishment/2.jpg"width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/replenishment/3.jpg"width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/replenishment/4.jpg"width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/replenishment/5.jpg"width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/replenishment/6.jpg"width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/replenishment/7.jpg"width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/replenishment/8.jpg"width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/replenishment/9.jpg"width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/replenishment/10.jpg"width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/replenishment/11.jpg"width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+													</div>
+													<a class="carousel-control-prev" href="#demo4" data-bs-slide="prev" style="margin-left:-30px; width:35px; color:#000">
+														<span class="carousel-control-prev-icon">
+															<i class="fa fa-arrow-circle-left" style="font-size:24px; color:#704A66"></i>
+														</span>
+													</a>
+													<a class="carousel-control-next" href="#demo4" data-bs-slide="next" style="margin-right:-30px; width:35px; color:#000">
+														<span class="carousel-control-next-icon">
+															<i class="fa fa-arrow-circle-right" style="font-size:24px; color:#704A66"></i>
+														</span>
+													</a>
+												</div>
+											</section>
+											</span>
+										</li>
+									</ul>
+								</div>
+							</div>
+						</div>
+						<!-- Stock Replenishment END -->
+
+						<!-- Sales Forecast START -->
+						<div class="tab-pane fade" id="sales-forecast" role="tabpanel" aria-labelledby="sales-forecast-tab">
+							<div class="row o_v_align_col_sm">
+								<div class="col-sm-12">
+									<ul class="list-unstyled pl-0  bg-white" style="font-size:15px;">
+										<li class="d-flex align-items-baseline mb-2 p-3 font-weight-bold" style="border-radius: 10px;font-size: 16px;">
+											<span class="text-center " style="font-size: 40px;font-weight: 400;color: #8482b2;">
+											<!-- Screenshots start -->
+											<section class="oe_container mt32">
+												<div id="demo5" class="row carousel slide mt64 mb32" data-bs-ride="carousel">
+													<div class="carousel-inner">
+														<div class="carousel-item active" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/salesforecast/1.PNG" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/salesforecast/2.PNG" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/salesforecast/3.PNG" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/salesforecast/4.PNG" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/salesforecast/5.PNG" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/salesforecast/6.PNG" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/salesforecast/7.PNG" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+													</div>
+													<a class="carousel-control-prev" href="#demo5" data-bs-slide="prev" style="margin-left:-30px; width:35px; color:#000">
+														<span class="carousel-control-prev-icon">
+															<i class="fa fa-arrow-circle-left" style="font-size:24px; color:#704A66"></i>
+														</span>
+													</a>
+													<a class="carousel-control-next" href="#demo5" data-bs-slide="next" style="margin-right:-30px; width:35px; color:#000">
+														<span class="carousel-control-next-icon">
+															<i class="fa fa-arrow-circle-right" style="font-size:24px; color:#704A66"></i>
+														</span>
+													</a>
+												</div>
+											</section>
+											</span>
+										</li>
+									</ul>
+								</div>
+							</div>
+						</div>
+						<!-- Sales Forecast END -->
+
+						<!-- Smart Reporting START -->
+						<div class="tab-pane fade" id="smart-reporting" role="tabpanel" aria-labelledby="smart-reporting-tab">
+							<div class="row o_v_align_col_sm">
+								<div class="col-sm-12">
+									<ul class="list-unstyled pl-0  bg-white" style="font-size:15px;">
+										<li class="d-flex align-items-baseline mb-2 p-3 font-weight-bold" style="border-radius: 10px;font-size: 16px;">
+											<span class="text-center" style="font-size: 40px;font-weight: 400;color: #8482b2;">
+											<section class="oe_container mt32">
+												<div id="demo6" class="row carousel slide mt64 mb32" data-bs-ride="carousel">
+													<div class="carousel-inner">
+														<div class="carousel-item active" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/smartreporting/1.PNG" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/smartreporting/2.PNG" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/smartreporting/3.PNG" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/smartreporting/4.PNG" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+														<div class="carousel-item" style="height:auto;">
+															<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+																<div style="border-radius:10px" class="shadow-sm">
+																	<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/screenshots/smartreporting/5.PNG" width="100%" height="100%">
+																</div>
+															</div>
+														</div>
+													</div>
+													<a class="carousel-control-prev" href="#demo6" data-bs-slide="prev" style="margin-left:-30px; width:35px; color:#000">
+														<span class="carousel-control-prev-icon">
+															<i class="fa fa-arrow-circle-left" style="font-size:24px; color:#704A66"></i>
+														</span>
+													</a>
+													<a class="carousel-control-next" href="#demo6" data-bs-slide="next" style="margin-right:-30px; width:35px; color:#000">
+														<span class="carousel-control-next-icon">
+															<i class="fa fa-arrow-circle-right" style="font-size:24px; color:#704A66"></i>
+														</span>
+													</a>
+												</div>
+											</section>
+											</span>
+										</li>
+									</ul>
+								</div>
+							</div>
+						</div>
+						<!-- Smart Reporting END -->
+					</div>
+				</div>
+			</div>
+		</div>
+		</div>
+	</section>
+	<!-- SCREENSHOT - END -->
+</div>
+
+<!-- ProcureMate Pro Solution START-->
+<section class="index-banner shadow-sm position-relative mt40" style="border-top:4px solid #37bbf9; border-radius: 10px; margin-top: 20px;">
+	<div class="container p-md-4 p-4 position-relative">   
+		<div class="col-lg-12">
+			<div class="row text-center">
+				<div class="col-lg-6">
+					<div style="padding: 20px;width: 100%;">
+						<div class="sh_dec">
+							<a href="mailto:sales@procuremate.pro" target="_blank" style="color:#ffffff; font-weight:600;">
+								<img src="images/procuremate-setu-consulting-odoo-erp-consultant.png" width="50%" height="50%">
+							</a>
+						</div>
+					</div>
+				</div>
+				<div class="col-lg-6">
+					<div style="padding: 20px;width: 100%;">
+						<div class="w-100 w-md-75 w-lg-100 my-1 pl-3 text-nowrap text-truncate btn btn-info rounded" style="vertical-align: middle;margin-top:15px">
+							<i class="fa fa-envelope fa-fw" style="font-size:1.2rem;"></i>
+							<a href="mailto:sales@procuremate.pro" target="_blank" style="color:#ffffff; font-weight:600;">sales@procuremate.pro</a>
+						</div>
+					</div>
+				</div>
+				<div class="col-lg-12">
+					<div class="img_dec shadow mt-4" style="padding: 20px;align-items: center;display: inline-flex; border-radius: 10px;">
+						<div class="sh_inner_box d-flex align-items-baseline">
+							<div class="sh_dec">
+								<h5 style="font-size: 20px;line-height: 1.455;font-weight: 600;color: #1e266d;">
+									Revolutionizing Procurement Management with a Comprehensive Tender Management System<br>
+									For more details send mail on sales@procuremate.pro
+								</h5>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div id="procuremate" class="row carousel slide mt64 mb32" data-bs-ride="carousel">
+			<div class="carousel-inner">
+				<div class="carousel-item active" style="height:auto;">
+					<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+						<div style="border-radius:10px" class="shadow-sm">
+							<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/ProcureMate/1.jpg" width="100%" height="100%">
+						</div>
+					</div>
+				</div>
+				<div class="carousel-item" style="height:auto;">
+					<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+						<div style="border-radius:10px" class="shadow-sm">
+							<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/ProcureMate/2.jpg" width="100%" height="100%">
+						</div>
+					</div>
+				</div>
+				<div class="carousel-item" style="height:auto;">
+					<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+						<div style="border-radius:10px" class="shadow-sm">
+							<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/ProcureMate/3.jpg" width="100%" height="100%">
+						</div>
+					</div>
+				</div>
+				<div class="carousel-item" style="height:auto;">
+					<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+						<div style="border-radius:10px" class="shadow-sm">
+							<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/ProcureMate/4.jpg" width="100%" height="100%">
+						</div>
+					</div>
+				</div>
+				<div class="carousel-item" style="height:auto;">
+					<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+						<div style="border-radius:10px" class="shadow-sm">
+							<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/ProcureMate/5.jpg" width="100%" height="100%">
+						</div>
+					</div>
+				</div>
+				<div class="carousel-item" style="height:auto;">
+					<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+						<div style="border-radius:10px" class="shadow-sm">
+							<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/ProcureMate/6.jpg" width="100%" height="100%">
+						</div>
+					</div>
+				</div>
+				<div class="carousel-item" style="height:auto;">
+					<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+						<div style="border-radius:10px" class="shadow-sm">
+							<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/ProcureMate/7.jpg" width="100%" height="100%">
+						</div>
+					</div>
+				</div>
+				<div class="carousel-item" style="height:auto;">
+					<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+						<div style="border-radius:10px" class="shadow-sm">
+							<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/ProcureMate/8.jpg" width="100%" height="100%">
+						</div>
+					</div>
+				</div>
+				<div class="carousel-item" style="height:auto;">
+					<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+						<div style="border-radius:10px" class="shadow-sm">
+							<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/ProcureMate/9.jpg" width="100%" height="100%">
+						</div>
+					</div>
+				</div>
+				<div class="carousel-item" style="height:auto;">
+					<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+						<div style="border-radius:10px" class="shadow-sm">
+							<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/ProcureMate/10.jpg" width="100%" height="100%">
+						</div>
+					</div>
+				</div>
+				<div class="carousel-item" style="height:auto;">
+					<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+						<div style="border-radius:10px" class="shadow-sm">
+							<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/ProcureMate/11.jpg" width="100%" height="100%">
+						</div>
+					</div>
+				</div>
+			</div>
+			<a class="carousel-control-prev" href="#procuremate" data-bs-slide="prev" style="margin-left:-30px; width:35px; color:#000">
+				<span class="carousel-control-prev-icon">
+					<i class="fa fa-arrow-circle-left" style="font-size:24px; color:#704A66"></i>
+				</span>
+			</a>
+			<a class="carousel-control-next" href="#procuremate" data-bs-slide="next" style="margin-right:-30px; width:35px; color:#000">
+				<span class="carousel-control-next-icon">
+					<i class="fa fa-arrow-circle-right" style="font-size:24px; color:#704A66"></i>
+				</span>
+			</a>
+		</div>
+	</div>
+</section>
+<!-- ProcureMate Pro Solution END-->
+
+<!-- Contact Details START-->
+<section class="index-banner shadow-sm position-relative mt40" style="border-top:4px solid #37bbf9; border-radius: 10px; margin-top: 20px;">
+	<img class="w-100 h-100 position-absolute img-fluid mb16" src="images/etc/1-background.jpg" style="border-radius: 10px;" />
+	<div class="container p-md-4 p-4 position-relative">
+		<div class="row align-items-center">
+			<div class="col-lg-4 text-center mb-5 mb-lg-0">
+				<div class="h3 p-2 mb-2 font-weight-bold">Contact Us</div> 
+				<div class="w-100 w-md-75 w-lg-100 my-1 pl-3 text-nowrap text-truncate btn btn-info rounded">
+					<i class="fa fa-envelope fa-fw" style="font-size:1.2rem;"></i>
+					<a href="mailto:support@setuconsulting.com" target="_blank" style="color:#ffffff; font-weight:600;">support@setuconsulting.com</a>
+				</div>
+				<div class="w-100 w-md-75 w-lg-100 my-1 pl-3 text-nowrap text-truncate btn btn-info rounded">
+					<i class="fa fa-skype fa-fw" style="font-size:1.2rem;"></i>
+					<span>Skype: </span>
+					<a href="skype:live:.cid.7abebb3d4adef53f?chat" target="_blank" style="color:#ffffff; font-weight:600;">Setu Consulting</a>
+				</div>
+				<div class="w-100 w-md-75 w-lg-100 m-auto my-1 pl-3 text-nowrap text-truncate btn-light border border-dark rounded" style="line-height: 2.4rem;">
+					<a href="https://setuconsulting.com/contactus" target="_blank">www.setuconsulting.com</a>
+				</div>
+			</div>
+			<div class="col-12 col-lg-4 border-left border-right" style="border-left: 10px;">
+				<div class="h3 p-2 mb-3 text-center font-weight-bold">Odoo Certified Partner</div> 
+				<div class="text-left">
+					<div class="my-3 pl-3 text-nowrap text-truncate lead text-white" data-container="body" data-toggle="popover" data-placement="top">
+						<img src="images/odoo15.png" width="100px" alt="Odoo 15 Certified" title="Odoo 15 Certified"> 
+						<img src="images/odoo16.png" width="100px" alt="Odoo 16 Certified" title="Odoo 16 Certified"> 
+						<img src="images/odoo17.png" width="100px" alt="Odoo 16 Certified" title="Odoo 17 Certified"> 
+					</div>
+				</div>
+			</div>
+			<div class="col-12 col-lg-4 mt-5 mt-lg-0">
+				<div class="h4 p-2 text-center font-weight-bold">Watch and subscribe</div> 
+				<div class="text-center">
+					<a href="https://www.youtube.com/@setuconsulting" target="_blank">
+						<img src="images/youtube.png" width="200px">
+					</a>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+<!-- Contact Details END-->
+
+<!-- Suggested Solution START-->
+<section class="index-banner shadow-sm position-relative mt40" style="border-top:4px solid #37bbf9; border-radius: 10px; margin-top: 20px;">
+	<div class="container p-md-4 p-4 position-relative">   
+		<section class="oe_container mt32">
+			<h3 style='color:#091E42; font-family:"Montserrat"; text-align:center; margin:25px auto; text-transform:uppercase' class="oe_slogan">
+				<b>Suggested Solutions</b>
+			</h3> 
+			<div id="demo9" class="row carousel slide mt64 mb32" data-bs-ride="carousel">
+				<div class="carousel-inner">
+					<div class="carousel-item active" style="height:auto;">
+						<a href="mailto:sales@procuremate.pro" target="_blank">
+						<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+							<div style="border-radius:10px" class="shadow-sm">
+								<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/procurement-management-system-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+							</div>
+						</div>
+						</a>
+					</div>
+					<div class="carousel-item" style="height:auto;">
+						<a href="https://apps.odoocdn.com/apps/modules/17.0/setu_advance_reordering" target="_blank">
+						<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+							<div style="border-radius:10px" class="shadow-sm">
+								<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/advance-reordering-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+							</div>
+						</div>
+						</a>
+					</div>
+					<div class="carousel-item" style="height:auto;">
+						<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+							<div style="border-radius:10px" class="shadow-sm">
+								<a href="https://apps.odoocdn.com/apps/modules/17.0/setu_advance_inventory_reports" target="_blank">
+								<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/advance-inventory-reports-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+								</a>
+							</div>
+						</div>
+					</div>
+					<div class="carousel-item" style="height:auto;">
+						<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+							<div style="border-radius:10px" class="shadow-sm">
+								<a href="https://apps.odoocdn.com/apps/modules/17.0/setu_inventory_count_management" target="_blank">
+								<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/inventory-count-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+								</a>
+							</div>
+						</div>
+					</div>
+					<div class="carousel-item" style="height:auto;">
+						<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+							<div style="border-radius:10px" class="shadow-sm">
+								<a href="https://apps.odoocdn.com/apps/modules/17.0/setu_cash_flow_forecasting" target="_blank">
+								<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/cashforecast-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+								</a>
+							</div>
+						</div>
+					</div>
+					<div class="carousel-item" style="height:auto;">
+						<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+							<div style="border-radius:10px" class="shadow-sm">
+								<a href="https://apps.odoocdn.com/apps/modules/17.0/setu_inventory_ledger_report" target="_blank">
+								<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/inventory-ledger-report-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+								</a>
+							</div>
+						</div>
+					</div>
+					<div class="carousel-item" style="height:auto;">
+						<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+							<div style="border-radius:10px" class="shadow-sm">
+								<a href="https://apps.odoocdn.com/apps/modules/17.0/setu_intercompany_transaction" target="_blank">
+								<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/inter-company-transfer-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+								</a>
+							</div>
+						</div>
+					</div>
+					<div class="carousel-item" style="height:auto;">
+						<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+							<div style="border-radius:10px" class="shadow-sm">
+								<a href="https://apps.odoocdn.com/apps/modules/17.0/setu_rfm_analysis" target="_blank">
+								<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/rfm-analysis-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+								</a>
+							</div>
+						</div>
+					</div>
+					<div class="carousel-item" style="height:auto;">
+						<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+							<div style="border-radius:10px" class="shadow-sm">
+								<a href="https://apps.odoocdn.com/apps/modules/17.0/setu_rma" target="_blank">
+								<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/rma-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+								</a>
+							</div>
+						</div>
+					</div>
+					<div class="carousel-item" style="height:auto;">
+						<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+							<div style="border-radius:10px" class="shadow-sm">
+								<a href="https://apps.odoocdn.com/apps/modules/17.0/setu_inventory_coverage_abc_analysis_report" target="_blank">
+								<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/ineventory-coverage-abc-analysis-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+								</a>
+							</div>
+						</div>
+					</div>
+					<div class="carousel-item" style="height:auto;">
+						<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+							<div style="border-radius:10px" class="shadow-sm">
+								<a href="https://apps.odoocdn.com/apps/modules/17.0/setu_inventory_coverage_report" target="_blank">
+								<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/inventory-coverage-analysis-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+								</a>
+							</div>
+						</div>
+					</div>
+					<div class="carousel-item" style="height:auto;">
+						<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+							<div style="border-radius:10px" class="shadow-sm">
+								<a href="https://apps.odoocdn.com/apps/modules/17.0/setu_customer_consignment" target="_blank">
+								<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/consignment-management-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+								</a>
+							</div>
+						</div>
+					</div>
+					<div class="carousel-item" style="height:auto;">
+						<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+							<div style="border-radius:10px" class="shadow-sm">
+								<a href="https://apps.odoocdn.com/apps/modules/17.0/setu_asset_tracking" target="_blank">
+								<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/asset-tracking-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+								</a>
+							</div>
+						</div>
+					</div>
+					<div class="carousel-item" style="height:auto;">
+						<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+							<div style="border-radius:10px" class="shadow-sm">
+								<a href="https://apps.odoocdn.com/apps/modules/17.0/setu_abc_analysis_reports" target="_blank">
+								<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/abc-sales-analysis-report-setu-consulting-odoo-erp-consultant.jpg.png" width="100%" height="100%">
+								</a>
+							</div>
+						</div>
+					</div>
+					<div class="carousel-item" style="height:auto;">
+						<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+							<div style="border-radius:10px" class="shadow-sm">
+								<a href="https://apps.odoocdn.com/apps/modules/17.0/setu_shopify_connector" target="_blank">
+								<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/odoo-shopify-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+								</a>
+							</div>
+						</div>
+					</div>
+					<div class="carousel-item" style="height:auto;">
+						<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+							<div style="border-radius:10px" class="shadow-sm">
+								<a href="https://apps.odoocdn.com/apps/modules/17.0/setu_woocommerce_connector" target="_blank">
+								<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/woocommerce-odoo-connector-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+								</a>
+							</div>
+						</div>
+					</div>
+					<div class="carousel-item" style="height:auto;">
+						<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+							<div style="border-radius:10px" class="shadow-sm">
+								<a href="https://apps.odoocdn.com/apps/modules/17.0/setu_wayfair_connector" target="_blank">
+								<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/wayfair-connector-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+								</a>
+							</div>
+						</div>
+					</div>
+					<div class="carousel-item" style="height:auto;">
+						<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+							<div style="border-radius:10px" class="shadow-sm">
+								<a href="https://apps.odoocdn.com/apps/modules/17.0/setu_sales_incentive" target="_blank">
+								<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/sales-incentive-commision-management-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+								</a>
+							</div>
+						</div>
+					</div>
+					<div class="carousel-item" style="height:auto;">
+						<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+							<div style="border-radius:10px" class="shadow-sm">
+								<a href="https://apps.odoocdn.com/apps/modules/17.0/setu_sales_product_performance_report" target="_blank">
+								<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/sales-product-perfomance-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+								</a>
+							</div>
+						</div>
+					</div>
+					<div class="carousel-item" style="height:auto;">
+						<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+							<div style="border-radius:10px" class="shadow-sm">
+								<a href="https://apps.odoocdn.com/apps/modules/17.0/setu_sales_purchase_price_tracker" target="_blank">
+								<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/sales-purchase-price-taker-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+								</a>
+							</div>
+						</div>
+					</div>
+					<div class="carousel-item" style="height:auto;">
+						<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+							<div style="border-radius:10px" class="shadow-sm">
+								<a href="https://apps.odoocdn.com/apps/modules/17.0/setu_shipengine_integration" target="_blank">
+								<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/ship-engine-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+								</a>
+							</div>
+						</div>
+					</div>
+					<div class="carousel-item" style="height:auto;">
+						<div class="col-xs-12 col-sm-4 col-md-12 mb16 mt16" style="float:left">
+							<div style="border-radius:10px" class="shadow-sm">
+								<a href="https://apps.odoocdn.com/apps/modules/17.0/shopon_pos_theme" target="_blank">
+								<img class="img img-responsive center-block" style="border-top-left-radius:10px; border-top-right-radius:10px" src="images/solutions_images/shop-on-pos-setu-consulting-odoo-erp-consultant.jpg" width="100%" height="100%">
+								</a>
+							</div>
+						</div>
+					</div>
+				</div>
+				<a class="carousel-control-prev" href="#demo9" data-bs-slide="prev" style="margin-left:-30px; width:35px; color:#000">
+					<span class="carousel-control-prev-icon">
+						<i class="fa fa-arrow-circle-left" style="font-size:24px; color:#704A66"></i>
+					</span>
+				</a>
+				<a class="carousel-control-next" href="#demo9" data-bs-slide="next" style="margin-right:-30px; width:35px; color:#000">
+					<span class="carousel-control-next-icon">
+						<i class="fa fa-arrow-circle-right" style="font-size:24px; color:#704A66"></i>
+					</span>
+				</a>
+			</div>
+		</section>
+	</div>
+</section>
+<!-- Suggested Solution END-->
+
+<section class="index-banner shadow-sm position-relative mt40" style="border-top:4px solid #37bbf9; border-radius: 10px; margin-top: 15px;">
+	<img class="w-100 h-100 position-absolute img-fluid mb16" src="images/etc/2-background.jpg" style="border-radius: 10px;" />
+	<div class="container p-md-3 p-4 position-relative">
+		<div class="row">
+			<div class="col-sm-6 col-md-6 mt-3 px-2 text-center">
+				<div style="border-radius:10px; border-left:4px solid #5A63A6; box-shadow: 0px 2px 9px 4px #d0cecb;">
+					<h5 class="font-weight-bold">FREE SUPPORT</h5>
+					<p class="m-auto w-75" style="line-height: 1.5;font-weight: 100;">We will provide free support for any issues, queries, and bug fixing upto 90 days from the date of purchase of this application. 
+					<a href="mailto:support@setuconsulting.com?subject=Advance Reordering V18.0 - Support Request" target="_blank" class="btn btn-info mx-2 pr-sm-4 mb-2 mb-lg-0" style="text-transform: uppercase; font-size: 14px;"><i class="fa fa-envelope-square mr-sm-2" style="font-size: 20px;vertical-align: middle;"></i> <span class="d-none d-sm-inline">Request free support</span></a>
+					</p>
+				</div>
+			</div>
+			<div class="col-sm-6 col-md-6 mt-3 px-2 text-center">
+				<div style="border-radius:10px; border-left:4px solid #5A63A6; height: 150px; box-shadow: 0px 2px 9px 4px #d0cecb;">
+					<h3 class="font-weight-bold">NOTE</h3>
+					<p class="m-auto w-75" style="line-height: 1.5;font-weight: 100;">
+						Get notified about latest update. Please drop an email when you make purchase at
+						<a href="mailto:info@setuconsulting.com?subject=Advance Reordering V18.0 - New Purchase" class="btn btn-info mx-2 pr-sm-4 mb-2 mb-lg-0" style="text-transform: uppercase; font-size: 14px;"><i class="fa fa-envelope-square mr-sm-2" style="font-size: 20px;vertical-align: middle;"></i> <span class="d-none d-sm-inline">Setu Consulting</span></a>
+					</p>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section id="sec-visual-customization" class="row mb-5 mt-6 p-3 py-5 bg-light shadow justify-content-center" style="border-radius:20px">
+	<img src="images/odoo_images/odoo-services-1.png" class="responsive" style="margin:2px 2px 2px 2px; border-radius: 10px;  box-shadow: -1px 0px 10px 2px #888;" alt="Setu Consulting Services Private Limited | Odoo Certified Consultant | Offical Odoo Partner" title="Setu Consulting Services Private Limited | Odoo Certified Consultant | Offical Odoo Partner">
+</section>
+
+
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+		integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+		crossorigin="anonymous"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+		integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+		crossorigin="anonymous"></script>
+
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+		integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+		crossorigin="anonymous"></script>
+</body>
+</html>

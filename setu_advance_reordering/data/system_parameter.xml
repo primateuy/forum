@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data noupdate="1">
+        <record id="reordering_sale_calculation_base" model="ir.config_parameter">
+            <field name="key">setu_advance_reordering.average_sale_calculation_base</field>
+            <field name="value">quarterly_average</field>
+        </record>
+    </data>
+</odoo>

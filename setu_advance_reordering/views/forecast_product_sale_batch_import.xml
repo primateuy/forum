@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <data>
+        <record id="forecast_product_sale_batch_import_form" model="ir.ui.view">
+            <field name="name">forecast.product.sale.batch.import.form</field>
+            <field name="model">forecast.product.sale.batch.import</field>
+            <field name="arch" type="xml">
+                <form string="Import Forecast Product Sale Batch">
+                    <sheet string="Import Forecast Product Sale Batch">
+                        <group expand="0" string="Import Forecast Product Sale Batch">
+                            <group expand="0">
+                                <field name="name" required="True"/>
+                                <field name="date" required="True"/>
+                                <field name="user_id" required="True"/>
+                                <field name="attachment" filename="attachment_file_name"/>
+                                <field name="attachment_file_name" invisible="1"/>
+                            </group>
+                            <group expand="0">
+                                <field name="warehouse_id"/>
+                                <field name="period_id"/>
+                                <!--                                <field name="state" />-->
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="forecast_product_sale_batch_import_tree" model="ir.ui.view">
+            <field name="name">forecast.product.sale.batch.import.tree</field>
+            <field name="model">forecast.product.sale.batch.import</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="name"/>
+                    <field name="date"/>
+                    <field name="user_id"/>
+                    <field name="attachment"/>
+                    <field name="warehouse_id"/>
+                    <field name="period_id"/>
+                    <!--                    <field name="state"/>-->
+                </tree>
+            </field>
+        </record>
+
+        <record id="action_forecast_product_sale_batch_import" model="ir.actions.act_window">
+            <field name="name">Import Forecast Product Sale Batch</field>
+            <field name="res_model">forecast.product.sale.batch.import</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Import Forecast Product Sale Batch
+                </p>
+            </field>
+        </record>
+
+        <menuitem id="menu_forecast_product_sale_batch_import"
+                  action="action_forecast_product_sale_batch_import"
+                  parent="setu_advance_reordering.menu_sub_sales_forecasting"
+                  sequence="3"/>
+    </data>
+</odoo>

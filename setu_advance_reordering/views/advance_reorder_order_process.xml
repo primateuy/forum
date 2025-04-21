@@ -1,0 +1,369 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="form_advance_reorder_orderprocess" model="ir.ui.view">
+            <field name="name">advance.reorder.orderprocess.form</field>
+            <field name="model">advance.reorder.orderprocess</field>
+            <field name="arch" type="xml">
+                <form string="Advance Reorder with Demand Generation">
+                    <header>
+                        <field name="is_reorder_line_pending" invisible="1"/>
+                        <!--                        <field name="is_request_approval" invisible="1"/>-->
+                        <button name="action_reorder_confirm" string="Validate" type="object"
+                                invisible="state not in ['draft'] or is_reorder_line_pending"
+                                class="btn-primary"/>
+                        <button name="action_recalculate_demand" string="Re-calculate Demand" type="object"
+                                invisible="state not in ['inprogress']" class="btn-primary"/>
+                        <button name="action_reorder_verified" string="Verify" type="object"
+                                invisible="state not in ['inprogress']" class="btn-primary"/>
+                        <!--                        <button name="action_request_for_approval" string="Request for Approval" type="object"-->
+                        <!--                                invisible="state not in ['verified'] or not is_request_approval"-->
+                        <!--                                class="btn-primary"/>-->
+                        <!--                        <button name="action_approve_reorder_process" string="Approve" type="object"-->
+                        <!--                                invisible="state not in ['waiting_for_approval']"-->
+                        <!--                                class="btn-primary"/>-->
+                        <!--                        <button name="action_reject_reorder_process" string="Reject" type="object"-->
+                        <!--                                invisible="state not in ['waiting_for_approval']"/>-->
+                        <button name="action_create_reorder_purchase_order" string="Create PO" type="object"
+                                invisible="state not in ['verified']" class="btn-primary"/>
+                        <button name="action_reorder_cancel" string="Cancel" type="object"
+                                confirm="Are you sure want to cancel advance reorder ?"
+                                invisible="state in ['verified','approved','done','no_data','cancel']"/>
+                        <button name="action_reorder_reset_to_draft" string="Reset to Draft" type="object"
+                                invisible="state != 'cancel'"/>
+                        <button name="create_warehouse_replenishment" string="Create Warehouse Replenishment"
+                                type="object"
+                                invisible="state != 'done' or replenishment_count > 0"/>
+                        <field name="state" widget="statusbar"
+                               statusbar_visible="draft,inprogress,verified,done,cancel"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <field name="purchase_count" invisible="1"/>
+                            <button type="object"
+                                    name="action_purchase_count"
+                                    class="oe_stat_button"
+                                    icon="fa-truck"
+                                    invisible="purchase_count == 0">
+                                <field name="purchase_count" widget="statinfo" string="Purchase Orders"/>
+                            </button>
+                            <button type="object"
+                                    name="action_replenishment_count"
+                                    class="oe_stat_button"
+                                    icon="fa-truck"
+                                    invisible="replenishment_count == 0">
+                                <field name="replenishment_count" widget="statinfo" string="Replenishment"/>
+                            </button>
+                        </div>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" readonly="1"/>
+                            </h1>
+                        </div>
+                        <group readonly="state != 'draft'">
+                            <group readonly="state != 'draft'">
+                                <field name="vendor_id" required="1" readonly="state != 'draft'"/>
+                                <field name="reorder_date" required="1"
+                                       readonly="state != 'draft'"/>
+                                <field name="user_id" readonly="state != 'draft'"/>
+                                <field name="reorder_planner_id" readonly="1"/>
+                                <!--                                <field name="approve_id" attrs="{'invisible':[('is_request_approval','=',False)], 'readonly' : [('state','!=','draft')]}"/>-->
+                            </group>
+                            <group readonly="state != 'draft'"
+                                   string="Reorder for next X days">
+                                <field name="buffer_security_days" required="1"
+                                       readonly="state != 'draft'"/>
+                                <field name="generate_demand_with" required="1"
+                                       readonly="state != 'draft'"/>
+                            </group>
+                        </group>
+                        <group readonly="state != 'draft'">
+                            <group string="Reorder statistics">
+                                <field name="vendor_rule" invisible="1"/>
+                                <field name="currency_id" invisible="1"/>
+                                <!--                                <field name="is_purchase_order_created" invisible="1"/>-->
+                                <field name="minimum_reorder_amount" widget="monetary" readonly="1"
+                                       invisible="vendor_rule not in ['minimum_order_value', 'both']"/>
+                                <field name="reorder_amount" widget="monetary" readonly="1"/>
+                                <label for="reorder_total_volume"/>
+                                <div class="o_row">
+                                    <field name="reorder_total_volume" readonly="1"/>
+                                    <span>
+                                        <field name="volume_uom_name" readonly="1"/>
+                                    </span>
+                                </div>
+                                <!--                                <field name="reorder_total_volume" readonly="1" attrs="{'invisible' : [('reorder_total_volume','=',0.0)]}"/>-->
+                            </group>
+                            <group string="Choose date to calculate Average sales"
+                                   invisible="generate_demand_with == 'forecast_sales'">
+                                <field name="sales_start_date"
+                                       readonly="state != 'draft'" required="generate_demand_with == 'history_sales'"/>
+                                <field name="sales_end_date"
+                                       readonly="state != 'draft'" required="generate_demand_with == 'history_sales'"/>
+                                <field name="reorder_demand_growth"/>
+                            </group>
+                            <!--                            <group string="Choose forecast periods to calculate average sales"-->
+                            <!--                                   attrs="{'invisible' : [('generate_demand_with','=','history_sales')]}">-->
+                            <!--                                <field name="forecast_period_ids" widget="many2many_tags" attrs="{'readonly' : [('state','!=','draft')]}" />-->
+                            <!--                            </group>-->
+                        </group>
+                        <notebook colspan="4">
+                            <page string="Products" name="reorder_product" colspan="4">
+                                <field name="computed_product_ids" invisible="1"/>
+                                <field name="product_ids" nolabel="1" required="1"
+                                       readonly="state != 'draft'" domain="[('id','in',computed_product_ids)]"/>
+                            </page>
+                            <page string="Configurations" name="reorder_configuration" colspan="4">
+                                <field name="config_ids" nolabel="1" required="1"
+                                       readonly="state != 'draft'">
+                                    <tree string="Configuration" editable="bottom">
+                                        <field name="warehouse_group_id" required="1"/>
+                                        <field name="default_warehouse_id" required="1"
+                                               domain="[('warehouse_group_ids','in',warehouse_group_id)]"/>
+                                        <field name="vendor_lead_days" required="1"/>
+                                        <field name="order_date" readonly="1" force_save="True"/>
+                                        <field name="order_arrival_date" readonly="1" force_save="True"/>
+                                        <field name="advance_stock_start_date" readonly="1" force_save="True"/>
+                                        <field name="advance_stock_end_date" readonly="1" force_save="True"/>
+                                    </tree>
+                                    <form string="Configuration">
+                                        <group>
+                                            <group>
+                                                <field name="warehouse_group_id" required="1"/>
+                                                <field name="default_warehouse_id" required="1"/>
+                                            </group>
+                                            <group>
+                                                <field name="vendor_lead_days" required="1"/>
+                                                <field name="order_date" readonly="1" force_save="True"/>
+                                                <field name="order_arrival_date" readonly="1" force_save="True"/>
+                                            </group>
+                                        </group>
+                                    </form>
+                                </field>
+                            </page>
+                            <page string="Demand Calculation" name="reorder_lines" colspan="4"
+                                  invisible="not line_ids">
+                                <field name="line_ids" nolabel="1"
+                                       readonly="state in ['done','cancel','verified']">
+                                    <tree string="Reorder Line" editable="bottom" create="false">
+                                        <field name="product_id" readonly="1" force_save="True"/>
+                                        <field name="warehouse_group_id" readonly="1" force_save="True"/>
+                                        <!--                                        <field name="carton_qty" readonly="1" force_save="True"/>-->
+                                        <field name="average_daily_sale"
+                                               column_invisible="parent.generate_demand_with == 'forecast_sales'"
+                                               readonly="1" force_save="True"/>
+                                        <field name="available_stock" readonly="1" force_save="True"/>
+                                        <field name="incoming_qty" readonly="1" force_save="True"/>
+                                        <button class="oe_stat_button, oe_inline" name="action_incoming_qty_stock_move"
+                                                type="object" icon="fa-exchange" help="Stock Move"/>
+                                        <field name="transit_time_sales" readonly="1" force_save="True"/>
+                                        <field name="stock_after_transit" readonly="1" force_save="True"/>
+                                        <field name="expected_sales" readonly="1" force_save="True"/>
+                                        <field name="demanded_qty" readonly="1" force_save="True"/>
+                                        <field name="demand_adjustment_qty"/>
+                                        <field name="wh_sharing_percentage" column_invisible="True"/>
+                                    </tree>
+                                    <form string="Reorder Lines" create="false">
+                                        <group>
+                                            <group>
+                                                <field name="product_id"/>
+                                                <field name="warehouse_group_id"/>
+                                                <!--                                                <field name="carton_qty"/>-->
+                                                <field name="average_daily_sale"
+                                                       invisible="parent.generate_demand_with == 'forecast_sales'"/>
+                                                <field name="available_stock"/>
+                                                <field name="incoming_qty"/>
+                                                <field name="wh_sharing_percentage"/>
+                                            </group>
+                                            <group>
+                                                <field name="transit_time_sales"/>
+                                                <field name="stock_after_transit"/>
+                                                <field name="expected_sales"/>
+                                                <field name="demanded_qty"/>
+                                                <field name="demand_adjustment_qty"/>
+                                                <!--                                                <field name="demanded_cartoon_qty"/>-->
+
+                                            </group>
+                                        </group>
+                                    </form>
+                                </field>
+                            </page>
+                            <page string="Missing Forecast Sale" name="reorder_not_forecast" colspan="4"
+                                  invisible="not non_forecast_ids">
+                                <button name="action_reorder_create_forecast_sale" string="Create Forecast Sale"
+                                        type="object"
+                                        class="btn-primary"/>
+
+                                <button name="action_reorder_import_forecast_sale" string="Import Forecast Sale"
+                                        type="object"/>
+                                <field name="non_forecast_ids" nolabel="1"
+                                       readonly="state not in ['draft', 'inprogress']">
+                                    <tree string="Forecast Sale" editable="bottom">
+                                        <field name="product_id" readonly="1" force_save="True"/>
+                                        <field name="warehouse_id" readonly="1" force_save="True"/>
+                                        <field name="period_id" readonly="1" force_save="True"/>
+                                        <field name="forecast_qty"/>
+                                    </tree>
+                                    <form>
+                                        <group>
+                                            <field name="product_id"/>
+                                            <field name="warehouse_id"/>
+                                            <field name="period_id"/>
+                                            <field name="forecast_qty"/>
+                                        </group>
+                                    </form>
+                                </field>
+                            </page>
+                            <page string="Summary" name="reorder_summary" colspan="4"
+                                  invisible="not summary_ids">
+                                <field name="summary_ids" nolabel="1" readonly="1">
+                                    <tree string="Summary">
+                                        <field name="product_id"/>
+                                        <field name="product_volume"/>
+                                        <field name="volume_uom_name" string="Volume UOM"/>
+                                        <field name="product_weight"/>
+                                        <field name="weight_uom_name" string="Weight UOM"/>
+                                        <field name="demanded_qty"/>
+                                        <field name="vendor_moq"/>
+                                        <field name="order_qty"/>
+                                        <field name="uom_id"/>
+                                        <field name="to_be_ordered_in_purchase_uom"/>
+                                        <field name="uom_po_id"/>
+                                        <field name="total_volume"/>
+                                        <field name="volume_uom_name" string="Volume UOM"/>
+                                        <field name="is_order_moq" column_invisible="True"/>
+                                    </tree>
+                                    <form>
+                                        <group>
+                                            <group>
+                                                <field name="product_id"/>
+                                                <label for="product_volume"/>
+                                                <div class="o_row">
+                                                    <field name="product_volume"/>
+                                                    <span>
+                                                        <field name="volume_uom_name"/>
+                                                    </span>
+                                                </div>
+                                                <label for="product_weight"/>
+                                                <div class="o_row">
+                                                    <field name="product_weight"/>
+                                                    <span>
+                                                        <field name="weight_uom_name"/>
+                                                    </span>
+                                                </div>
+                                            </group>
+                                            <group>
+                                                <field name="demanded_qty"/>
+                                                <field name="vendor_moq"/>
+                                                <label for="total_volume"/>
+                                                <div class="o_row">
+                                                    <field name="total_volume"/>
+                                                    <span>
+                                                        <field name="volume_uom_name"/>
+                                                    </span>
+                                                </div>
+                                                <field name="is_order_moq" invisible="1"/>
+                                            </group>
+                                        </group>
+                                    </form>
+                                </field>
+                            </page>
+                            <!--                            <page string="Classification" name="reorder_classification" colspan="4" attrs="{'invisible':[('reorder_classification_ids','=',[])]}">-->
+                            <!--                                <field name="reorder_classification_ids" nolabel="1" readonly="1">-->
+                            <!--                                    <tree string="Classification">-->
+                            <!--                                        <field name="product_id" widget="many2onebutton"/>-->
+                            <!--                                        <field name="warehouse_id" widget="many2onebutton"/>-->
+                            <!--                                        <field name="turnover_ratio"/>-->
+                            <!--                                        <field name="fsn_classification"/>-->
+                            <!--                                    </tree>-->
+                            <!--                                    <form>-->
+                            <!--                                        <group>-->
+                            <!--                                            <group>-->
+                            <!--                                                <field name="product_id" />-->
+                            <!--                                                <field name="warehouse_id"/>-->
+                            <!--                                            </group>-->
+                            <!--                                            <group>-->
+                            <!--                                                <field name="turnover_ratio"/>-->
+                            <!--                                                <field name="fsn_classification"/>-->
+                            <!--                                            </group>-->
+                            <!--                                        </group>-->
+                            <!--                                    </form>-->
+                            <!--                                </field>-->
+                            <!--                            </page>-->
+                            <!--                            <page string="Stock Movement" name="reorder_stock_movement" colspan="4" attrs="{'invisible':[('reorder_stock_movement_ids','=',[])]}">-->
+                            <!--                                <field name="reorder_stock_movement_ids" nolabel="1" readonly="1">-->
+                            <!--                                    <tree string="Stock Movement">-->
+                            <!--                                        <field name="product_id" widget="many2onebutton"/>-->
+                            <!--                                        <field name="warehouse_id" widget="many2onebutton"/>-->
+                            <!--                                        <field name="opening_stock"/>-->
+                            <!--                                        <field name="sales"/>-->
+                            <!--                                        <field name="sales_return"/>-->
+                            <!--                                        <field name="purchase"/>-->
+                            <!--                                        <field name="purchase_return"/>-->
+                            <!--                                        <field name="internal_in" />-->
+                            <!--                                        <field name="internal_out"/>-->
+                            <!--                                        <field name="adjustment_in"/>-->
+                            <!--                                        <field name="adjustment_out"/>-->
+                            <!--                                        <field name="production_in" optional="hide"/>-->
+                            <!--                                        <field name="production_out" optional="hide"/>-->
+                            <!--                                        <field name="transit_in" optional="hide"/>-->
+                            <!--                                        <field name="transit_out" optional="hide"/>-->
+                            <!--                                        <field name="closing_stock"/>-->
+                            <!--                                    </tree>-->
+                            <!--                                    <form>-->
+                            <!--                                        <group>-->
+                            <!--                                            <group>-->
+                            <!--                                                <field name="product_id" />-->
+                            <!--                                                <field name="warehouse_id"/>-->
+                            <!--                                                <field name="opening_stock"/>-->
+                            <!--                                                <field name="sales"/>-->
+                            <!--                                                <field name="sales_return"/>-->
+                            <!--                                                <field name="purchase"/>-->
+                            <!--                                                <field name="purchase_return"/>-->
+                            <!--                                                <field name="internal_in"/>-->
+                            <!--                                            </group>-->
+                            <!--                                            <group>-->
+                            <!--                                                <field name="internal_out"/>-->
+                            <!--                                                <field name="adjustment_in"/>-->
+                            <!--                                                <field name="adjustment_out"/>-->
+                            <!--                                                <field name="production_in"/>-->
+                            <!--                                                <field name="production_out"/>-->
+                            <!--                                                <field name="transit_in"/>-->
+                            <!--                                                <field name="transit_out"/>-->
+                            <!--                                                <field name="closing_stock"/>-->
+                            <!--                                            </group>-->
+                            <!--                                        </group>-->
+                            <!--                                    </form>-->
+                            <!--                                </field>-->
+                            <!--                            </page>-->
+                        </notebook>
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids"/>
+                        <field name="message_ids"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
+        <record id="tree_advance_reorder_orderprocess" model="ir.ui.view">
+            <field name="name">advance.reorder.orderprocess.tree</field>
+            <field name="model">advance.reorder.orderprocess</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="name"/>
+                    <field name="vendor_id"/>
+                    <field name="reorder_date"/>
+                    <field name="user_id"/>
+                    <field name="state"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="actions_advance_reorder_orderprocess" model="ir.actions.act_window">
+            <field name="name">Advance Reorder with Real Demand</field>
+            <field name="res_model">advance.reorder.orderprocess</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+    </data>
+</odoo>

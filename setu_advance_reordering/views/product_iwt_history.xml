@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <data>
+        <record id="product_iwt_history_tree" model="ir.ui.view">
+            <field name="name">product.iwt.history.tree</field>
+            <field name="model">product.iwt.history</field>
+            <field name="arch" type="xml">
+                <tree string="Product IWT History">
+                    <field name="product_id"/>
+                    <field name="warehouse_id"/>
+                    <field name="orderpoint_id"/>
+                    <field name="picking_id" readonly="1"/>
+                    <field name="date" readonly="1" optional="show"/>
+                    <field name="qty" readonly="1" optional="show"/>
+                    <field name="lead_time" readonly="1" optional="show"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="product_iwt_history_search" model="ir.ui.view">
+            <field name="name">product.iwt.history.search</field>
+            <field name="model">product.iwt.history</field>
+            <field name="arch" type="xml">
+                <search string="Product IWT History">
+                    <field name="product_id"/>
+                    <field name="warehouse_id"/>
+                    <field name="orderpoint_id"/>
+                    <field name="date"/>
+                    <separator/>
+                    <filter string="Warehouse" context="{'group_by':'warehouse_id'}" name="warehouse_id_groupby"/>
+                    <filter string="Product" context="{'group_by':'product_id'}" name="product_id_groupby"/>
+                    <filter string="Date" context="{'group_by':'date'}" name="date_groupby"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="product_iwt_history_graph" model="ir.ui.view">
+            <field name="name">product.iwt.history.graph</field>
+            <field name="model">product.iwt.history</field>
+            <field name="arch" type="xml">
+                <graph string="Product iwt History Analysis" type="bar" stacked="False">
+                    <field name="warehouse_id" type="col"/>
+                    <field name="date" type="row"/>
+                    <field name="qty" type="measure"/>
+                </graph>
+            </field>
+        </record>
+
+        <record id="product_iwt_history_pivot" model="ir.ui.view">
+            <field name="name">product.iwt.history.pivot</field>
+            <field name="model">product.iwt.history</field>
+            <field name="arch" type="xml">
+                <pivot string="Product iwt History Analysis">
+                    <field name="warehouse_id" type="col"/>
+                    <field name="date" type="row"/>
+                    <field name="qty" type="measure"/>
+                </pivot>
+            </field>
+        </record>
+
+        <record id="product_iwt_history_action" model="ir.actions.act_window">
+            <field name="name">Product IWT Analysis</field>
+            <field name="res_model">product.iwt.history</field>
+            <field name="binding_view_types">tree,graph</field>
+            <field name="view_mode">tree,pivot,graph</field>
+            <field name="context">{
+                'graph_groupbys': ['date:month', 'warehouse_id'],
+                'pivot_row_groupby': ['warehouse_id', 'product_id'],
+                'pivot_column_groupby': ['date:month'],
+                'pivot_measures': ['qty']
+                }
+            </field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="from_product_advance_reorder_view" model="ir.ui.view">
+            <field name="name">product.product.advance.reorder.form</field>
+            <field name="model">product.product</field>
+            <field name="inherit_id" ref="product.product_normal_form_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//group[@name='packaging']" position="inside">
+                    <group string="Advance Reorder Process" name="advance_reorder_process">
+                        <field name="follow_vendor_moq_rule"/>
+                        <field name="capping_qty"/>
+                    </group>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="update_orderpoint_product_advance_reorder_view" model="ir.ui.view">
+            <field name="name">update.orderpoint.product.product.advance.reorder.form</field>
+            <field name="model">product.product</field>
+            <field name="inherit_id" ref="product.product_normal_form_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//notebook" position="inside">
+                    <page string="Advance Reordering">
+                        <group name="orderpoints_config">
+                            <group name="update_orderpoints">
+                                <field name="update_orderpoint"/>
+                            </group>
+                            <group>
+                            </group>
+                        </group>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="product_supplierinfo_advance_reorder_form_view" model="ir.ui.view">
+            <field name="name">product.supplierinfo.advance.reorder.form</field>
+            <field name="model">product.supplierinfo</field>
+            <field name="inherit_id" ref="product.product_supplierinfo_form_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//label[@for='price']" position="before">
+                    <label for="reorder_minimum_quantity"/>
+                    <div class="o_row">
+                        <field name="reorder_minimum_quantity"/>
+                        <field name="product_uom" groups="uom.group_uom"/>
+                    </div>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="product_supplierinfo_advance_reorder_tree_view" model="ir.ui.view">
+            <field name="name">product.supplierinfo.advance.reorder.form</field>
+            <field name="model">product.supplierinfo</field>
+            <field name="inherit_id" ref="product.product_supplierinfo_tree_view"/>
+            <field name="arch" type="xml">
+                <field name="price" position="after">
+                    <field name="reorder_minimum_quantity" optional=""/>
+                </field>
+            </field>
+        </record>
+    </data>
+</odoo>

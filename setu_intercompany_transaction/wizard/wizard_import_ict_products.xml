@@ -1,0 +1,55 @@
+<odoo>
+    <record id="form_wizard_import_ict_lines" model="ir.ui.view">
+        <field name="name">form.wizard.import.ict.product</field>
+        <field name="model">wizard.import.ict.product</field>
+        <field name="arch" type="xml">
+            <form string="Import Intercompany Lines">
+                <group>
+                        <p colspan="2" style="margin-left: 10px !important;">
+                            <li>
+                                Comma Separated Values (.CSV)
+                            </li>
+                            <li>
+                                Columns name must be the same as described in the sample files
+                            </li>
+                            <li>
+                                <a href="/setu_intercompany_transaction/static/templates/ict_line_import.csv" class="ml4">
+                                    <i class="fa fa-download mr4"/>
+                                    Download Inter Company Transfer Line Sample Template
+                                </a>
+                            </li>
+                            <li>
+                                <a href="/setu_intercompany_transaction/static/templates/iwt_line_import.csv" class="ml4">
+                                    <i class="fa fa-download mr4"/>
+                                    Download Inter Warehouse Transfer Line Sample Template
+                                </a>
+                            </li>
+                        </p>
+                </group>
+                <group>
+                    <group>
+                        <field name="file_data" filename="file_name" widget="binary" required="1" class="oe_inline"/>
+                    </group>
+                    <field name="file_name" invisible="1"/>
+                </group>
+                <footer>
+                    <button string="Import" name="import_button" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="oe_link" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_wizard_import_ict_product" model="ir.actions.act_window">
+        <field name="name">Import Lines</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">wizard.import.ict.product</field>
+        <!-- binding_model_id evaluated to False
+        to remove it in existing db's as it was bug-prone -->
+        <field name="binding_model_id" eval="False"/>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="form_wizard_import_ict_lines"/>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

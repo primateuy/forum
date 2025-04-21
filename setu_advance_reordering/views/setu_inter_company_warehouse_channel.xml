@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!--        <record id="setu_intercompany_channel_inherit_view" model="ir.ui.view">-->
+        <!--            <field name="name">setu.intercompany.channel.advance.reorder.inherit.view</field>-->
+        <!--            <field name="model">setu.intercompany.channel</field>-->
+        <!--            <field name="inherit_id" ref="setu_intercompany_transaction.setu_intercompany_channel_form"/>-->
+        <!--            <field name="arch" type="xml">-->
+        <!--                <field name="direct_deliver_to_customer" position="after">-->
+        <!--                    <field name="procurement_lead_days"/>-->
+        <!--                </field>-->
+        <!--            </field>-->
+        <!--        </record>-->
+
+        <record id="setu_interwarehouse_channel_inherit_view" model="ir.ui.view">
+            <field name="name">setu.interwarehouse.channel.advance.reorder.inherit.view</field>
+            <field name="model">setu.interwarehouse.channel</field>
+            <field name="inherit_id" ref="setu_intercompany_transaction.setu_interwarehouse_channel_form"/>
+            <field name="arch" type="xml">
+                <field name="ict_user_id" position="after">
+                    <field name="procurement_lead_days"/>
+                </field>
+            </field>
+        </record>
+    </data>
+</odoo>
