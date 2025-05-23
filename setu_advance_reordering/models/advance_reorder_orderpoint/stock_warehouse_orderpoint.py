@@ -368,6 +368,7 @@ class StockWarehouseOrderpoint(models.Model):
             'summary': activity_type.summary,
             'automated': True,
             'date_deadline': datetime.today().strftime('%Y-%m-%d'),
+            # 'note': activity_type.default_description,
             'res_model_id': model.id,
             'res_id': self.id,
             'user_id': self.env.user.id
