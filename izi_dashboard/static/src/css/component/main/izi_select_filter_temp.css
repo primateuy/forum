@@ -1,0 +1,193 @@
+/* Filter */
+.izi_analysis_filter_temp_container {
+    display: block;
+    float: right;
+}
+.izi_analysis_filter_temp{
+    float: right;
+    display: flex;
+    border-radius: 6px;
+    margin-left: 2px;
+}
+.izi_analysis_filter_temp .izi_dashboard_filter_content{
+    min-width: 0px;
+    width: 0px;
+    opacity: 0;
+    z-index: 0;
+    overflow: hidden;
+}
+/* .izi_analysis_filter_temp .izi_dashboard_filter_content a.select2-choice {
+    display: none;
+} */
+.izi_analysis_filter_temp .izi_analysis_filter_temp_title {
+    font-weight: 600;
+    font-size: 13px;
+    height: 32px;
+    line-height: 30px;
+    background: transparent;
+    border: 1px solid transparent;
+    display: block;
+    color: #AAAAAA;
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+    margin-top: 0px;
+    cursor: pointer;
+}
+.izi_analysis_filter_temp:hover .izi_analysis_filter_temp_title,
+.izi_analysis_filter_temp.active .izi_analysis_filter_temp_title  {
+    font-weight: 600;
+    font-size: 13px;
+    height: 32px;
+    line-height: 30px;
+    background: white;
+    border: 1px solid #ced4da;
+    display: block;
+    color: #666666;
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+    margin-top: 0px;
+    cursor: pointer;
+}
+.izi_analysis_filter_temp.active .izi_analysis_filter_temp_title  {
+    border-right: none;
+}
+.izi_analysis_filter_temp .izi_input {
+    border: none;
+    width: 100px;
+    padding: 0px;
+    font-weight: 300;
+    color: #666666;
+}
+.izi_analysis_filter_temp .izi_input::placeholder {
+    color: #444;
+    font-weight: 300;
+}
+.izi_analysis_filter_temp .izi_select2 .select2-choices {
+    border: none;
+}
+.izi_analysis_filter_temp .izi_select2.select2-container-multi .select2-choices .select2-search-field input {
+    margin-left: 10px;
+}
+.izi_analysis_filter_temp .o_datepicker {
+    display: inline-block;
+    margin-left: 10px;
+    margin-right: 10px;
+}
+.izi_analysis_filter_temp_content .izi_dropdown {
+    height: 30px;
+    line-height: 30px;
+    margin: 0px 10px;
+}
+.izi_analysis_filter_temp_title.izi_dropdown {
+    margin: 0px;
+}
+.izi_analysis_filter_temp .izi_dropdown button {
+    font-weight: 300;
+    background: none;
+    outline: none;
+    color: #666666;
+    font-size: 13px;
+}
+.izi_analysis_filter_temp .izi_dropdown .dropdown-toggle::after {
+    vertical-align: 0.1em;
+}
+.izi_analysis_filter_temp span.material-icons-outlined {
+    line-height: 30px;
+    font-size: 18px;
+    padding: 0px 6px;
+}
+.izi_analysis_filter_temp .izi_analysis_filter_temp_title .dropdown-toggle::after {
+    display: none;
+}
+.izi_analysis_filter_temp .dropdown-item {
+    cursor: pointer;
+    height: 32px;
+    line-height: 16px;
+}
+.izi_analysis_filter_temp .izi_analysis_filter_temp_title .dropdown-item.active {
+    background: #666666;
+    color: white;
+}
+.izi_analysis_filter_temp {
+    /* opacity: 0.2; */
+    /* overflow: hidden; */
+}
+.izi_analysis_filter_temp:hover,
+.izi_analysis_filter_temp.active {
+    opacity: 1;
+}
+.izi_analysis_filter_temp_content {
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+    height: 32px;
+    overflow: hidden;
+    width: 0px;
+    border: none;
+}
+.izi_analysis_filter_temp.active .izi_analysis_filter_temp_title {
+    border-top-right-radius: 0px;
+    border-bottom-right-radius: 0px;
+}
+.izi_analysis_filter_temp.active .izi_analysis_filter_temp_content{
+    overflow: visible;
+    width: auto;
+    border: 1px solid #ced4da;
+}
+
+.izi_view .izi_analysis_filter_temp_content input.izi_datepicker {
+    color: #666666;
+}
+.izi_view .izi_analysis_filter_temp_content  .izi_datepicker::placeholder {
+    color: #666666;
+    opacity: 1;
+}
+
+.izi_analysis_filter_temp_content .dynamic_filter_button {
+    border-radius: 5px !important;
+    border: 1px solid #666666;
+    height: 25px;
+    margin-inline: 5px;
+    margin-block: 2.5px;
+    padding-right: 0;
+    background-color: unset;
+}
+.izi_analysis_filter_temp_content .dynamic_filter_button .close-btn{
+    border-left: 1px solid #d44c59;
+    color: #d44c59;
+    padding-inline: 5px;
+    font-size: 13px;
+    background-color: unset;
+}
+
+.izi_analysis_filter_temp .input_container {
+    position: relative;
+    display: inline-block;
+}
+
+.izi_analysis_filter_temp .input_container button {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    border: none;
+    background-color: transparent;
+    padding: 0 5px;
+    cursor: pointer;
+}
+
+#izi_analysis_filter_temp_limit #izi_limit_input {
+    border: 0px;
+    height: 32px;
+}
+
+#izi_analysis_filter_temp_limit #izi_limit_input input#izi_limit_input_number {
+    width: 80px;
+    height: 32px;
+    border-top-left-radius: 0px;
+    border-bottom-left-radius: 0px;
+    font-size: 13px;
+}

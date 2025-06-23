@@ -1,0 +1,10 @@
+.izi_current_sort_item .dropdown-toggle  {
+    text-transform: uppercase;
+    font-size: 10px !important;
+    font-weight: 600;
+    line-height: 20px;
+}
+.izi_current_sort .izi_current_sort_item{
+    display: flex;
+    margin-bottom: 5px;
+}

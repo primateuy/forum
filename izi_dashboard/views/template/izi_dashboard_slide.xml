@@ -1,0 +1,236 @@
+<odoo>
+    <template id="izi_dashboard_slide" name="Dashboard Slide">
+        <t t-call="web.layout">
+            <t t-set="no_header" t-value="True"/>
+            <t t-set="no_footer" t-value="True"/>
+             <t t-set="head">
+                <t t-call-assets="web.assets_backend" t-css="false"/>
+                
+                <link rel="stylesheet" href="/izi_dashboard/static/lib/google/icon.css"/>
+                <link rel="stylesheet" href="/izi_dashboard/static/src/css/component/general/izi_slide.css"/>
+                <link rel="stylesheet" type="text/css" href="/web/static/src/libs/fontawesome/css/font-awesome.css"/>
+                <link rel="stylesheet" href="/izi_dashboard/static/lib/reveal/dists/reset.css"/>
+                <link rel="stylesheet" href="/izi_dashboard/static/lib/reveal/dists/reveal.css"/>
+                <link rel="stylesheet" href="/izi_dashboard/static/src/css/component/general/izi_view.css"/>
+                <link rel="stylesheet" href="/izi_dashboard/static/src/css/component/general/izi_button.css"/>
+                <link rel="stylesheet" t-att-href="'/izi_dashboard/static/lib/reveal/dists/theme/'+str(global_data['theme'])+'.css'"/>
+                <link rel="stylesheet" href="/izi_dashboard/static/lib/reveal/plugin/highlight/monokai.css"/>
+                <span style="display:none" id="dashboard_id"><t t-esc="global_data['dashboard_id']"/></span>
+            </t>
+            <t t-set="title">Presentation</t>
+            <t t-if="global_data['is_repeat']">
+                <t t-set="loop" t-value="'true'"/>
+            </t>
+            <t t-else="">
+                <t t-set="loop" t-value="'false'"/>
+            </t>
+            <body>
+                <div class="reveal">
+                    <div class="slides" style="width:90vw !important">
+                        <t t-foreach="data" t-as="rec">
+                            <t t-if="rec['layout'] == 'title'">
+                                <section t-att-data-transition="global_data['transition']" 
+                                    t-att-data-background-image="rec['bg_attachment_url']"
+                                    >
+                                    <img t-att-src="rec['logo_url']" height="100"/>
+                                    <div t-att-style="('' if rec['automatic_font_color'] else 'color:' + rec['font_color'] + ';')">
+                                        <h2 t-esc="rec['title']"/>
+                                    </div>
+
+                                    <div class="izi_slide_content" t-att-style="'
+                                        text-align:'+rec['text_align']+'; 
+                                        font-size:'+str(rec['font_size'])+'px;'
+                                        + ('' if rec['automatic_font_color'] else 'color:' + rec['font_color'] + ';')">
+                                        <div 
+                                            t-att-class="'text_content row_content ' + (' r-fit-text' if rec['automatic_font_size'] else '')" >
+                                            <t t-esc="rec['text_content']"/>
+                                        </div>
+                                    </div>
+                                </section>
+                            </t>
+                            <t t-elif="rec['layout'] == 'column'">
+                                <section t-att-data-transition="global_data['transition']" 
+                                    t-att-data-background-image="rec['bg_attachment_url']"
+                                    >
+                                    <div t-att-style="('' if rec['automatic_font_color'] else 'color:' + rec['font_color'] + ';')+';height:100vh;'">
+                                        <!-- logo -->
+                                        <img t-att-src="rec['logo_url']" height="50" class="corner_logo"/>
+
+                                        <!-- title -->
+                                        <div class="izi_slide_title">
+                                            <h2 t-esc="rec['title']"/>
+                                        </div>
+
+                                        <!-- content -->
+                                        <div class="izi_slide_content" t-att-style="'
+                                        display:flex;
+                                        text-align:'+rec['text_align']+';
+                                        font-size:'+str(rec['font_size'])+'px;'">
+                                            <t t-if="rec['layout_order']=='text_chart'">
+                                                <div 
+                                                    t-att-class="'text_content column_content ' + (' r-fit-text' if rec['automatic_font_size'] else '')" 
+                                                    t-att-style="'flex-basis:'+str(rec['text_size']*100)+'%;flex-grow:0;flex-shrink:0;'">
+
+                                                    <t t-esc="rec['text_content']"/>
+                                                </div>
+                                                <div class="analysis_content column_content" t-att-style="'flex-basis:'+str(rec['chart_size']*100)+'%;flex-grow:0;flex-shrink:0;'">
+                                                    <div t-att-id="int(rec['analysis_id'])" class="analysis_chart">
+                                                        <div class="visual-chart"></div>
+                                                    </div>
+                                                </div>
+                                            </t>
+                                            <t t-else="">
+                                                <div class="analysis_content column_content" t-att-style="'flex-basis:'+str(rec['chart_size']*100)+'%;flex-grow:0;flex-shrink:0;'">
+                                                    <div t-att-id="int(rec['analysis_id'])" class="analysis_chart">
+                                                        <div class="visual-chart"></div>
+                                                    </div>
+                                                </div>
+                                                <div 
+                                                    t-att-class="'text_content column_content ' + (' r-fit-text' if rec['automatic_font_size'] else '')" 
+                                                    t-att-style="'flex-basis:'+str(rec['text_size']*100)+'%;flex-grow:0;flex-shrink:0;'">
+
+                                                    <t t-esc="rec['text_content']"/>
+                                                </div>
+                                            </t>
+                                        </div>
+                                    </div>
+                                </section>
+                            </t>
+                            <t t-elif="rec['layout'] == 'row'">
+                                <section t-att-data-transition="global_data['transition']" 
+                                    t-att-data-background-image="rec['bg_attachment_url']"
+                                    >
+                                    <div t-att-style="('' if rec['automatic_font_color'] else 'color:' + rec['font_color'] + ';')+';height:100vh;'">
+                                        <!-- logo -->
+                                        <img t-att-src="rec['logo_url']" height="50" class="corner_logo"/>
+
+                                        <!-- title -->
+                                        <div class="izi_slide_title">
+                                            <h2 t-esc="rec['title']"/>
+                                        </div>
+
+                                        <!-- content -->
+                                        <div class="izi_slide_content" t-att-style="'
+                                        text-align:'+rec['text_align']+'; 
+                                        font-size:'+str(rec['font_size'])+'px;'">
+                                            <t t-if="rec['layout_order']=='text_chart'">
+                                                <div 
+                                                    t-att-class="'text_content row_content ' + (' r-fit-text' if rec['automatic_font_size'] else '')" 
+                                                    t-att-style="'height:'+str(rec['text_size']*70)+'vh'">
+                                                    <t t-esc="rec['text_content']"/>
+                                                </div>
+                                                <div class="analysis_content row_content" t-att-style="'height:'+str(rec['chart_size']*70)+'vh'">
+                                                    <div t-att-id="int(rec['analysis_id'])" class="analysis_chart">
+                                                        <div class="visual-chart" t-att-style="'height:'+str(rec['chart_size']*70)+'vh'"></div>
+                                                    </div>
+                                                </div>
+                                            </t>
+                                            <t t-else="">
+                                                <div class="analysis_content row_content" t-att-style="'height:'+str(rec['chart_size']*70)+'vh'">
+                                                    <div t-att-id="int(rec['analysis_id'])" class="analysis_chart">
+                                                        <div class="visual-chart" t-att-style="'height:'+str(rec['chart_size']*70)+'vh'"></div>
+                                                    </div>
+                                                </div>
+                                                <div 
+                                                    t-att-class="'text_content row_content ' + (' r-fit-text' if rec['automatic_font_size'] else '')" 
+                                                    t-att-style="'height:'+str(rec['text_size']*70)+'vh'">
+                                                    <t t-esc="rec['text_content']"/>
+                                                </div>
+                                            </t>
+                                            
+                                        </div>
+                                    </div>
+                                </section>
+                            </t>
+                            <t t-elif="rec['layout'] == 'text'">
+                                <section t-att-data-transition="global_data['transition']" 
+                                    t-att-data-background-image="rec['bg_attachment_url']"
+                                    >
+                                    <div t-att-style="('' if rec['automatic_font_color'] else 'color:' + rec['font_color'] + ';')+';height:100vh;'">
+                                        <!-- logo -->
+                                        <img t-att-src="rec['logo_url']" height="50" class="corner_logo"/>
+
+                                        <!-- title -->
+                                        <div class="izi_slide_title">
+                                            <h2 t-esc="rec['title']"/>
+                                        </div>
+
+                                        <!-- content -->
+                                        <div class="izi_slide_content" t-att-style="'
+                                        text-align:'+rec['text_align']+';
+                                        font-size:'+str(rec['font_size'])+'px;'">
+                                            <div t-att-class="'text_content column_content ' + (' r-fit-text' if rec['automatic_font_size'] else '')" >
+                                                <t t-esc="rec['text_content']"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+                            </t>
+                            <t t-elif="rec['layout'] == 'chart'">
+                                <section t-att-data-transition="global_data['transition']" 
+                                    t-att-data-background-image="rec['bg_attachment_url']"
+                                    >
+                                    <div t-att-style="('' if rec['automatic_font_color'] else 'color:' + rec['font_color'] + ';')+';height:100vh;'">
+                                        <!-- logo -->
+                                        <img t-att-src="rec['logo_url']" height="50" class="corner_logo"/>
+
+                                        <!-- title -->
+                                        <div class="izi_slide_title">
+                                            <h2 t-esc="rec['title']"/>
+                                        </div>
+                                        <!-- content -->
+                                        <div class="izi_slide_content" t-att-style="'
+                                        text-align:'+rec['text_align']+';
+                                        font-size:'+str(rec['font_size'])+'px;'">
+                                            <div class="analysis_content column_content">
+                                                <div t-att-id="int(rec['analysis_id'])" class="analysis_chart">
+                                                    <div class="visual-chart"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+                            </t>
+                            <t t-else="">
+                            </t> 
+                        </t>
+                    </div>
+                </div>
+            </body>
+            <footer>
+                <!-- JS -->
+                <!-- Library -->
+                <script type="text/javascript" src="/web/static/lib/jquery/jquery.js"></script>
+                <script type="text/javascript" src="/izi_dashboard/static/lib/reveal/dists/reveal.js"></script>
+                <script type="text/javascript" src="/izi_dashboard/static/lib/reveal/plugin/notes/notes.js"></script>
+                <script type="text/javascript" src="/izi_dashboard/static/lib/reveal/plugin/markdown/markdown.js"></script>
+                <script type="text/javascript" src="/izi_dashboard/static/lib/reveal/plugin/highlight/highlight.js"></script>
+                <script>
+                    Reveal.initialize({
+                        loop: <t t-esc="loop"/>,
+                        width: 1260,
+                        height: 700,
+                        hash: true,
+                        backgroundTransition: '<t t-out="global_data['transition']"/>',
+                        // Learn about plugins: https://revealjs.com/plugins/
+                        plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ]
+                    });
+                    Reveal.configure({ autoSlide: <t t-out="global_data['auto_slide']"/> });
+                </script>
+                <!-- Component -->
+                <script type="text/javascript" src="/izi_dashboard/static/lib/amcharts/core.js"></script>
+                <script type="text/javascript" src="/izi_dashboard/static/lib/amcharts/charts.js"></script>
+                <script type="text/javascript" src="/izi_dashboard/static/lib/amcharts/maps.js"></script>
+                <script type="text/javascript" src="/izi_dashboard/static/lib/amcharts/regression.js"></script>
+                <script type="text/javascript" src="/izi_dashboard/static/lib/amcharts/geodata/indonesiaLow.js"></script>
+                <script type="text/javascript" src="/izi_dashboard/static/lib/amcharts/geodata/usaLow.js"></script>
+                <script type="text/javascript" src="/izi_dashboard/static/lib/amcharts/geodata/worldLow.js"></script>
+                <script type="text/javascript" src="/izi_dashboard/static/lib/amcharts/geodata/countries2.js"></script>
+                <script type="text/javascript" src="/izi_dashboard/static/lib/amcharts/themes/animated.js"></script>
+                <script type="text/javascript" src="/izi_dashboard/static/lib/amcharts/themes/frozen.js"></script>
+                <script type="text/javascript" src="/izi_dashboard/static/lib/amcharts/themes/frozen.js"></script>
+                <script type="text/javascript" src="/izi_dashboard/static/src/js/izi_slide.js"></script>
+            </footer>
+        </t>
+    </template>
+</odoo>

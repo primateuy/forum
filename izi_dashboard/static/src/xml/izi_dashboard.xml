@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="IZIDashboard" owl="1">
+        <div t-ref="IZIDashboardContainer" class="izi_view">
+            <div class="spinner-container d-none position-absolute top-0 w-100 min-vh-100 justify-content-center align-items-center bg-black opacity-50" style="z-index: 100000;">
+                <span class="spinner-border spinner-border-large"/>
+            </div>
+        </div>
+    </t>
+
+</templates>

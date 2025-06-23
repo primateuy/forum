@@ -1,0 +1,66 @@
+<template>
+    <div t-name="IZIViewDashboard" class="izi_view_dashboard">
+        <!-- Explore -->
+        <!-- <div class="izi_dialog" style="display:none;"> -->
+        <div class="izi_view_dashboard_ask_container" style="display:none;">
+            <div class="izi_view_dashboard_ask_discuss">
+                <div class="izi_view_dashboard_ask_bg" style="display:none;"></div>
+                <div class="izi_view_dashboard_ask_header" style="">
+                    <span class="material-icons">magic_button</span>
+                    <span class="izi_view_dashboard_ask_header_title">Ask AI to Explore and Generate Analysis</span>
+                    <!-- <span class="izi_view_dashboard_ask_header_table">Table <span style="font-weight:600">Undefined</span></span> -->
+                    <div class="izi_view_dashboard_ask_header_table">
+                        <span>Table </span>
+                        <div class="izi_dashboard_table_selection">
+                            <input type="hidden" class="izi_wfull izi_select2" id="custom_table_selection"/>
+                        </div>
+                    </div>
+                    <div style="clear:both"></div>
+                </div>
+                <div class="izi_view_dashboard_ask">
+                </div>
+                <div class="izi_view_dashboard_ask_footer">
+                    <div class="izi_view_dashboard_ask_quick_messages"></div>
+                    <textarea class="izi_view_dashboard_ask_input">
+
+                    </textarea>
+                    <div class="izi_view_dashboard_ask_btn">
+                        <span class="material-icons izi_btn_icon " t-esc="'magic_button'"/>
+                    </div>
+                </div>
+            </div>
+            <div class="izi_view_dashboard_ask_result">
+                <div class="izi_view_dashboard_ask_result_title" style="display:none;">
+                    <div class="izi_view_dashboard_ask_result_add_to_dashboard">
+                        <span class="material-icons izi_btn_icon " t-esc="'add'"/>
+                        Add to Dashboard
+                    </div>
+                    <div class="izi_view_dashboard_ask_result_configuration">
+                        <span class="material-icons izi_btn_icon " t-esc="'settings'"/>
+                        Configuration
+                    </div>
+                </div>
+                <div class="izi_view_dashboard_ask_result_chart izi_dashboard_block_content">
+                </div>
+                <div class="izi_view_dashboard_ask_result_explanation">
+                </div>
+            </div>
+        </div>
+        <!-- Drag & Drop Uploader -->
+        <div id="izi_dashboard_file_uploader">
+            Drag &amp; Drop Files Here
+        </div>
+        <!-- Analysis Dialog (Manual, Deprecated)-->
+        <div class="izi_dialog izi_view_analysis_dialog" style="display:none;">
+            <div class="izi_view_analysis_dialog_bg"></div>
+            <div class="izi_view_analysis_dialog_main">
+            </div>
+        </div>
+        <!-- Main -->
+        <div class="izi_view_dashboard_grid grid-stack">
+        </div>
+        <div style="display:none;">
+            <input id="global_dashboard_id" type="hidden"/>
+        </div>
+    </div>
+</template>

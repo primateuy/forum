@@ -1,0 +1,6 @@
+<templates>
+    <t t-name="izi_dashboard.IZIAnalysisWidget" owl="1">
+        <div t-ref="widgetContainer" class="izi_dashboard_block_content">
+        </div>
+    </t>
+</templates>

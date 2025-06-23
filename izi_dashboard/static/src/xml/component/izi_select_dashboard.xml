@@ -1,0 +1,24 @@
+<template>
+    <div t-name="IZISelectDashboard" class="izi_dialog">
+        <div class="izi_dialog_bg"></div>
+        <div class="izi_dialog_content">
+            <div class="izi_dialog_header">
+                <div class="izi_search_dashboard_category dropdown izi_dropdown" style="flex : 1" title="Filter By Category">
+                    <span class="dropdown-toggle" data-toggle="dropdown">
+                        <!-- <span class="material-icons" t-esc="'manage_search'"/> -->
+                        <span class="material-icons" t-esc="'topic'"/>
+                        <span class="title">All Groups</span>
+                    </span>
+                    <div class="dropdown-menu">
+                    </div>
+                </div>
+                <div class="izi-input-group" style="flex : 3;">
+                    <span class="izi-input-group-pretend material-icons-outlined" t-esc="'search'"/>
+                    <input class="izi-input-text izi_search_dashboard_name" placeholder="Search Dashboard Name ..."/>
+                </div>
+            </div>
+            <div class="izi_select_dashboard_item_container izi_dialog_body"/>
+            <div style="clear:both;"/>
+        </div>
+    </div>
+</template>

@@ -1,0 +1,202 @@
+.grid-stack-item.ui-draggable {
+    touch-action: none;
+}
+
+.grid-stack-item-content{
+    box-shadow: none;
+    border-radius: 8px;
+    overflow: visible;
+}
+
+.izi_dashboard_block_item {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    background: white;
+    border-radius: 8px;
+    box-shadow: rgba(0, 0, 0, 0.1) 0px 1px 3px 0px, rgba(0, 0, 0, 0.06) 0px 1px 2px 0px;
+    overflow: hidden;
+}
+
+.izi_dashboard_block_header{
+    padding: 20px 30px;
+    padding-bottom: 0px;
+}
+.izi_dashboard_block_title{
+    margin-bottom: 0px;
+    font-weight: 400;
+    font-size: 18px;
+    /* color: black; */
+    color: #374151;
+    margin: 0px;
+    cursor: pointer;
+}
+.izi_dashboard_block_btn_config{
+    position: absolute;
+    right: -5px;
+    top:-5px;
+}
+
+.izi_dashboard_block_btn_config .dropdown-menu{
+    left: -100px;
+}
+
+.izi_dashboard_block_content{
+    height: 100%;
+    font-size: 11px !important;
+    overflow: hidden;
+}
+/* Dashboard Grid */
+.izi_edit_mode .izi_view_dashboard_grid {
+    /* height: 4000px !important; */
+}
+.izi_edit_mode .izi_view_visual {
+    /* display: none !important; */
+}
+.izi_view_dashboard_grid .izi_dashboard_block_header{
+    padding: 20px;
+    padding-bottom: 10px;
+    z-index: 1;
+}
+.izi_view_dashboard_grid .izi_dashboard_block_title{
+    margin: 0px;
+    /* font-family: 'Roboto'; */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Ubuntu, "Noto Sans", Arial, "Odoo Unicode Support Noto", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    font-size: 15px;
+}
+.izi_view_dashboard_grid .izi_view_visual .gridjs-container {
+    font-size: 12px;
+}
+.izi_view_dashboard_grid .izi_view_visual .gridjs-container th.gridjs-th {
+    font-size: 12px;
+    padding: 6px 12px;
+}
+.izi_view_dashboard_grid .izi_view_visual .gridjs-container td.gridjs-td {
+    font-size: 12px;
+    font-weight: 400;
+    padding: 6px 12px;
+}
+.izi_view_visual .gridjs-container {
+    font-size: 12px;
+}
+.izi_view_visual .gridjs-container th.gridjs-th {
+    font-size: 12px;
+    padding: 6px 12px;
+}
+.izi_view_visual .gridjs-container td.gridjs-td {
+    font-size: 12px;
+    font-weight: 400;
+    padding: 6px 12px;
+}
+.izi_view_dashboard_grid .izi_dashboard_block_title.dropdown-toggle::after {
+    vertical-align: 0.2em;
+    margin-left: 0.6em;
+    font-size: 14px;
+}
+.izi_view_dashboard_grid .izi_analysis_filter_temp {
+    display: none;
+}
+.izi_view_dashboard_grid .izi_analysis_filter_temp.active {
+    display: none;
+}
+/* Mode */
+.izi_dashboard_block_content.izi_mode_analysis {
+    display: flex;
+    flex-direction: row-reverse;
+}
+.izi_dashboard_block_content.izi_mode_analysis > div{
+    flex: 1;
+}
+.izi_dashboard_block_content.izi_mode_analysis > .izi_dashboard_block_description {
+    padding: 20px 80px;
+    font-size: 14px;
+    font-weight: 300;
+    overflow-y: auto;
+}
+
+.izi_dashboard_block_content.izi_mode_analysis > .izi_btn_speech_ai {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    user-select: none;
+}
+
+.izi_btn.izi_btn_speech_ai.playing {
+    border-color: #eef3fc;
+    color: #0066cc;
+}
+
+.izi_btn.izi_btn_speech_ai.paused {
+    border-color: #efefef;
+    color: #545454;
+}
+
+.izi_btn.izi_btn_speech_ai {
+    background-color: white;
+    border-color: white;
+    color: #545454;
+}
+
+.izi_btn.izi_btn_speech_ai:hover {
+    background-color: #eef3fc;
+    border-color: #eef3fc;
+    color: #06c;
+}
+
+.izi_btn.izi_btn_speech_ai:not(:disabled):not(.disabled):active, 
+.izi_btn.izi_btn_speech_ai:not(:disabled):not(.disabled).active, 
+.show > .izi_btn.izi_btn_speech_ai.dropdown-toggle {
+    background-color: #eef3fc;
+    border-color: #eef3fc;
+    color: #06c;
+}
+
+.izi_btn.izi_btn_speech_ai.paused:hover {
+    background-color: #efefef;
+    border-color: #efefef;
+    color: #545454;
+}
+
+.izi_btn.izi_btn_speech_ai.playing:not(:disabled):not(.disabled):active, 
+.izi_btn.izi_btn_speech_ai.playing:not(:disabled):not(.disabled).active, 
+.show > .izi_btn.izi_btn_speech_ai.playing.dropdown-toggle {
+    background-color: #eef3fc;
+    border-color: #eef3fc;
+    color: #06c;
+}
+
+.izi_btn.izi_btn_speech_ai.playing:hover {
+    background-color: #eef3fc;
+    border-color: #eef3fc;
+    color: #06c;
+}
+
+.izi_btn.izi_btn_speech_ai.paused:not(:disabled):not(.disabled):active, 
+.izi_btn.izi_btn_speech_ai.paused:not(:disabled):not(.disabled).active, 
+.show > .izi_btn.izi_btn_speech_ai.paused.dropdown-toggle {
+    background-color: #efefef;
+    border-color: #efefef;
+    color: #545454;
+}
+
+#izi_dashboard_file_uploader {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.9);
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    height: 100%;
+    z-index: 100;
+    border: 2px dashed #06c;
+    border-radius: 10px;
+    display: flex;
+    align-content: center;
+    justify-content: center;
+    align-items: center;
+    font-size: 32px;
+    font-weight: 100;
+    color: #06c;
+    text-align: center;
+    display: none;
+}

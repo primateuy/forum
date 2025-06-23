@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="IZIAnalysis" owl="1">
+        <div t-ref="IZIAnalysisContainer" class="izi_view izi_flex">
+        </div>
+    </t>
+
+</templates>

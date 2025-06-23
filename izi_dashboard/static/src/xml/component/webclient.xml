@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="izi_dashboard.WebClient" t-inherit="web.WebClient" t-inherit-mode="extension">
+        <!-- <xpath expr="//t[@t-if='!state.fullscreen']" position="replace">
+            <t t-if="!state.fullscreen">
+                <t t-if="!force_fullscreen">
+                    <NavBar/>
+                </t>
+            </t>
+        </xpath> -->
+        <xpath expr="//NavBar" position="replace">
+			<t t-if="!force_fullscreen">
+                <NavBar/>
+            </t>
+	    </xpath>
+    </t>
+    <t t-name="izi_dashboard.ControlPanel" t-inherit="web.ControlPanel" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('o_control_panel_main_buttons')]" position="attributes">
+            <attribute name="t-attf-class">#{force_fullscreen ? 'd-none' : ''}</attribute>
+        </xpath>
+    </t>
+
+</templates>

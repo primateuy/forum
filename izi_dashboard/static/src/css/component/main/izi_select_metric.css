@@ -1,0 +1,12 @@
+.izi_current_metric_item .dropdown-toggle  {
+    text-transform: uppercase;
+    font-size: 10px !important;
+    font-weight: 600;
+    line-height: 20px;
+    padding-right: 4px;
+}
+
+.izi_current_metric .izi_current_metric_item{
+    display: flex;
+    margin-bottom: 5px;
+}

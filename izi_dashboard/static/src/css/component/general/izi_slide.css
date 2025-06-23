@@ -1,0 +1,134 @@
+.reveal .slides section .izi_slide_title h2{
+    line-height: 0.8;
+}
+.izi_slide_title{
+    padding-block:.5em;
+    max-height: 30vh;
+    padding-bottom: 1em;
+}
+.izi_slide_content{
+    max-height: 70vh;
+}
+
+/*------------- Text styling ---------*/
+.izi_slide_content .text_content.row_content{
+    /* max-height: 35vh; */
+    padding-block: .5em;
+    overflow-y: hidden;
+}
+.izi_slide_content .text_content.column_content{
+    /* max-height: 70vh; */
+    padding-inline: .5em;
+    overflow-y: hidden;
+}
+
+/*------------- chart / analysis styling ---------*/
+.izi_slide_content .analysis_content .visual-chart{
+    font-size:11px;
+    background: white;
+    border-radius: 12px;
+    /* box-shadow: rgba(0, 0, 0, 0.1) 0px 1px 3px 0px, rgba(0, 0, 0, 0.06) 0px 1px 2px 0px; */
+}
+.izi_slide_content .analysis_content .visual-chart [aria-label="Legend"]{
+    font-size:16px;
+}
+.izi_slide_content .analysis_content.row_content{
+    overflow-y: hidden;
+}
+.izi_slide_content .analysis_content.column_content{
+    max-height: 70vh;
+}
+.izi_slide_content .analysis_content.column_content .visual-chart{
+    height: 65vh;
+}
+.izi_slide_content .analysis_content .analysis_chart{
+    position: relative;
+}
+.corner_logo{
+    position: absolute;
+    left: 0;
+    top: 0;
+    filter: drop-shadow(0px 0px 2px #ffffff7c);
+}
+.izi_slide_content .izi_drillup {
+    display: none;
+    z-index: 10;
+    background: #F4F4F4;
+    border-radius: 8px;
+    font-size: 14px;
+    width: 40px;
+    position: absolute;
+    top: 0px;
+    left: 45%;
+    margin-left: -40px;
+    opacity: 0.5;
+}
+.izi_slide_content .izi_drillup:hover {
+    opacity: 1;
+}
+.izi_slide_content .izi_reset_drilldown {
+    color: black;
+    display: none;
+    z-index: 10;
+    background: #F4F4F4;
+    border-radius: 8px;
+    font-size: 14px;
+    width: 40px;
+    position: absolute;
+    top: 0px;
+    left: 50%;
+    margin-left: -20px;
+    opacity: 0.5;
+}
+.izi_slide_content .izi_reset_drilldown:hover {
+    opacity: 1;
+}
+.drilldown_background{
+    width: 100vw;
+    height: 100vh;
+    position: absolute;
+    top: 0;
+    z-index: 99;
+}
+
+/* manual bootstrap style karna gabisa masukkan bootstrap css ke slides */
+.ps-2{
+    padding-left: 1em;
+}
+.fw-bolder{
+    font-weight: bolder;
+}
+.btn-outline-secondary {
+    color: #374151;
+    background-color: transparent;
+    border-color: #d8dadd;
+    box-shadow: 0;
+}
+.btn-outline-secondary:hover {
+    color: #1F2937;
+    background-color: #e7e9ed;
+    border-color: #d8dadd;
+}
+.text-muted {
+    --text-opacity: 1;
+    color: rgba(55, 65, 81, 0.76) !important;
+}
+.btn {
+    display: inline-block;
+    font-weight: 500;
+    line-height: 1.5;
+    color: #374151;
+    text-align: center;
+    vertical-align: middle;
+    cursor: pointer;
+    user-select: none;
+    background-color: transparent;
+    border: 1px solid transparent;
+    padding: 0.3125rem 0.625rem;
+    font-size: 0.875rem;
+    border-radius: 0.25rem;
+    transition: none;
+}
+.btn:hover {
+    color: #374151;
+}

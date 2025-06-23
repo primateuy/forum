@@ -1,0 +1,67 @@
+<template>
+    <div t-name="IZISelectFilterTemp" class="izi_analysis_filter_temp_container">
+        <!-- <div class="izi_analysis_filter_temp" title="Filter String" id="izi_analysis_filter_temp_string_search" data-type="string_search">
+            <div class="izi_analysis_filter_temp_title dropdown izi_dropdown">
+                <span class="material-icons-outlined dropdown-toggle" data-toggle="dropdown" t-esc="'search'"/>
+                <div class="dropdown-menu">
+                </div>
+            </div>
+            <div class="izi_analysis_filter_temp_content">
+            </div>
+        </div> -->
+        <div class="izi_analysis_filter_temp" title="Capture Analysis" id="" data-type="date_format">
+            <div id="izi_export_capture_analysis" class="izi_analysis_filter_temp_title" title="Capture Analysis">
+                <span class="material-icons-outlined izi_btn_icon" t-esc="'photo_camera'"/>
+            </div>
+            <div id="izi_export_capture_loading_analysis" style="display:none; cursor:progress" class="izi_btn izi_btn_wlp active px-1" title="Capturing..">
+                <span class="material-icons izi_btn_icon izi_rotate" t-esc="'rotate_right'"/>
+            </div>
+        </div>
+        <div class="izi_analysis_filter_temp" title="Filter Field" id="izi_dynamic_filter_container_custom">
+            <div class="izi_dashboard_filter_content">
+                <input type="hidden" class="izi_wfull izi_select2" id="custom_dynamic_filter"/>
+            </div>
+            <div class="izi_dashboard_filter_content child_content">
+                <input type="hidden" class="izi_wfull izi_select2" id="custom_dynamic_filter_child"/>
+            </div>
+            <div class="izi_analysis_filter_temp_title" style="z-index:9999">
+                <span class="material-icons-outlined" t-esc="'filter_alt'"/>
+            </div>
+            <div class="izi_analysis_filter_temp_content" >
+                <div id="izi_selected_dynamic_filter"></div>
+            </div>
+        </div>
+        <div class="izi_analysis_filter_temp" title="Filter Limit" id="izi_analysis_filter_temp_limit" data-type="field_search">
+            <div id="izi_analysis_limit" class="izi_analysis_filter_temp_title" title="Limit Analysis">
+                <span class="material-icons-outlined izi_btn_icon" t-esc="'tune'"/>
+            </div>
+            <div id="izi_limit_input" class="izi_btn izi_btn_wlp p-0" style="display:none" title="Limit Analysis">
+                <div class="input_container">
+                    <input class="form-control" type="number" id="izi_limit_input_number" placeholder="Limit"/>
+                    <!-- <button type="button" class="izi_btn izi_btn_wlp" id="izi_confirm_limit">OK</button> -->
+                </div>
+            </div>
+        </div>
+        <div class="izi_analysis_filter_temp" title="Filter Date Range" id="izi_analysis_filter_temp_date_range" data-type="date_range">
+            <div class="izi_analysis_filter_temp_title dropdown izi_dropdown">
+                <span class="material-icons-outlined dropdown-toggle" data-toggle="dropdown" t-esc="'date_range'"/>
+                <div class="dropdown-menu">
+                </div>
+            </div>
+            <div class="izi_analysis_filter_temp_content">
+                <input type="text" placeholder="From" class="izi_datepicker" id="izi_date_from"/>
+                <input type="text" placeholder="To" class="izi_datepicker" id="izi_date_to"/>
+            </div>
+        </div>
+        <div class="izi_analysis_filter_temp" title="Filter Date Format" id="izi_analysis_filter_temp_date_format" data-type="date_format">
+            <div class="izi_analysis_filter_temp_title dropdown izi_dropdown">
+                <span class="material-icons-outlined dropdown-toggle" data-toggle="dropdown" t-esc="'today'"/>
+                <div class="dropdown-menu">
+                </div>
+            </div>
+            <div class="izi_analysis_filter_temp_content">
+            </div>
+        </div>
+        <div style="clear:both;"/>
+    </div>
+</template>

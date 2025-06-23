@@ -1,0 +1,23 @@
+<template>
+    <div t-name="IZISelectAnalysisItem" class="izi_select_analysis_item izi_select_item" 
+        t-att-data-id="id" 
+        t-att-data-name="name" 
+        t-att-data-table_id="table_id" 
+        t-att-data-table_name="table_name" 
+        t-att-data-source_id="source_id" 
+        t-att-data-source_name="source_name"
+        t-att-data-visual_type="visual_type">
+        
+        <div class="izi_title" t-esc="name">Select Analysis</div>
+        <div class="izi_subtitle my-1"><span class="material-icons mr-1">topic</span> <t t-esc="category_name">No Category</t></div>
+        <div class="izi_subtitle">
+            <t t-esc="source_table">
+                Data Source / Table
+            </t>
+        </div>
+        <div class="izi_edit_analysis_item izi_select_item_icon" title="Configuration">
+            <span class="material-icons" t-esc="'edit'"/>
+        </div>
+
+    </div>
+</template>
