@@ -1,0 +1,9 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_custom_global_tabs,custom_global_tabs,import_product_variants.model_ir_global_tabs,base.group_user,1,1,1,1
+access_ir_model_tabs,ir_model_tabs,import_product_variants.model_ir_model_tabs,base.group_user,1,1,1,1
+access_ir_models_fields_custom,ir_models_fields_custom,import_product_variants.model_ir_models_fields_custom,base.group_user,1,1,1,1
+
+access_ir_model_fields_selection_product,ir_model_fields_selection_product,import_product_variants.model_ir_model_fields_selection_product,base.group_user,1,1,1,1
+
+access_gen_sale,gen_sale,import_product_variants.model_gen_sale,base.group_user,1,1,1,1
+access_custom_pop_message,custom_pop_message,import_product_variants.model_custom_pop_message,base.group_user,1,1,1,1

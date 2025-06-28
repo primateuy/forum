@@ -1,0 +1,810 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* import_product_variants
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 13.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-07-19 08:48+0000\n"
+"PO-Revision-Date: 2021-07-19 08:48+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: import_product_variants
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#, python-format
+msgid "\"%s\" Category not in your system"
+msgstr "\"%s\" Catégorie absente de votre système"
+
+#. module: import_product_variants
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#, python-format
+msgid "\"%s\" Tax not in your system"
+msgstr "\"%s\" Taxe absente de votre système"
+
+#. module: import_product_variants
+#: code:addons/import_product_variants/wizard/product.py:0
+#, python-format
+msgid "\"%s\" This custom field is not available in system"
+msgstr "\"%s\" Ce champ personnalisé n'est pas disponible dans le système"
+
+#. module: import_product_variants
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#, python-format
+msgid "\"%s\" This custom field type is not many2one/many2many"
+msgstr "\"%s\" Ce type de champ personnalisé n'est pas many2one/many2many"
+
+#. module: import_product_variants
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#, python-format
+msgid "\"%s\" This custom field value \"%s\" not available in system"
+msgstr "\"%s\" Cette valeur de champ personnalisé \"%s\" n'est pas disponible dans le système"
+
+#. module: import_product_variants
+#: code:addons/import_product_variants/wizard/product.py:0
+#, python-format
+msgid "\"%s\" This m2x custom field is not available in system"
+msgstr "\"%s\" Ce champ personnalisé m2x n'est pas disponible dans le système"
+
+#. module: import_product_variants
+#: model_terms:ir.ui.view,arch_db:import_product_variants.global_custom_fields_wizard_view
+msgid "Access Rights"
+msgstr "Des droits d'accès"
+
+#. module: import_product_variants
+#: model:ir.actions.act_window,name:import_product_variants.global_custom_fields_product_menu
+#: model:ir.actions.act_window,name:import_product_variants.global_custom_fields_variant_menu
+#: model:ir.actions.act_window,name:import_product_variants.global_custom_fields_wizard_action
+msgid "Add Custom Fields"
+msgstr "Ajouter des champs personnalisés"
+
+#. module: import_product_variants
+#: model:ir.actions.act_window,name:import_product_variants.global_custom_fields_product_tab_menu
+#: model:ir.actions.act_window,name:import_product_variants.global_custom_fields_variant_tab_menu
+msgid "Add Custom Tab"
+msgstr "Ajouter un onglet personnalisé"
+
+#. module: import_product_variants
+#: model_terms:ir.ui.view,arch_db:import_product_variants.global_custom_fields_wizard_view
+msgid "Add Field"
+msgstr "Ajouter le champ"
+
+#. module: import_product_variants
+#: model_terms:ir.ui.view,arch_db:import_product_variants.global_custom_tabs_wizard_view
+msgid "Add Tab"
+msgstr "Ajouter un onglet"
+
+#. module: import_product_variants
+#: model:ir.model.fields.selection,name:import_product_variants.selection__ir_models_fields_custom__where_to_add__after
+msgid "After"
+msgstr "Après"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__after_which_field
+msgid "After Which Field"
+msgstr "Après quel champ"
+
+#. module: import_product_variants
+#: model_terms:ir.ui.view,arch_db:import_product_variants.global_custom_fields_wizard_view
+msgid "Base Properties"
+msgstr "Propriétés de base"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__domain_list
+msgid "Based on Field"
+msgstr "Basé sur le champ"
+
+#. module: import_product_variants
+#: model:ir.model.fields.selection,name:import_product_variants.selection__ir_models_fields_custom__where_to_add__before
+msgid "Before"
+msgstr "Avant"
+
+#. module: import_product_variants
+#: model:ir.model.fields,help:import_product_variants.field_ir_models_fields_custom__website_form_blacklisted
+msgid "Blacklist this field for web forms"
+msgstr "Mettre ce champ sur liste noire pour les formulaires Web"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__website_form_blacklisted
+msgid "Blacklisted in web forms"
+msgstr "Liste noire dans les formulaires Web"
+
+#. module: import_product_variants
+#: code:addons/import_product_variants/wizard/product.py:0
+#, python-format
+msgid "CATEGORY field can not be empty"
+msgstr "Le champ CATÉGORIE ne peut pas être vide"
+
+#. module: import_product_variants
+#: model:ir.model.fields.selection,name:import_product_variants.selection__gen_sale__import_option__csv
+msgid "CSV File"
+msgstr "Fichier CSV"
+
+#. module: import_product_variants
+#: model_terms:ir.ui.view,arch_db:import_product_variants.gen_sale_wizard_view
+#: model_terms:ir.ui.view,arch_db:import_product_variants.global_custom_fields_wizard_view
+#: model_terms:ir.ui.view,arch_db:import_product_variants.global_custom_tabs_wizard_view
+msgid "Cancel"
+msgstr "Annuler"
+
+#. module: import_product_variants
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#, python-format
+msgid "Category %s not found."
+msgstr "Catégorie %s introuvable."
+
+#. module: import_product_variants
+#: model:ir.model.fields,help:import_product_variants.field_ir_models_fields_custom__compute
+msgid ""
+"Code to compute the value of the field.\n"
+"Iterate on the recordset 'self' and assign the field's value:\n"
+"\n"
+"    for record in self:\n"
+"        record['size'] = len(record.name)\n"
+"\n"
+"Modules time, datetime, dateutil are available."
+msgstr ""
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__column1
+msgid "Column 1"
+msgstr "Colonne 1"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__column2
+msgid "Column 2"
+msgstr "Colonne 2"
+
+#. module: import_product_variants
+#: model:ir.model.fields,help:import_product_variants.field_ir_models_fields_custom__column2
+msgid "Column referring to the record in the comodel table"
+msgstr "Colonne faisant référence à l'enregistrement dans la table des comodèles"
+
+#. module: import_product_variants
+#: model:ir.model.fields,help:import_product_variants.field_ir_models_fields_custom__column1
+msgid "Column referring to the record in the model table"
+msgstr "Colonne faisant référence à l'enregistrement dans la table modèle"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__complete_name
+msgid "Complete Name"
+msgstr "Nom complet"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__compute
+msgid "Compute"
+msgstr "Calculer"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__copied
+msgid "Copied"
+msgstr "Copié"
+
+#. module: import_product_variants
+#: model:ir.model.fields,help:import_product_variants.field_ir_models_fields_custom__domain_list
+msgid "Coupon program will work for selected customers only"
+msgstr "Le programme de coupons ne fonctionnera que pour les clients sélectionnés"
+
+#. module: import_product_variants
+#: model:ir.model.fields.selection,name:import_product_variants.selection__gen_sale__product_option__create
+msgid "Create Product With Variants"
+msgstr "Créer un produit avec des variantes"
+
+#. module: import_product_variants
+#: model:ir.model.fields.selection,name:import_product_variants.selection__gen_sale__product_option__update
+msgid "Create/Update Product With Variants"
+msgstr "Créer/mettre à jour un produit avec des variantes"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_custom_pop_message__create_uid
+#: model:ir.model.fields,field_description:import_product_variants.field_gen_sale__create_uid
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_global_tabs__create_uid
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_model_fields_selection_product__create_uid
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_model_tabs__create_uid
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__create_uid
+msgid "Created by"
+msgstr "Créé par"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_custom_pop_message__create_date
+#: model:ir.model.fields,field_description:import_product_variants.field_gen_sale__create_date
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_global_tabs__create_date
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_model_fields_selection_product__create_date
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_model_tabs__create_date
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__create_date
+msgid "Created on"
+msgstr "Créé sur"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_model_tabs__view_id
+msgid "Created view"
+msgstr "Vue créée"
+
+#. module: import_product_variants
+#: model:ir.model,name:import_product_variants.model_ir_models_fields_custom
+#: model_terms:ir.ui.view,arch_db:import_product_variants.global_custom_fields_wizard_view
+msgid "Custom Global Fields"
+msgstr "Champs globaux personnalisés"
+
+#. module: import_product_variants
+#: model:ir.model,name:import_product_variants.model_ir_global_tabs
+#: model_terms:ir.ui.view,arch_db:import_product_variants.global_custom_tabs_wizard_view
+msgid "Custom Global Tabs"
+msgstr "Onglets globaux personnalisés"
+
+#. module: import_product_variants
+#: model_terms:ir.ui.view,arch_db:import_product_variants.custom_pop_message_wizard_view_form
+msgid "Custom POP Message"
+msgstr "Message POP personnalisé"
+
+#. module: import_product_variants
+#: model:ir.actions.act_window,name:import_product_variants.global_custom_tabs_wizard_action
+msgid "Custom Tabs"
+msgstr "Onglets personnalisés"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__depends
+msgid "Dependencies"
+msgstr "Dépendances"
+
+#. module: import_product_variants
+#: model:ir.model.fields,help:import_product_variants.field_ir_models_fields_custom__depends
+msgid ""
+"Dependencies of compute method; a list of comma-separated field names, like\n"
+"\n"
+"    name, partner_id.name"
+msgstr ""
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_custom_pop_message__display_name
+#: model:ir.model.fields,field_description:import_product_variants.field_gen_sale__display_name
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_global_tabs__display_name
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_model_fields_selection_product__display_name
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_model_tabs__display_name
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__display_name
+msgid "Display Name"
+msgstr "Afficher un nom"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__domain
+msgid "Domain"
+msgstr "Domaine"
+
+#. module: import_product_variants
+#: model_terms:ir.ui.view,arch_db:import_product_variants.global_custom_fields_wizard_view
+msgid "Domains"
+msgstr "Domaines"
+
+#. module: import_product_variants
+#: model_terms:ir.ui.view,arch_db:import_product_variants.gen_sale_wizard_view
+msgid "Download Sample File"
+msgstr "Télécharger un exemple de fichier"
+
+#. module: import_product_variants
+#: model_terms:ir.ui.view,arch_db:import_product_variants.gen_sale_wizard_view
+msgid "Download Sample:"
+msgstr "Télécharger l'échantillon :"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__tracking
+msgid "Enable Ordered Tracking"
+msgstr "Activer le suivi ordonné"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_model_fields_selection_product__field
+msgid "Field"
+msgstr "Domaine"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__help
+msgid "Field Help"
+msgstr "Aide sur le terrain"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__field_description
+msgid "Field Label"
+msgstr "Étiquette de champ"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__name
+msgid "Field Name"
+msgstr "Nom de domaine"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__ttype
+msgid "Field Type"
+msgstr "Type de champ"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_model_fields_selection_product__fields_id
+msgid "Fields"
+msgstr "Des champs"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_gen_sale__file
+msgid "File"
+msgstr "Fichier"
+
+#. module: import_product_variants
+#: model:ir.model.fields,help:import_product_variants.field_ir_models_fields_custom__relation_field
+msgid ""
+"For one2many fields, the field on the target model that implement the "
+"opposite many2one relationship"
+msgstr ""
+
+#. module: import_product_variants
+#: model:ir.model.fields,help:import_product_variants.field_ir_models_fields_custom__model_field
+#: model:ir.model.fields,help:import_product_variants.field_ir_models_fields_custom__relation
+msgid "For relationship fields, the technical name of the target model"
+msgstr "Pour les champs de relation, le nom technique du modèle cible"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_global_tabs__groups
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__groups
+msgid "Groups"
+msgstr "Groupes"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_custom_pop_message__id
+#: model:ir.model.fields,field_description:import_product_variants.field_gen_sale__id
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_global_tabs__id
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_model_fields_selection_product__id
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_model_tabs__id
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__id
+msgid "ID"
+msgstr "identifiant"
+
+#. module: import_product_variants
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#, python-format
+msgid "INV: %s"
+msgstr "INV: %s"
+
+#. module: import_product_variants
+#: model:ir.model.fields,help:import_product_variants.field_ir_models_fields_custom__tracking
+msgid ""
+"If set every modification done to this field is tracked in the chatter. "
+"Value is used to order tracking values."
+msgstr ""
+
+#. module: import_product_variants
+#: model_terms:ir.ui.view,arch_db:import_product_variants.gen_sale_wizard_view
+msgid "Import"
+msgstr "Importer"
+
+#. module: import_product_variants
+#: model:ir.actions.act_window,name:import_product_variants.gen_sale_import_wizard
+#: model:ir.ui.menu,name:import_product_variants.gen_sale_wizard_import
+#: model:res.groups,name:import_product_variants.group_support_user
+msgid "Import Product With Variants"
+msgstr "Importer un produit avec des variantes"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__modules
+msgid "In Apps"
+msgstr "Dans les applications"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__index
+msgid "Indexed"
+msgstr "Indexée"
+
+#. module: import_product_variants
+#: code:addons/import_product_variants/wizard/product.py:0
+#, python-format
+msgid "Invalid file!"
+msgstr "Fichier non valide!"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_custom_pop_message____last_update
+#: model:ir.model.fields,field_description:import_product_variants.field_gen_sale____last_update
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_global_tabs____last_update
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_model_fields_selection_product____last_update
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_model_tabs____last_update
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom____last_update
+msgid "Last Modified on"
+msgstr "Dernière modification le"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_custom_pop_message__write_uid
+#: model:ir.model.fields,field_description:import_product_variants.field_gen_sale__write_uid
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_global_tabs__write_uid
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_model_fields_selection_product__write_uid
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_model_tabs__write_uid
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__write_uid
+msgid "Last Updated by"
+msgstr "Dernière mise à jour par"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_custom_pop_message__write_date
+#: model:ir.model.fields,field_description:import_product_variants.field_gen_sale__write_date
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_global_tabs__write_date
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_model_fields_selection_product__write_date
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_model_tabs__write_date
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__write_date
+msgid "Last Updated on"
+msgstr "Dernière mise à jour le"
+
+#. module: import_product_variants
+#: model:ir.model.fields,help:import_product_variants.field_ir_models_fields_custom__modules
+msgid "List of modules in which the field is defined"
+msgstr "Liste des modules dans lesquels le domaine est défini"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_custom_pop_message__name
+msgid "Message"
+msgstr "Un message"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_global_tabs__model_id
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_model_tabs__model_id
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__model_id
+msgid "Model"
+msgstr "Modèle"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__model_field
+msgid "Model Field"
+msgstr "Champ du modèle"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_global_tabs__name
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_model_tabs__tab_name
+msgid "Name"
+msgstr "Nom"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__model
+msgid "Object Name"
+msgstr "Nom de l'objet"
+
+#. module: import_product_variants
+#: model_terms:ir.ui.view,arch_db:import_product_variants.custom_pop_message_wizard_view_form
+msgid "Ok"
+msgstr "D'accord"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__on_delete
+msgid "On Delete"
+msgstr "À la suppression"
+
+#. module: import_product_variants
+#: model:ir.model.fields,help:import_product_variants.field_ir_models_fields_custom__on_delete
+msgid "On delete property for many2one fields"
+msgstr "Sur la propriété de suppression pour les champs many2one"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_gen_sale__product_option
+msgid "Option"
+msgstr "Option"
+
+#. module: import_product_variants
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#, python-format
+msgid "Please give Barcode for updating Products"
+msgstr "Veuillez donner le code-barres pour la mise à jour des produits"
+
+#. module: import_product_variants
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#, python-format
+msgid "Please give Internal Reference for updating Products"
+msgstr "Veuillez donner une référence interne pour la mise à jour des produits"
+
+#. module: import_product_variants
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#, python-format
+msgid "Please give Name for updating Products"
+msgstr "Veuillez donner un nom pour la mise à jour des produits"
+
+#. module: import_product_variants
+#: code:addons/import_product_variants/wizard/product.py:0
+#, python-format
+msgid "Please give barcode of the Product"
+msgstr "Veuillez donner le code-barres du produit"
+
+#. module: import_product_variants
+#: code:addons/import_product_variants/wizard/product.py:0
+#, python-format
+msgid "Please select CSV/XLS file or You have selected invalid file"
+msgstr "Veuillez sélectionner un fichier CSV/XLS ou Vous avez sélectionné un fichier invalide"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_model_tabs__position
+msgid "Position"
+msgstr "Position"
+
+#. module: import_product_variants
+#: model:ir.model,name:import_product_variants.model_product_product
+msgid "Product"
+msgstr "Produit"
+
+#. module: import_product_variants
+#: model:ir.model,name:import_product_variants.model_product_template
+msgid "Product Template"
+msgstr "Modèle de produit"
+
+#. module: import_product_variants
+#: model_terms:ir.ui.view,arch_db:import_product_variants.global_custom_fields_wizard_view
+msgid "Properties"
+msgstr "Propriétés"
+
+#. module: import_product_variants
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#, python-format
+msgid "Purchase UOM %s not found"
+msgstr "UdM d'achat %s introuvable"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__readonly
+msgid "Readonly"
+msgstr "Lecture seulement"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__related
+msgid "Related Field"
+msgstr "Domaine connexe"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__related_field_id
+msgid "Related field"
+msgstr "Domaine connexe"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__relation
+msgid "Relation"
+msgstr "Relation"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__relation_field
+msgid "Relation Field"
+msgstr "Champ de relation"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__relation_table
+msgid "Relation Table"
+msgstr "Tableau des relations"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__relation_field_id
+msgid "Relation field"
+msgstr "Champ relationnel"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__required
+msgid "Required"
+msgstr "Obligatoire"
+
+#. module: import_product_variants
+#: model:ir.model.fields.selection,name:import_product_variants.selection__gen_sale__product_search__by_barcode
+msgid "Search By Barcode"
+msgstr "Recherche par code-barres"
+
+#. module: import_product_variants
+#: model:ir.model.fields.selection,name:import_product_variants.selection__gen_sale__product_search__by_code
+msgid "Search By Code"
+msgstr "Recherche par code"
+
+#. module: import_product_variants
+#: model:ir.model.fields.selection,name:import_product_variants.selection__gen_sale__product_search__by_name
+msgid "Search By Name"
+msgstr "Rechercher par nom"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_gen_sale__product_search
+msgid "Search Product"
+msgstr "Rechercher un produit"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_gen_sale__import_option
+msgid "Select"
+msgstr "Sélectionner"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__selectable
+msgid "Selectable"
+msgstr "Sélectionnable"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__selection_ids
+msgid "Selection Options"
+msgstr "Options de sélection"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__selection
+msgid "Selection Options (Deprecated)"
+msgstr "Options de sélection (obsolètes)"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__size
+msgid "Size"
+msgstr "Taille"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__state
+msgid "State"
+msgstr "État"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__store
+msgid "Stored"
+msgstr "Stocké"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_model_tabs__tab_string
+msgid "String"
+msgstr "Chaîne de caractères"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__tab_list
+msgid "Tab List"
+msgstr "Liste des onglets"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_global_tabs__field_description
+msgid "Tabs Label"
+msgstr "Étiquette des onglets"
+
+#. module: import_product_variants
+#: model:ir.model.fields,help:import_product_variants.field_ir_models_fields_custom__related
+msgid ""
+"The corresponding related field, if any. This must be a dot-separated list "
+"of field names."
+msgstr ""
+
+#. module: import_product_variants
+#: model:ir.model.fields,help:import_product_variants.field_ir_models_fields_custom__model_id
+msgid "The model this field belongs to"
+msgstr "Le modèle auquel appartient ce champ"
+
+#. module: import_product_variants
+#: model:ir.model.fields,help:import_product_variants.field_ir_models_fields_custom__model
+msgid "The technical name of the model this field belongs to"
+msgstr "Le nom technique du modèle auquel appartient ce champ"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__translate
+msgid "Translatable"
+msgstr "Traduisible"
+
+#. module: import_product_variants
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#: code:addons/import_product_variants/wizard/product.py:0
+#, python-format
+msgid "UOM %s not found."
+msgstr "UOM %s introuvable."
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_product_product__uniq_id
+#: model:ir.model.fields,field_description:import_product_variants.field_product_template__uniq_id
+msgid "Unique ID"
+msgstr "Identifiant unique"
+
+#. module: import_product_variants
+#: model:ir.model.fields,help:import_product_variants.field_ir_models_fields_custom__relation_table
+msgid ""
+"Used for custom many2many fields to define a custom relation table name"
+msgstr ""
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_model_fields_selection_product__value
+msgid "Value"
+msgstr "Valeur"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_global_tabs__view_id
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__view_id
+msgid "View"
+msgstr "Vue"
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_models_fields_custom__where_to_add
+msgid "Where to Add"
+msgstr "Où ajouter"
+
+#. module: import_product_variants
+#: model:ir.model.fields,help:import_product_variants.field_ir_models_fields_custom__copied
+msgid "Whether the value is copied when duplicating a record."
+msgstr "Si la valeur est copiée lors de la duplication d'un enregistrement."
+
+#. module: import_product_variants
+#: model:ir.model.fields,help:import_product_variants.field_ir_models_fields_custom__store
+msgid "Whether the value is stored in the database."
+msgstr "Si la valeur est stockée dans la base de données."
+
+#. module: import_product_variants
+#: model:ir.model.fields,help:import_product_variants.field_ir_models_fields_custom__translate
+msgid ""
+"Whether values for this field can be translated (enables the translation "
+"mechanism for that field)"
+msgstr ""
+
+#. module: import_product_variants
+#: model:ir.model.fields.selection,name:import_product_variants.selection__gen_sale__import_option__xls
+msgid "XLS File"
+msgstr "Fichier XLS"
+
+#. module: import_product_variants
+#: model:ir.model,name:import_product_variants.model_custom_pop_message
+msgid "custom.pop.message"
+msgstr ""
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_product_product__dummy
+#: model:ir.model.fields,field_description:import_product_variants.field_product_template__dummy
+msgid "dummy"
+msgstr "factice"
+
+#. module: import_product_variants
+#: model:ir.model,name:import_product_variants.model_gen_sale
+msgid "gen.sale"
+msgstr ""
+
+#. module: import_product_variants
+#: model:ir.model,name:import_product_variants.model_ir_model_fields_selection_product
+msgid "ir.model.fields.selection.product"
+msgstr ""
+
+#. module: import_product_variants
+#: model:ir.model,name:import_product_variants.model_ir_model_tabs
+msgid "ir.model.tabs"
+msgstr ""
+
+#. module: import_product_variants
+#: model:ir.model.fields,field_description:import_product_variants.field_ir_model_fields_selection_product__name
+msgid "name"
+msgstr "Nom"
+
+#. module: import_product_variants
+#: model_terms:ir.ui.view,arch_db:import_product_variants.gen_sale_wizard_view
+msgid "or"
+msgstr "ou alors"

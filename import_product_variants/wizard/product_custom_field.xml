@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="global_custom_fields_wizard_view" model="ir.ui.view">
+        <field name="name">global.custom.fields.form</field>
+        <field name="model">ir.models.fields.custom</field>
+        <field name="arch" type="xml">
+            <form string="Custom Global Fields">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name" />
+                            <field name="field_description" />
+                            <field name="model_id" />
+                            <field name="tab_list" options="{'no_create':True}" />
+                        </group>
+                        <group>
+                            <field name="ttype" />
+                            <field name="relation" required="ttype in ['many2one','one2many','many2many']" readonly="ttype not in ['many2one','one2many','many2many']" invisible="ttype not in ['many2one','one2many','many2many']" />
+                            <field name="where_to_add" />
+                            <field name="after_which_field" widget="selection" domain="[('model_id', '=', model_id)]"/>
+                            <field name="help" />
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="base" string="Properties">
+                            <group string="Base Properties">
+                                <group>
+                                    <field name="required" />
+                                    <field name="copied" />
+                                    <field name="readonly" />
+                                    <field name="model_field" invisible="1" />
+                                </group>
+                                <group>
+                                    <field name="selection_ids" required="ttype in ['selection','reference']"  readonly="ttype not in ['selection','reference']" invisible="ttype not in ['selection','reference']">
+                                        <tree editable="bottom">
+                                            <field name="value" />
+                                            <field name="name" />
+                                        </tree>
+                                    </field>
+                                    <field name="state" invisible="1" />
+                                </group>
+                            </group>
+                        </page>
+                        <page name="groups" string="Access Rights">
+                            <field name="groups" />
+                        </page>
+                        <page name="misc" string="Domains">
+                            <field name="domain_list" widget="domain" invisible="ttype != 'many2one'" options="{'model': 'model_field', 'in_dialog': false}" />
+                        </page>
+                    </notebook>
+                    <footer>
+                        <button name="create_global_custome_field" type="object" string="Add Field" class="btn btn-primary active" icon="fa-plus-square" />
+                        <button string="Cancel" class="btn btn-danger disabled" special="cancel" icon="fa-times" />
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <!-- Global Custom Fields Wizard Action -->
+    <record id="global_custom_fields_wizard_action" model="ir.actions.act_window">
+        <field name="name">Add Custom Fields</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">ir.models.fields.custom</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="product.model_product_product"/>
+    </record>
+
+    <record id="global_custom_fields_variant_menu" model="ir.actions.act_window">
+			<field name="name">Add Custom Fields</field>
+			<field name="type">ir.actions.act_window</field>
+			<field name="res_model">ir.models.fields.custom</field>
+			<field name="view_mode">form</field>
+			<field name="target">new</field>
+			<field name="binding_model_id" ref="product.model_product_template"/>
+	</record>
+
+</odoo>

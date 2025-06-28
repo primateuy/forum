@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+	<data noupdate="0">
+
+
+        <record id="sample_product_xls" model="ir.attachment">
+        <field name="name">product.xlsx</field>
+        <field name="type">binary</field>
+        <field name="datas" type="base64" file="import_product_variants/Sample XLS-CSV File/product.xlsx"/>
+    </record>
+
+
+    <record id="sample_product_csv" model="ir.attachment">
+        <field name="name">product.csv</field>
+        <field name="type">binary</field>
+        <field name="datas" type="base64" file="import_product_variants/Sample XLS-CSV File/product.csv"/>
+    </record>
+
+
+</data>
+</odoo>

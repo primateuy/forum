@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+
+    <record id="gen_sale_wizard_view" model="ir.ui.view">
+        <field name="name">Import Product With Variants</field>
+        <field name="model">gen.sale</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <field name="product_option" widget="radio"/>
+                    <field name="product_search" widget="radio"
+                           invisible="product_option == 'create'"/>
+                    <field name="import_option" widget="radio"/>
+                    <field name="filename" invisible="1"/>
+                    <field name="file" filename="filename"/>
+
+                </group>
+
+                <footer>
+                    <button name="import_variants" string="Import" type="object" class="oe_highlight"/>
+                    or
+                    <button string="Cancel" class="oe_highlight" special="cancel"/>
+                    <div class="pull-right" style = "position:relative; left:495px; top:2px;">
+                        <label for="download_auto" string="Download Sample: "/>
+                        <button name="download_auto" string="Download Sample File" type="object" class="oe_highlight"
+                                icon='fa-download'/>
+                    </div>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="custom_pop_message_wizard_view_form" model="ir.ui.view">
+        <field name="name">custom.pop.message.form</field>
+        <field name="model">custom.pop.message</field>
+        <field name="arch" type="xml">
+            <form string="Custom POP Message">
+
+                <field name="name" readonly="1"/>
+                <footer>
+                    <button string="Ok" class="oe_highlight" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+
+    <record id="bi_import_product_tmpl_inherit_form" model="ir.ui.view">
+        <field name="name">bi.import.product.template.inherit.form</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+
+            <field name='type' position="after">
+                <field name="uniq_id" invisible="1"/>
+
+            </field>
+
+        </field>
+    </record>
+
+
+    <record id="gen_sale_import_wizard" model="ir.actions.act_window">
+        <field name="name">Import Product With Variants</field>
+        <field name="res_model">gen.sale</field>
+        <field name="binding_view_types">form</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem action="gen_sale_import_wizard"
+              id="gen_sale_wizard_import"
+              name="Import Product With Variants"
+              parent="sale.product_menu_catalog"
+              groups="import_product_variants.group_support_user"
+    />
+
+</odoo>
+ 

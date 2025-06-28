@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+		<!-- Global Custom Tabs Wizard View -->
+		<record id="global_custom_tabs_wizard_view" model="ir.ui.view">
+			<field name="model">ir.global.tabs</field>
+			<field name="arch" type="xml">
+			<form string="Custom Global Tabs" duplicate="false">
+				<sheet>
+					<group>
+						<group>
+							<field name="name"/>
+							<field name="field_description"/>
+						</group>
+						<group>
+							<field name="model_id"/>
+						</group>
+					</group>
+					<footer>
+						<button name="create_global_custome_tabs" type="object" string="Add Tab" class="btn btn-primary active" icon="fa-plus-square"/>
+						
+						<button string="Cancel" class="btn btn-danger disabled" special="cancel" icon="fa-times"/>
+					</footer>
+				</sheet>
+			</form>
+			</field>
+		</record>
+
+		<record id="global_custom_tabs_wizard_action" model="ir.actions.act_window">
+			<field name="name">Custom Tabs</field>
+			<field name="type">ir.actions.act_window</field>
+			<field name="res_model">ir.global.tabs</field>
+			<field name="view_mode">form</field>
+			<field name="target">new</field>
+			<field name="binding_model_id" ref="product.model_product_product"/>
+		</record>
+
+		<record id="global_custom_fields_variant_tab_menu" model="ir.actions.act_window">
+			<field name="name">Add Custom Tab</field>
+			<field name="type">ir.actions.act_window</field>
+			<field name="res_model">ir.global.tabs</field>
+			<field name="view_mode">form</field>
+			<field name="target">new</field>
+			<field name="binding_model_id" ref="product.model_product_template"/>
+		</record>
+
+
+		<record id="bi_product_custom_field_view" model="ir.ui.view">
+			<field name="name">bi_inherit_product_view</field>
+			<field name="model">product.product</field>
+			<field name="inherit_id" ref="product.product_normal_form_view" />
+			<field name="type">form</field>
+			<field name="arch" type="xml">
+				<field name="type" position="after">
+					<field name="dummy" invisible="1"/>
+				</field>
+			</field>
+		</record>
+</odoo>
