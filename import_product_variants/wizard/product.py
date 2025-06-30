@@ -109,9 +109,7 @@ class gen_sale(models.TransientModel):
         else:
             categ_id = product_categ_obj.search([('name','=',values.get('categ_id'))],limit=1)
             if not categ_id:
-                # Crear la categoría automáticamente si no existe
-                categ_id = product_categ_obj.create({'name': values.get('categ_id')})
-                _logger.info('Created new category: %s', values.get('categ_id'))
+                raise ValidationError(_('Category %s not found.' %values.get('categ_id') ))
         
         if values.get('type') == 'Consumable':
             categ_type ='consu'
@@ -163,9 +161,7 @@ class gen_sale(models.TransientModel):
                 for name in e_names:
                     categ = self.env['product.public.category'].search([('name', '=', name)])
                     if not categ:
-                        # Crear la categoría de e-commerce automáticamente
-                        categ = self.env['product.public.category'].create({'name': name})
-                        _logger.info('Created new e-commerce category: %s', name)
+                        raise ValidationError(_('"%s" Category not in your system') % name)
                     e_categ.append(categ.id)
 
             elif ',' in values.get('e_categ'):
@@ -173,20 +169,15 @@ class gen_sale(models.TransientModel):
                 for name in e_names:
                     categ = self.env['product.public.category'].search([('name', '=', name)])
                     if not categ:
-                        # Crear la categoría de e-commerce automáticamente
-                        categ = self.env['product.public.category'].create({'name': name})
-                        _logger.info('Created new e-commerce category: %s', name)
+                        raise ValidationError(_('"%s" Category not in your system') % name)
                     e_categ.append(categ.id)
 
             else:
                 e_names = values.get('e_categ').split(',')
-                for name in e_names:
-                    categ = self.env['product.public.category'].search([('name', '=', name)])
-                    if not categ:
-                        # Crear la categoría de e-commerce automáticamente
-                        categ = self.env['product.public.category'].create({'name': name})
-                        _logger.info('Created new e-commerce category: %s', name)
-                    e_categ.append(categ.id)
+                categ = self.env['product.public.category'].search([('name', 'in', e_names), ('type_tax_use', '=', 'purchase')])
+                if not categ:
+                    raise ValidationError(_('"%s" Tax not in your system') % e_names)
+                e_categ.append(categ.id) 
         tax_id_lst = []
         if values.get('taxes_id'):
             if ';' in values.get('taxes_id'):
@@ -274,7 +265,7 @@ class gen_sale(models.TransientModel):
                 'uom_id':uom_id,
                 'uom_po_id':uom_po_id,
                 'list_price':values.get('sale_price'),
-                'standard_price':float(values.get('cost_price')) if values.get('cost_price') != '' else 0.0,
+                'standard_price':float(values.get('cost_price')),
 
                 }
         main_list = values.keys()
@@ -491,7 +482,7 @@ class gen_sale(models.TransientModel):
                 attr = temp[0]
                 attr_values = temp[1].split(';')
                 counter +=1        
-                attribute_value = self.env['product.attribute.value'].search([('name','=',temp[0]), ('attribute_id', '=', attribute.id)], limit=1)
+                attribute_value = self.env['product.attribute.value'].search([['name','=',temp[0]]],limit=1)
                 if not attribute_value:
                     if attr in ('color','colour','Color','Colour'):
                         attribute_value = self.env['product.attribute.value'].create({
@@ -504,10 +495,7 @@ class gen_sale(models.TransientModel):
                             'name':temp[0],
                             'attribute_id':attribute.id ,
                             })
-                
-                if not attribute_value or not attribute_value.id:
-                    raise ValidationError(_('Could not create or find attribute value for "%s"') % temp[0])
-                
+                attribute_value = self.env['product.attribute.value'].search([('name','=',temp[0]), ('attribute_id', '=', pair)], limit=1)
                 tmpl_attribute_value.append(attribute_value.id)
                 attribute_line = self.env['product.template.attribute.line'].search([
                     ('attribute_id','=',attribute.id),('product_tmpl_id','=',template.id)
@@ -523,7 +511,7 @@ class gen_sale(models.TransientModel):
                     attribute_line = self.env['product.template.attribute.line'].create({
                             'attribute_id':attribute.id,
                             'product_tmpl_id': template.id,
-                            'value_ids':[(6,0,[attribute_value.id])],
+                            'value_ids':[(6,0,attribute_value.ids)],
                             'active':True,
                         })                
                 ptav = self.env['product.template.attribute.value'].search([
@@ -557,7 +545,7 @@ class gen_sale(models.TransientModel):
                     res = product_obj.create(vals)
             template.write({
                 'list_price' : values.get('sale_price'),
-                'standard_price':float(values.get('cost_price')) if values.get('cost_price') != '' else 0.0,
+                'standard_price':float(values.get('cost_price')),
             })
 
         if self.product_option == 'update':
@@ -585,14 +573,13 @@ class gen_sale(models.TransientModel):
                     attr = temp[0]
                     attr_values = temp[1].split(';')
                     counter +=1        
-                    value_rec = self.env['product.attribute.value'].search([('name','=',temp[0]), ('attribute_id', '=', attribute.id)], limit=1)
-                    if value_rec:
-                        product_template_attribute_values = self.env['product.template.attribute.value'].search([('product_tmpl_id', '=', product_temp_id.id),('attribute_id','=',attribute.id),('name','=',value_rec.name)])
-                        if product_template_attribute_values:
-                            product_template_attribute_values.price_extra = temp[1]
+                    value_rec = self.env['product.attribute.value'].search([['name','=',temp[0]]],limit=1)
+                    product_template_attribute_values = self.env['product.template.attribute.value'].search([('product_tmpl_id', '=', product_temp_id.id),('attribute_id','=',attribute.id),('name','=',value_rec.name)])
+                    if product_template_attribute_values:
+                        product_template_attribute_values.price_extra = temp[1]
             product_temp_id.write({
                 'list_price' : values.get('sale_price'),
-                'standard_price':float(values.get('cost_price')) if values.get('cost_price') != '' else 0.0,
+                'standard_price':float(values.get('cost_price')),
             })
         if res:
             res.write(custom_vals)
@@ -687,10 +674,6 @@ class gen_sale(models.TransientModel):
                 file_reader.extend(csv_reader)
             except Exception:
                 raise ValidationError(_("Please select CSV/XLS file or You have selected invalid file"))
-            
-            total_records = len(file_reader) - 1  # Excluir la fila de encabezados
-            _logger.info('Starting CSV import with %s records to process', total_records)
-            
             values = {}
             for i in range(len(file_reader)):
                 field = list(map(str, file_reader[i]))
@@ -706,10 +689,6 @@ class gen_sale(models.TransientModel):
                     if i == 0:
                         continue
                     else:
-                        # Log de progreso cada 10 registros o en el último
-                        if i % 10 == 0 or i == len(file_reader) - 1:
-                            _logger.info('Processing CSV record %s/%s: %s', i, total_records, values.get('name', 'Unknown'))
-                        
                         if self.product_option == 'create':
                             res = self.create_product(values)
                         elif self.product_option == 'update':
@@ -764,9 +743,7 @@ class gen_sale(models.TransientModel):
                                     categ_id = product_categ_obj.search([('name', '=', values.get('categ_id'))],
                                                                         limit=1)
                                     if not categ_id:
-                                        # Crear la categoría automáticamente si no existe
-                                        categ_id = product_categ_obj.create({'name': values.get('categ_id')})
-                                        _logger.info('Created new category: %s', values.get('categ_id'))
+                                        raise ValidationError(_('Category %s not found.' % values.get('categ_id')))
                                 if values.get('type') == '':
                                     pass
                                 else:
@@ -803,9 +780,7 @@ class gen_sale(models.TransientModel):
                                         for name in e_names:
                                             categ = self.env['product.public.category'].search([('name', '=', name)])
                                             if not categ:
-                                                # Crear la categoría de e-commerce automáticamente
-                                                categ = self.env['product.public.category'].create({'name': name})
-                                                _logger.info('Created new e-commerce category: %s', name)
+                                                raise ValidationError(_('"%s" Category not in your system') % name)
                                             e_categ.append(categ.id)
 
                                     elif ',' in values.get('e_categ'):
@@ -813,27 +788,26 @@ class gen_sale(models.TransientModel):
                                         for name in e_names:
                                             categ = self.env['product.public.category'].search([('name', '=', name)])
                                             if not categ:
-                                                # Crear la categoría de e-commerce automáticamente
-                                                categ = self.env['product.public.category'].create({'name': name})
-                                                _logger.info('Created new e-commerce category: %s', name)
+                                                raise ValidationError(_('"%s" Category not in your system') % name)
                                             e_categ.append(categ.id)
 
                                     else:
                                         e_names = values.get('e_categ').split(',')
-                                        for name in e_names:
-                                            categ = self.env['product.public.category'].search([('name', '=', name)])
-                                            if not categ:
-                                                # Crear la categoría de e-commerce automáticamente
-                                                categ = self.env['product.public.category'].create({'name': name})
-                                                _logger.info('Created new e-commerce category: %s', name)
-                                            e_categ.append(categ.id)
+                                        # categ = self.env['product.public.category'].search(
+                                        #     [('name', 'in', e_names), ('type_tax_use', '=', 'purchase')])
+                                        categ = self.env['product.public.category'].search(
+                                            [('name', 'in', e_names)])
+                                        if not categ:
+                                            raise ValidationError(_('"%s" Tax not in your system') % e_names)
+                                        e_categ.append(categ.id)
 
                                 tax_id_lst = []
                                 if values.get('taxes_id'):
                                     if ';' in values.get('taxes_id'):
                                         tax_names = values.get('taxes_id').split(';')
                                         for name in tax_names:
-                                            tax = self.env['account.tax'].search([('name', '=', name), ('type_tax_use', '=', 'sale')])
+                                            tax = self.env['account.tax'].search(
+                                                [('name', 'in', name), ('type_tax_use', '=', 'sale')])
                                             if not tax:
                                                 raise ValidationError(_('"%s" Tax not in your system') % name)
                                             tax_id_lst.append(tax.id)
@@ -841,14 +815,16 @@ class gen_sale(models.TransientModel):
                                     elif ',' in values.get('taxes_id'):
                                         tax_names = values.get('taxes_id').split(',')
                                         for name in tax_names:
-                                            tax = self.env['account.tax'].search([('name', '=', name), ('type_tax_use', '=', 'sale')])
+                                            tax = self.env['account.tax'].search(
+                                                [('name', 'in', name), ('type_tax_use', '=', 'sale')])
                                             if not tax:
                                                 raise ValidationError(_('"%s" Tax not in your system') % name)
                                             tax_id_lst.append(tax.id)
 
                                     else:
                                         tax_names = values.get('taxes_id').split(',')
-                                        tax = self.env['account.tax'].search([('name', 'in', tax_names), ('type_tax_use', '=', 'sale')])
+                                        tax = self.env['account.tax'].search(
+                                            [('name', 'in', tax_names), ('type_tax_use', '=', 'sale')])
                                         if not tax:
                                             raise ValidationError(_('"%s" Tax not in your system') % tax_names)
                                         tax_id_lst.append(tax.id)
@@ -858,25 +834,28 @@ class gen_sale(models.TransientModel):
                                     if ';' in values.get('supplier_taxes_id'):
                                         tax_names = values.get('supplier_taxes_id').split(';')
                                         for name in tax_names:
-                                            tax = self.env['account.tax'].search([('name', '=', name), ('type_tax_use', '=', 'purchase')])
+                                            tax = self.env['account.tax'].search(
+                                                [('name', '=', name), ('type_tax_use', '=', 'purchase')])
                                             if not tax:
                                                 raise ValidationError(_('"%s" Tax not in your system') % name)
                                             supplier_taxes_id.append(tax.id)
 
-                                elif ',' in values.get('supplier_taxes_id'):
-                                    tax_names = values.get('supplier_taxes_id').split(',')
-                                    for name in tax_names:
-                                        tax = self.env['account.tax'].search([('name', '=', name), ('type_tax_use', '=', 'purchase')])
-                                        if not tax:
-                                            raise ValidationError(_('"%s" Tax not in your system') % name)
-                                        supplier_taxes_id.append(tax.id)
+                                    elif ',' in values.get('supplier_taxes_id'):
+                                        tax_names = values.get('supplier_taxes_id').split(',')
+                                        for name in tax_names:
+                                            tax = self.env['account.tax'].search(
+                                                [('name', '=', name), ('type_tax_use', '=', 'purchase')])
+                                            if not tax:
+                                                raise ValidationError(_('"%s" Tax not in your system') % name)
+                                            supplier_taxes_id.append(tax.id)
 
-                                else:
-                                    tax_names = values.get('supplier_taxes_id').split(',')
-                                    tax = self.env['account.tax'].search([('name', 'in', tax_names), ('type_tax_use', '=', 'purchase')])
-                                    if not tax:
-                                        raise ValidationError(_('"%s" Tax not in your system') % tax_names)
-                                    supplier_taxes_id.append(tax.id)
+                                    else:
+                                        tax_names = values.get('supplier_taxes_id').split(',')
+                                        tax = self.env['account.tax'].search(
+                                            [('name', '=', tax_names), ('type_tax_use', '=', 'purchase')])
+                                        if not tax:
+                                            raise ValidationError(_('"%s" Tax not in your system') % tax_names)
+                                        supplier_taxes_id.append(tax.id)
 
                                 if values.get('on_hand') == '':
                                     quantity = False
@@ -979,7 +958,6 @@ class gen_sale(models.TransientModel):
 
             context = {'default_name': "%s Records Successfully Imported." % (i)
                        }
-            _logger.info('CSV import completed successfully. Total records processed: %s', total_records)
             return {
                 'name': 'Success',
                 'type': 'ir.actions.act_window',
@@ -1005,19 +983,11 @@ class gen_sale(models.TransientModel):
                 sheet = workbook.sheet_by_index(0)
             except Exception:
                 raise ValidationError(_("Invalid file!"))
-            
-            total_records = sheet.nrows - 1  # Excluir la fila de encabezados
-            _logger.info('Starting XLS import with %s records to process', total_records)
-            
             for row_no in range(sheet.nrows):
                 val = {}
                 if row_no <= 0:
                     line_fields = list(map(lambda row: row.value.encode('utf-8'), sheet.row(row_no)))
                 else:
-                    # Log de progreso cada 10 registros o en el último
-                    if row_no % 10 == 0 or row_no == sheet.nrows - 1:
-                        _logger.info('Processing XLS record %s/%s', row_no, total_records)
-                    
                     line = list(
                         map(lambda row: isinstance(row.value, bytes) and row.value.encode('utf-8') or str(row.value),
                             sheet.row(row_no)))
@@ -1109,9 +1079,7 @@ class gen_sale(models.TransientModel):
                             else:
                                 categ_id = product_categ_obj.search([('name', '=', line[3])], limit=1)
                                 if not categ_id:
-                                    # Crear la categoría automáticamente si no existe
-                                    categ_id = product_categ_obj.create({'name': line[3]})
-                                    _logger.info('Created new category: %s', line[3])
+                                    raise ValidationError(_('Category %s not found.' % line[3]))
                             if line[4] == '':
                                 pass
                             else:
@@ -1148,30 +1116,26 @@ class gen_sale(models.TransientModel):
                                     for name in e_names:
                                         categ = self.env['product.public.category'].search([('name', '=', name)])
                                         if not categ:
-                                            # Crear la categoría de e-commerce automáticamente
-                                            categ = self.env['product.public.category'].create({'name': name})
-                                            _logger.info('Created new e-commerce category: %s', name)
+                                            raise ValidationError(_('"%s" Category not in your system') % name)
                                         e_categ.append(categ.id)
 
                                 elif ',' in line[21]:
-                                    e_names = line[21].split(',')
+                                    e_names = values.get('e_categ').split(',')
                                     for name in e_names:
                                         categ = self.env['product.public.category'].search([('name', '=', name)])
                                         if not categ:
-                                            # Crear la categoría de e-commerce automáticamente
-                                            categ = self.env['product.public.category'].create({'name': name})
-                                            _logger.info('Created new e-commerce category: %s', name)
+                                            raise ValidationError(_('"%s" Category not in your system') % name)
                                         e_categ.append(categ.id)
 
                                 else:
                                     e_names = line[21].split(',')
-                                    for name in e_names:
-                                        categ = self.env['product.public.category'].search([('name', '=', name)])
-                                        if not categ:
-                                            # Crear la categoría de e-commerce automáticamente
-                                            categ = self.env['product.public.category'].create({'name': name})
-                                            _logger.info('Created new e-commerce category: %s', name)
-                                        e_categ.append(categ.id)
+                                    # categ = self.env['product.public.category'].search(
+                                    #     [('name', 'in', e_names), ('type_tax_use', '=', 'purchase')])
+                                    categ = self.env['product.public.category'].search(
+                                        [('name', 'in', e_names)])
+                                    if not categ:
+                                        raise ValidationError(_('"%s" Tax not in your system') % e_names)
+                                    e_categ.append(categ.id)
                             tax_id_lst = []
                             if line[12]:
                                 if ';' in line[12]:
@@ -1334,7 +1298,6 @@ class gen_sale(models.TransientModel):
 
             context = {'default_name': "%s Records Successfully Imported." % (row_no)
                        }
-            _logger.info('XLS import completed successfully. Total records processed: %s', total_records)
             return {
                 'name': 'Success',
                 'type': 'ir.actions.act_window',
