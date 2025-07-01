@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <record id="izi_data_source_item_form" model="ir.ui.view">
+            <field name="name">izi.data.source.item.form</field>
+            <field name="model">izi.data.source.item</field>
+            <field name="inherit_id" ref="izi_data.izi_data_source_item_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='type']" position="after">
+                    <field name="file_attachment" filename="file_attachment_name" invisible="type != 'file'"/>
+                    <field name="file_attachment_name" invisible="1"/>
+                    <field name="file_attachment_id" invisible="1"/>
+                    <field name="google_sheet_id" invisible="type != 'google_sheet'"/>
+                    <field name="google_sheet_name" invisible="type != 'google_sheet'"/>
+                    <field name="google_sheet_json_key_attachment" filename="google_sheet_json_key_attachment_name" invisible="type != 'google_sheet'"/>
+                    <field name="google_sheet_json_key_attachment_name" invisible="1"/>
+                    <field name="google_sheet_json_key_attachment_id" invisible="1"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>
