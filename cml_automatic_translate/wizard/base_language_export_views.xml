@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+
+        <record id="automatic_translation_wizard" model="ir.ui.view">
+            <field name="name">automatic.translation.wizard</field>
+            <field name="model">base.language.export</field>
+            <field name="inherit_id" ref="base.wizard_lang_export" />
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='lang']" position="attributes">
+                    <attribute name="readonly">automatic_translate</attribute>
+                </xpath>
+
+                <xpath expr="//field[@name='format']" position="after">
+                    <field name="automatic_translate" invisible="format not in ['po']" />
+                    <field name="source_lang"
+                        invisible="format not in ['po'] or not automatic_translate"
+                        required="format in ['po'] and automatic_translate" />
+                    <field name="target_lang"
+                        invisible="format not in ['po'] or not automatic_translate"
+                        required="format in ['po'] and automatic_translate" />
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>
