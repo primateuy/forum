@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="sr_auto_generate_sku_sequence" model="ir.sequence">
+            <field name="name">Auto Generate SKU Sequence</field>
+            <field name="code">sr.auto.generate.sku.sequence</field>
+            <field name="prefix"></field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>

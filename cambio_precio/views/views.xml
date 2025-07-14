@@ -1,0 +1,47 @@
+<odoo>
+    <record id="view_loyalty_reward_form_inherit" model="ir.ui.view">
+        <field name="name">loyalty.reward.form.pricelist</field>
+        <field name="model">loyalty.reward</field>
+        <field name="inherit_id" ref="loyalty.loyalty_reward_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='reward_type']" position="after">
+                <field name="pricelist_id" modifiers="{'invisible': [('reward_type', '!=', 'pricelist_change')], 'required': [('reward_type', '=', 'pricelist_change')]}"/>
+            </xpath>
+        </field>
+    </record>
+
+
+    <record id="view_loyalty_reward_form_inherit" model="ir.ui.view">
+        <field name="name">loyalty.reward.form.inherit.pricelist</field>
+        <field name="model">loyalty.reward</field>
+        <field name="inherit_id" ref="loyalty.loyalty_reward_view_form"/>
+        <field name="arch" type="xml">
+            <!-- Añadimos nuestro campo en el grupo de tipo de recompensa -->
+            <xpath expr="//group[@name='reward_type_group']" position="inside">
+                <label for="pricelist_id" string="Lista de precios" invisible="reward_type != 'pricelist_change'"/>
+                <field name="pricelist_id" invisible="reward_type != 'pricelist_change'"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_loyalty_reward_kanban_inherit" model="ir.ui.view">
+        <field name="name">loyalty.reward.kanban.inherit.pricelist</field>
+        <field name="model">loyalty.reward</field>
+        <field name="inherit_id" ref="loyalty.loyalty_reward_view_kanban"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@class='o_loyalty_kanban_card_left mw-75 flex-grow-1' and @name='reward_info']" position="inside">
+                <t t-if="record.reward_type.raw_value === 'pricelist_change'">
+                    <span class="fw-bold">Cambio de Lista de Precios</span>
+                    <br/>
+                    <t t-if="record.pricelist_id.raw_value">
+                        <div class="d-flex">
+                            <i class="fa fa-tags fa-fw" title="Price List"/>
+                            <field name="pricelist_id" class="d-inline"/>
+                        </div>
+                    </t>
+                </t>
+            </xpath>
+        </field>
+    </record>
+    
+</odoo>

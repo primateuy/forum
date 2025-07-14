@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="res_config_settings_view_form_extends_add_auto_generate_sku_configuration" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.extends.add.auto.generate.sku.configuration</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="sale.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//div[@data-key='sale_management']" position="inside">
+                <h2>Auto Generate Product SKU/Default Code/Internal Reference</h2>
+
+                <div class="row mt16 o_settings_container">
+                    <div class="col-12 col-lg-6 o_setting_box">
+                        <div class="o_setting_left_pane">
+                            <field name="sku_code_generation_setting"/>
+                        </div>
+                        <div class="o_setting_right_pane">
+                            <label for="sku_code_generation_setting"
+                                   string="On Product Create Auto Generate Product SKU/Default Code/Internal Reference"/>
+                        </div>
+                    </div>
+                </div>
+<!--                <div class="row mt16 o_settings_container" attrs="{'invisible': [('sku_code_generation_setting','==',False)]}">-->
+                <div class="row mt16 o_settings_container" invisible="sku_code_generation_setting == False">
+                    <div class="col-12 col-lg-6 o_setting_box">
+                        <div class="o_setting_right_pane">
+                            <center>
+                                <h2 style="background-color:#8bd8bd; color:white;">Product Name Configuration</h2>
+                            </center>
+                            <br/>
+                        </div>
+                        <div class="o_setting_right_pane">
+                            <label for="product_name_digit" string="Product Name Length"/>
+<!--                            <field name="product_name_digit" style="margin-left: 20px;" attrs="{'required': [('sku_code_generation_setting','==',True)]}"/>-->
+                            <field name="product_name_digit" style="margin-left: 20px;" required="sku_code_generation_setting == True"/>
+                        </div>
+                        <div class="o_setting_right_pane">
+                            <label for="product_name_separate" string="Product Name Separator"/>
+<!--                            <field name="product_name_separate" style="margin-left: 4px;" attrs="{'required': [('sku_code_generation_setting','==',True)]}"/>-->
+                            <field name="product_name_separate" style="margin-left: 4px;" required="sku_code_generation_setting == True"/>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-6 o_setting_box">
+                        <div class="o_setting_right_pane">
+                            <center>
+                                <h2 style="background-color:#8bd8bd; color:white;">Product Attribute Configuration</h2>
+                            </center>
+                            <br/>
+                        </div>
+                        <div class="o_setting_right_pane">
+                            <label for="product_attribute_digit" string="Product Attribute Length"/>
+<!--                            <field name="product_attribute_digit" style="margin-left: 20px;" attrs="{'required': [('sku_code_generation_setting','==',True)]}"/>-->
+                            <field name="product_attribute_digit" style="margin-left: 20px;" required="sku_code_generation_setting == True"/>
+                        </div>
+                        <div class="o_setting_right_pane">
+                            <label for="product_attribute_separate" string="Product Attribute Separator"/>
+<!--                            <field name="product_attribute_separate" style="margin-left: 4px;" attrs="{'required': [('sku_code_generation_setting','==',True)]}"/>-->
+                            <field name="product_attribute_separate" style="margin-left: 4px;" required="sku_code_generation_setting == True"/>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-6 o_setting_box">
+                        <div class="o_setting_right_pane">
+                            <center>
+                                <h2 style="background-color:#8bd8bd; color:white;">Product Category Configuration</h2>
+                            </center>
+                            <br/>
+                        </div>
+                        <div class="o_setting_right_pane">
+                            <label for="product_category_digit" string="Product Category Length"/>
+<!--                            <field name="product_category_digit" style="margin-left: 20px;" attrs="{'required': [('sku_code_generation_setting','==',True)]}"/>-->
+                            <field name="product_category_digit" style="margin-left: 20px;" required="sku_code_generation_setting == True"/>
+                        </div>
+                        <div class="o_setting_right_pane">
+                            <label for="product_category_separate" string="Product Category Separator"/>
+<!--                            <field name="product_category_separate" style="margin-left: 4px;" attrs="{'required': [('sku_code_generation_setting','==',True)]}"/>-->
+                            <field name="product_category_separate" style="margin-left: 4px;" required="sku_code_generation_setting == True"/>
+                        </div>
+                    </div>
+                </div>
+
+            </xpath>
+        </field>
+    </record>
+</odoo>
