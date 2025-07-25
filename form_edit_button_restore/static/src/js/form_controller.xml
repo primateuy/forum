@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="web.FormView" t-inherit-mode="extension">
+        <xpath expr="//t[@t-set-slot='control-panel-status-indicator']" position="replace"/>
+        <xpath expr="//t[@t-set-slot='control-panel-create-button'][last()]" position="inside">
+            <t t-if="canEdit &amp;&amp; model.root.isInEdition" >
+                <button type="button" class="btn btn-primary o_form_button_save" data-hotkey="s" t-on-click.stop="saveAndClose">Save</button>
+                <button type="button" class="btn btn-secondary o_form_button_cancel" data-hotkey="j" t-on-click.stop="discardAndClose">Discard</button>
+            </t>
+            <t t-if="canEdit &amp;&amp; !model.root.isInEdition">
+                <button type="button" class="btn btn-primary o_form_button_edit" data-hotkey="e" t-on-click.stop="edit">Edit</button>
+            </t>
+        </xpath>
+    </t>
+</templates>
