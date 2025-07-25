@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="pos_config_view_form_inherit_pos_salesperson" model="ir.ui.view">
+        <field name="name">pos.config.form.inherit.pos.salesperson</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="point_of_sale.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@id='pos_interface_section']" position="inside">
+                <setting help="Set salesperson on pos orderline">
+                    <field name="allow_salesperson"/>
+                </setting>
+            </xpath>
+        </field>
+    </record>
+</odoo>

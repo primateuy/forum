@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pos_pos_form_inherit_pos_salesperson" model="ir.ui.view">
+        <field name="name">pos.order.view.form.inherit.pos.saleperson</field>
+        <field name="model">pos.order</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_pos_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='lines']/tree/field[@name='full_product_name']" position="after">
+                <field name="user_id" string="Saleperson"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_report_pos_order_search_inherit_pwsales" model="ir.ui.view">
+        <field name="name">report.pos.order.search.form.inherit.pos.saleperson</field>
+        <field name="model">report.pos.order</field>
+        <field name="inherit_id" ref="point_of_sale.view_report_pos_order_search"/>
+        <field name="arch" type="xml">
+            <field name="product_categ_id" position="after">
+                <field name="saleperson_id"/>
+            </field>
+            <xpath expr="//filter[@name='product_category']" position='after'>
+                <filter string="Salesperson" name="saleperson_id" context="{'group_by':'saleperson_id'}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

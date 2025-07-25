@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <t t-name="pw_pos_salesperson.SalespersonButton">
+        <span class="control-button btn btn-light rounded-0 fw-bolder" t-on-click="() => this.click()">
+            <i class="fa fa-user me-1"></i>
+            <span> </span>
+            <span>Salesperson</span>
+        </span>
+    </t>
+    <t t-name="pw_pos_salesperson.ProductScreen" t-inherit="point_of_sale.ProductScreen" t-inherit-mode="extension">
+        <xpath expr="//ul[@t-if='line.pack_lot_lines']" position="after">
+            <t t-if="pos.config.allow_salesperson">
+                <t t-if="line.get_line_user()">
+                    <li style="text-align: right;color:green;font-style: italic;cursor: pointer;">
+                        <t t-if="line.user_id">
+                            <img t-attf-src="/web/image?model=res.users&amp;field=image_128&amp;id={{line.user_id.id}}&amp;unique=1" style="width: 25px;height: 25px;border-radius: 16px;vertical-align: middle;}" t-on-click="() => this.changeUser(line)"/>
+                        </t>
+                        <t t-esc="line.get_line_user().name" class="sale_person"/>
+                        <i class="fa fa-times remove_person" style="color:red;vertical-align: middle;padding-left: 5px;" t-on-click="() => this.removeUser(line)"/>
+                    </li>
+                </t>
+                <t t-if="!line.get_line_user()">
+                    <li style="text-align: right;">
+                        <i t-attf-class="fa fa-user-plus sale_person" style="color:orange" t-on-click="() => this.changeUser(line)"/>
+                    </li>
+                </t>
+            </t>
+        </xpath>
+    </t>
+</templates>
