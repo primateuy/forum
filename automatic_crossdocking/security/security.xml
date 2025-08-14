@@ -1,0 +1,6 @@
+<odoo>
+    <record id="group_crossdock_editors" model="res.groups">
+        <field name="name">Crossdock Editors</field>
+        <field name="category_id" ref="base.module_category_inventory"/>
+    </record>
+</odoo>
