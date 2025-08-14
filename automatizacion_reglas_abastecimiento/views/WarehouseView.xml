@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_warehouse_group_form_inherit" model="ir.ui.view">
+        <field name="name">stock.warehouse.group.form.inherit</field>
+        <field name="model">stock.warehouse.group</field>
+        <field name="inherit_id" ref="setu_advance_reordering.form_stock_warehouse_group"/>
+        <field name="arch" type="xml">
+
+
+            <xpath expr="//field[@name='warehouse_ids']" position="after">
+                <field name="warehouse_group_level" />
+            </xpath>
+            
+
+            <xpath expr="//sheet" position="inside">
+                <group string="Reglas por Categoría">
+                    <field name="category_rule_ids">
+                        <tree editable="bottom">
+                            <field name="categ_id"/>
+                            <field name="min_qty"/>
+                            <field name="max_qty"/>
+                            <field name="use_multiples"/>
+                            <field name="qty_multiple"/>
+                        </tree>
+                    </field>
+                </group>
+            </xpath>
+
+        </field>
+    </record>
+</odoo>
