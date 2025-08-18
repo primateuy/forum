@@ -1,0 +1,111 @@
+
+<odoo>
+    <record id="view_product_category_form_inherit_code" model="ir.ui.view">
+        <field name="name">product.category.form.auto.code</field>
+        <field name="model">product.category</field>
+        <field name="inherit_id" ref="product.product_category_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/notebook/page[1]" position="inside">
+                <group string="Código automático">
+                    <field name="code"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_product_attribute_form_inherit_code" model="ir.ui.view">
+        <field name="name">product.attribute.form.auto.code</field>
+        <field name="model">product.attribute</field>
+        <field name="inherit_id" ref="product.view_product_attribute_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/group" position="inside">
+                <group string="Código automático">
+                    <field name="include_in_code"/>
+                    <field name="sequence"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_product_attribute_value_form_inherit_code" model="ir.ui.view">
+        <field name="name">product.attribute.value.form.auto.code</field>
+        <field name="model">product.attribute.value</field>
+        <field name="inherit_id" ref="product.product_attribute_value_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/group" position="inside">
+                <group string="Código automático">
+                    <field name="code"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_product_template_form_inherit_code" model="ir.ui.view">
+        <field name="name">product.template.form.auto.code</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_generate_template_code" type="object" string="Codificar plantilla" class="btn-secondary"/>
+                <button name="action_generate_variant_codes" type="object" string="Codificar variantes"/>
+                <button name="action_generate_codes" type="object" string="Codificar todo" class="oe_highlight"/>
+            </xpath>
+            <xpath expr="//sheet/group[@name='group_lifetime']" position="after">
+                <group string="Código automático">
+                    <field name="auto_code"/>
+                    <field name="code_domain_id"/>
+                    <field name="code_prefix" readonly="1"/>
+                    <field name="default_code"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_product_variant_form_inherit_code" model="ir.ui.view">
+        <field name="name">product.product.form.auto.code</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_normal_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_generate_code" type="object" string="Generar código" class="oe_highlight"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_product_code_domain_tree" model="ir.ui.view">
+        <field name="name">product.code.domain.tree</field>
+        <field name="model">product.code.domain</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_product_code_domain_form" model="ir.ui.view">
+        <field name="name">product.code.domain.form</field>
+        <field name="model">product.code.domain</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="code"/>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_product_code_domain" model="ir.actions.act_window">
+        <field name="name">Dominios de código</field>
+        <field name="res_model">product.code.domain</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="menu_product_code_root" name="Códigos automáticos" parent="product.menu_catalog" sequence="90"/>
+    <menuitem id="menu_product_code_domain" name="Dominios de código" parent="menu_product_code_root" action="action_product_code_domain"/>
+</odoo>

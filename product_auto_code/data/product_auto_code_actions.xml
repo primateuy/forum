@@ -1,0 +1,20 @@
+
+<odoo>
+    <record id="server_action_generate_codes_template" model="ir.actions.server">
+        <field name="name">Generar códigos (plantilla y variantes)</field>
+        <field name="model_id" ref="product.model_product_template"/>
+        <field name="state">code</field>
+        <field name="binding_model_id" ref="product.model_product_template"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="code">records.action_generate_codes()</field>
+    </record>
+
+    <record id="server_action_generate_code_variant" model="ir.actions.server">
+        <field name="name">Generar código</field>
+        <field name="model_id" ref="product.model_product_product"/>
+        <field name="state">code</field>
+        <field name="binding_model_id" ref="product.model_product_product"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="code">records.action_generate_code()</field>
+    </record>
+</odoo>
