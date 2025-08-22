@@ -1,19 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
     <data>
-
-        <record id="view_product_product_form_inherit" model="ir.ui.view">
-            <field name="name">product.product.form.inherit.warehouse.group</field>
-            <field name="model">product.product</field>
-            <field name="inherit_id" ref="product.product_normal_form_view"/>
-            <field name="arch" type="xml">
-
-                <xpath expr="//field[@name='categ_id']" position="after">
-                    <field name="warehouse_group_id"/>
-                </xpath>
-
-            </field>
-        </record>
-
+        <record id="view_product_form_inherit_warehouse_group" model="ir.ui.view">
+    <field name="name">product.product.form.inherit.warehouse.group</field>
+    <field name="model">product.product</field>
+    <field name="inherit_id" ref="product.product_normal_form_view"/>
+    <field name="arch" type="xml">
+        <xpath expr="//field[@name='categ_id']" position="after">
+            <field name="warehouse_group_id"/>
+        </xpath>
+    </field>
+</record>
+    
     </data>
 </odoo>

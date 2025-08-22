@@ -1,5 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+
+    <record id="action_prueba_server" model="ir.actions.server">
+    <field name="name">Procesar</field>
+    <field name="model_id" ref="model_stock_warehouse_group"/>
+    <field name="binding_model_id" ref="model_stock_warehouse_group"/>
+    <field name="state">code</field>
+    <field name="code">
+        action = records.prueba()
+    </field>
+</record>
+
+
+
     <record id="view_warehouse_group_form_inherit" model="ir.ui.view">
         <field name="name">stock.warehouse.group.form.inherit</field>
         <field name="model">stock.warehouse.group</field>
@@ -8,7 +21,9 @@
 
 
             <xpath expr="//field[@name='warehouse_ids']" position="after">
-                <field name="warehouse_group_level" />
+
+                <!-- <field name="nivel_jerarquia_id" invisible="1"></field> -->
+                <!-- <field invisible="not nivel_jerarquia_id" name="nivel_jerarquia_nombre"/> -->
             </xpath>
             
 

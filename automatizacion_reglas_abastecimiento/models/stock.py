@@ -41,15 +41,22 @@ class StockRule(models.Model):
 class StockWareHouseGroup(models.Model):
     _inherit = 'stock.warehouse.group'
 
-    warehouse_group_level = fields.Selection([
-        ('1', '1 - Centro de distribución principal'),
-        ('2', '2 - Locales grandes'),
-        ('3', '3 - Locales medianos'),
-        ('4', '4 - Locales pequeños o franquicias')
-    ], string="Nivel de jerarquía", default="1", help="Mientras menor el número, mayor la jerarquia", required=True);
-
+   
     category_rule_ids = fields.One2many(
             'warehouse.group.category.rule',
             'warehouse_group_id',
             string='Reglas por Categoría'
         )
+    
+    nivel_jerarquia_id = fields.Many2one(
+        'niveles.jerarquia',
+        string='Nivel de Jerarquía',
+        ondelete='set null'
+    )
+
+    nivel_jerarquia_nombre = fields.Char(
+        string="Nombre del Nivel",
+        related='nivel_jerarquia_id.nombre',
+        store=False
+    )
+    
