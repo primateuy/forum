@@ -2,4 +2,8 @@
 
 from . import PurchaseOrder
 from . import PurchaseOrderLine
-from . import CrossDockWizard
+from . import StockPicking
+
+
+
+

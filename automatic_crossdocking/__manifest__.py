@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+
+
 {
     'name': "Crossdocking Automático",
 
@@ -12,18 +14,26 @@
     'category': 'Uncategorized',
     'version': '0.1',
 
-    'depends': ['base', 'purchase', 'stock'],
+    'depends': ['base', 'web','web_grid', 'purchase', 'purchase_stock', 'stock'],
 
     'data': [
         'security/ir.model.access.csv',
         'security/security.xml',
         'views/PurchaseOrderView.xml',
-        'views/PurchaseOrderLineView.xml',
-        
-        'views/CrossDockWizardView.xml'
+        'views/PurchaseOrderLineView.xml'
     ],
+    
+    "assets": {
+        "web.assets_backend": [
+            "automatic_crossdocking/static/src/components/welcome_component.js",
+            "automatic_crossdocking/static/src/components/welcome_component.xml"
+        
+        ],
+    },
+    
     'demo': [
         'demo/demo.xml',
     ],
+    
 }
 
