@@ -28,11 +28,10 @@ class CrossdockDistributionComponent extends Component {
 
     onInputChange(ev, row, col) {
         const productId = parseInt(ev.target.dataset.productId);
-        const pickingId = parseInt(ev.target.dataset.pickingId);
+        const pickingId = col.picking_id || this.state.distributionData.locationPickings.get(col.key)?.picking_id;
         const newQuantity = parseInt(ev.target.value) || 0;
         const pedidoCantidad = row.pedido;
         const currentQuantity = row[col.key] || 0;
-
 
         let totalConNuevoValor = 0;
 
@@ -64,8 +63,10 @@ class CrossdockDistributionComponent extends Component {
 
             ev.target.value = currentQuantity;
 
+            // Don't proceed with update
             return;
         }
+
 
 
         const restante = pedidoCantidad - totalConNuevoValor;
@@ -75,7 +76,6 @@ class CrossdockDistributionComponent extends Component {
                 { type: 'info' }
             );
 
-            return;
         } else if (restante === 0 && this.notification) {
             this.notification.add(
                 `✓ Pedido completo asignado (${pedidoCantidad} unidades)`,
@@ -84,6 +84,7 @@ class CrossdockDistributionComponent extends Component {
         }
 
         row[col.key] = newQuantity;
+
 
         this.orm.call("stock.picking", "updatePickingQuantity", [pickingId, productId, newQuantity])
             .then(result => {
@@ -112,6 +113,7 @@ class CrossdockDistributionComponent extends Component {
                     );
                 }
             });
+
     }
 
 
@@ -140,6 +142,7 @@ class CrossdockDistributionComponent extends Component {
 
         const tableData = this.transformForTable(grouped);
 
+
         this.state.distributionData = tableData;
         this.state.loading = false;
     }
@@ -147,16 +150,19 @@ class CrossdockDistributionComponent extends Component {
 
     transformForTable(grouped) {
         const table = [];
-        let allLocations = new Set();
+        let allLocations = new Map(); // Usar Map en lugar de Set
 
+        // Recopilar locations con su info completa
         for (const productId in grouped) {
             const product = grouped[productId];
             Object.values(product.locations).forEach(loc => {
-                allLocations.add(loc.location_name);
+                allLocations.set(loc.location_name, {
+                    location_name: loc.location_name,
+                    picking_id: loc.picking_id,
+                    picking_name: loc.picking_name
+                });
             });
         }
-
-        allLocations = Array.from(allLocations);
 
         for (const productId in grouped) {
             const product = grouped[productId];
@@ -167,16 +173,14 @@ class CrossdockDistributionComponent extends Component {
                 default_code: product.default_code,
                 uom: product.uom,
                 product_id: product.product_id,
-                picking_id: product.picking_id,
-                picking_name: product.picking_name,
-
             };
 
-
-            allLocations.forEach(locName => {
+            // Inicializar todas las locations
+            allLocations.forEach((locInfo, locName) => {
                 row[locName] = 0;
             });
 
+            // Llenar con las cantidades reales
             for (const locId in product.locations) {
                 const loc = product.locations[locId];
                 row[loc.location_name] = loc.quantity;
@@ -185,16 +189,19 @@ class CrossdockDistributionComponent extends Component {
             table.push(row);
         }
 
-
         return {
             rows: table,
             columns: [
-                { key: "picking_id", label: "Picking" },
                 { key: "product_name", label: "Producto" },
                 { key: "pedido", label: "Pedido" },
                 { key: "crossdock", label: "Crossdock" },
-                ...allLocations.map(loc => ({ key: loc, label: loc }))
-            ]
+                ...Array.from(allLocations.entries()).map(([locName, locInfo]) => ({
+                    key: locName,
+                    label: `${locName} (${locInfo.picking_name})`,
+                    picking_id: locInfo.picking_id // ← Info del picking en la columna
+                }))
+            ],
+            locationPickings: allLocations // Info completa de locations
         };
     }
 
@@ -212,12 +219,12 @@ class CrossdockDistributionComponent extends Component {
                     groupedByProduct[productId] = {
                         product_id: item.product_id,
                         crossdock: item.crossdock,
-                        product_name: item.product_name,
+                        product_name: item.product_display,
                         picking_id: item.picking_id,
                         picking_name: item.picking_name,
                         default_code: item.product_default_code,
                         uom: item.uom,
-                        total_quantity: 0,
+                        total_quantity: item.total_line_quantity,
                         warehouses: {},
                         locations: {}
                     };
@@ -246,15 +253,47 @@ class CrossdockDistributionComponent extends Component {
                 }
                 groupedByProduct[productId].locations[locationId].quantity += item.quantity;
 
-                // Sumar al total
-                groupedByProduct[productId].total_quantity += item.quantity;
             }
         }
 
         return groupedByProduct;
     }
 
+
+    async findAndUpdateStockMove(pickingId, productId, newQuantity) {
+        try {
+            // Buscar el stock.move específico
+            const moveIds = await this.orm.searchRead(
+                "stock.move",
+                [
+                    ["picking_id", "=", pickingId],
+                    ["product_id", "=", productId]
+                ],
+                ["id", "product_uom_qty", "quantity_done", "state"]
+            );
+
+            if (moveIds.length > 0) {
+                const move = moveIds[0]; // Tomar el primero si hay varios
+
+                // Actualizar la cantidad demandada
+                const result = await this.orm.call(
+                    "stock.move",
+                    "write",
+                    [move.id, { "product_uom_qty": newQuantity }]
+                );
+
+                return { success: true, move_id: move.id };
+            } else {
+                return { success: false, error: 'No se encontró el movimiento' };
+            }
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+
 }
+
+
 
 // Register the component
 registry.category("actions").add("crossdock_distribution_template", CrossdockDistributionComponent);

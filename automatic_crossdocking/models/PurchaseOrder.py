@@ -75,14 +75,21 @@ class PurchaseOrder(models.Model):
                     
                     related_move = self._find_related_move(line, destination, related_picking)
 
+                    product_display_name = line.product_id.display_name
+                    if hasattr(line.product_id, 'product_template_attribute_value_ids') and line.product_id.product_template_attribute_value_ids:
+                        display_name = product_display_name
+                    else:
+                        display_name = line.product_id.product_tmpl_id.name
+
                     datosRenderizados.append({
                         'picking_id': related_picking.id if related_picking else None,
                         'picking_name': related_picking.name if related_picking else '',
                         'product_id': line.product_id.id,
                         'product_name': line.product_id.name,
+                        'product_display': display_name,
                         'product_default_code': line.product_id.default_code or '',
                         'move_id': related_move.id if related_move else None,
-                        'quantity': quantity,
+                        'quantity': related_move.product_uom_qty,
                         'crossdock': line.line_crossdock_percentage,
                         'uom': line.product_uom.name,
                         'source_warehouse_id': warehouse.id,
@@ -91,7 +98,8 @@ class PurchaseOrder(models.Model):
                         'destination_location_name': destination.complete_name if hasattr(destination, 'complete_name') else warehouse.display_name,
                         'purchase_order_id': line.order_id.id,
                         'purchase_order_name': line.order_id.name,
-                        'purchase_line_id': line.id
+                        'purchase_line_id': line.id,
+                        'total_line_quantity': line.product_qty
                     })
                     
                 except Exception as e:

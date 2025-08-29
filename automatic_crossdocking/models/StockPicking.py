@@ -12,6 +12,7 @@ class StockPicking(models.Model):
 
     @api.model
     def updatePickingQuantity(self, picking_id, product_id, new_quantity):
+        _logger.info("Probando si entra aca")
         try:
             picking = self.env['stock.picking'].browse(picking_id)
             if not picking.exists():
