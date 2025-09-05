@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <!-- STOCK.LANDED.COST -->
+        <!-- view_stock_landed_cost_form -->
+        <record id='view_stock_landed_cost_import' model='ir.ui.view'>
+            <field name="name">stock.landed.cost_import</field>
+            <field name="model">stock.landed.cost</field>
+            <field name="inherit_id" ref="stock_landed_costs.view_stock_landed_cost_form" />
+            <field name="arch" type="xml">
+                <header>
+
+                    <button 
+                    name="action_close_import_status" 
+                    string="Cerrar"
+                    groups='stock_importaciones.open_close_imports'
+                    class="oe_highlight"
+                    invisible="state != 'done' or has_import_op_in_open_status != True"
+                    type="object"/>
+
+                </header>
+                <xpath expr="//field[@name='picking_ids']" position="after">
+                    <field name="import_op_in_draft" string='Transferencias en Costes en Destino en estado "borrador"'/>
+                    <field name="has_import_op_in_draft"  invisible="1"/>
+                    <field name="has_import_op_in_open_status"  invisible="1"/>
+                    
+                </xpath>
+                
+                <xpath expr="//field[@name='picking_ids']" position="replace">
+                    <field name="picking_ids" widget="many2many_tags" options="{'no_create_edit': True}" domain="[('import_op_status', '=', 'open'), ('company_id', '=', company_id), ('move_ids.stock_valuation_layer_ids', '!=', False)]"/>
+                </xpath>
+
+            </field>
+        </record>
+    </data>
+</odoo>
