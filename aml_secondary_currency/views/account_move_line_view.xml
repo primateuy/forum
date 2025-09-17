@@ -1,0 +1,30 @@
+<odoo>
+    <data>
+
+        <record id="view_company_form_inherit_secondary_currency" model="ir.ui.view">
+            <field name="name">res.company.form.inherit.secondary.currency</field>
+            <field name="model">res.company</field>
+            <field name="inherit_id" ref="base.view_company_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='vat']" position="after">
+                    <field name="secondary_currency_id" options="{'no_create_edit': True}"/>
+                </xpath>
+            </field>
+        </record>
+
+
+        <record id="account_move_line_view_add_secondary_currency" model="ir.ui.view">
+            <field name="name">account.move.line.view.tree.add.secondary.currency</field>
+            <field name="model">account.move.line</field>
+            <field name="inherit_id" ref="account.view_move_line_tree"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='credit']" position="after">
+                    <field name="secondary_currency_id" optional="hide"/>
+                    <field name="tipo_cambio" optional="show"/>
+                    <field name="amount_secondary" optional="show" sum="Total Divisa Secundaria"/>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>

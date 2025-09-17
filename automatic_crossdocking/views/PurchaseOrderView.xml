@@ -14,12 +14,10 @@
                 </xpath>
 
                 <xpath expr="//group[@name='invoice_info']" position="after">
-                    
-                    <group string="Configuración Crossdocking">
-                        
-                    <field name="crossdock_enabled"/>
-                    <field name="crossdock_percentage" invisible="not crossdock_enabled"/>
-                    <field name="distribution_rounding_method" invisible="not crossdock_enabled"/>
+                    <group string="Configuración Crossdocking" invisible="1">
+                        <field name="crossdock_enabled"/>
+                        <field name="crossdock_percentage"/>
+                        <field name="distribution_rounding_method"/>
                     </group>
                 </xpath>
 

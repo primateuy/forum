@@ -14,13 +14,14 @@
     'category': 'Uncategorized',
     'version': '0.1',
 
-    'depends': ['base', 'web','web_grid', 'purchase', 'purchase_stock', 'stock'],
+    'depends': ['base', 'web','web_grid', 'purchase', 'purchase_stock', 'purchase_order_type', 'stock'],
 
     'data': [
         'security/ir.model.access.csv',
         'security/security.xml',
         'views/PurchaseOrderView.xml',
-        'views/PurchaseOrderLineView.xml'
+        'views/PurchaseOrderLineView.xml',
+        'views/PurchaseOrderType.xml'
     ],
     
     "assets": {

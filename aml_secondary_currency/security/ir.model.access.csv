@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_compute_secondary_amount,aml_secondary_currency.compute_secondary_amount,aml_secondary_currency.model_compute_secondary_amount,base.group_user,1,1,1,1

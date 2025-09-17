@@ -2,16 +2,15 @@
 <odoo>
 
     <data>
-        <!-- Agregar columnas a la vista tree de líneas de compra -->
-        <record id="view_purchase_order_line_tree_crossdock" model="ir.ui.view">
-            <field name="name">purchase.order.type.tree.crossdock</field>
+        <record id="view_purchase_order_type_form_crossdock" model="ir.ui.view">
+            <field name="name">purchase.order.type.form.crossdock</field>
             <field name="model">purchase.order.type</field>
-            <field name="inherit_id" ref="purchase.purchase_order_line_tree"/>
+            <field name="inherit_id" ref="purchase_order_type.view_purchase_order_type_form"/>
             <field name="arch" type="xml">
-                <xpath expr="//field[@name='product_qty']" position="after">
-                    <field name="use_crossdock"/>
-                    <field name="line_crossdock_percentage"/>
-                    <field name="distribution_multiple"/>
+                <xpath expr="//field[@name='incoterm_id']" position="after">
+                    <field name="crossdock_enabled"/>
+                    <field name="crossdock_percentage"/>
+                    <field name="distribution_rounding_method"/>
                 </xpath>
             </field>
         </record>

@@ -1,0 +1,14 @@
+<odoo>
+    <record id="view_account_payment_register_inherit_to_context_add" model="ir.ui.view">
+        <field name="name">account.payment.register.inherit.to_context.add</field>
+        <field name="model">account.payment.register</field>
+        <field name="inherit_id" ref="account.view_account_payment_register_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_create_payments']" position="attributes">
+                <attribute name="context">
+                        {'dont_redirect_to_payments': True}
+                </attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

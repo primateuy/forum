@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record model="ir.module.category" id="timesheet_billable_category">
+            <field name="name">Focus Timesheet</field>
+        </record>
+
+        <record id="view_billable_hours" model="res.groups">
+            <field name="name">Ver Horas Facturables</field>
+        </record>
+
+        <record id="edit_billable_hours" model="res.groups">
+            <field name="name">Modificar Horas Facturables</field>
+            <field name="implied_ids" eval="[(4, ref('view_billable_hours'))]"/>
+        </record>
+
+
+    </data>
+</odoo>

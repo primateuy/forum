@@ -16,11 +16,9 @@ class CrossdockDistributionComponent extends Component {
             error: null
         });
 
-        // Services
         this.orm = useService("orm");
         this.dialog = useService("dialog");
-        this.notification = useService("notification"); // Add this for error/success messages
-
+        this.notification = useService("notification"); 
         onWillStart(async () => {
             await this.loadData();
         });
@@ -63,7 +61,6 @@ class CrossdockDistributionComponent extends Component {
 
             ev.target.value = currentQuantity;
 
-            // Don't proceed with update
             return;
         }
 
@@ -150,9 +147,8 @@ class CrossdockDistributionComponent extends Component {
 
     transformForTable(grouped) {
         const table = [];
-        let allLocations = new Map(); // Usar Map en lugar de Set
+        let allLocations = new Map();
 
-        // Recopilar locations con su info completa
         for (const productId in grouped) {
             const product = grouped[productId];
             Object.values(product.locations).forEach(loc => {
@@ -180,7 +176,6 @@ class CrossdockDistributionComponent extends Component {
                 row[locName] = 0;
             });
 
-            // Llenar con las cantidades reales
             for (const locId in product.locations) {
                 const loc = product.locations[locId];
                 row[loc.location_name] = loc.quantity;
@@ -262,7 +257,6 @@ class CrossdockDistributionComponent extends Component {
 
     async findAndUpdateStockMove(pickingId, productId, newQuantity) {
         try {
-            // Buscar el stock.move específico
             const moveIds = await this.orm.searchRead(
                 "stock.move",
                 [
@@ -273,7 +267,7 @@ class CrossdockDistributionComponent extends Component {
             );
 
             if (moveIds.length > 0) {
-                const move = moveIds[0]; // Tomar el primero si hay varios
+                const move = moveIds[0];
 
                 // Actualizar la cantidad demandada
                 const result = await this.orm.call(
@@ -295,5 +289,4 @@ class CrossdockDistributionComponent extends Component {
 
 
 
-// Register the component
 registry.category("actions").add("crossdock_distribution_template", CrossdockDistributionComponent);

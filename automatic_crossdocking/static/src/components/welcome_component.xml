@@ -20,7 +20,18 @@
                                 <td t-if="col.key != 'picking_id'">
 
 
-                                    <input t-if="col.key !== 'product_name' and col.key !== 'pedido' and col.key !== 'crossdock'"
+                                    <input t-if="col.key === 'main_reception'"
+                                           type="number"
+                                           class="o_input o_field_number"
+                                           t-att-data-picking-id="row.main_reception_picking_id"
+                                           t-att-data-product-id="row.product_id"
+                                           t-att-data-pedido="row.pedido"
+                                           t-att-value="row[col.key]"
+                                           t-on-change="(ev) => this.onInputChange(ev, row, col)"
+                                    />
+
+                                    <!-- Otras columnas editables -->
+                                    <input t-if="col.key !== 'product_name' and col.key !== 'pedido' and col.key !== 'crossdock' and col.key !== 'main_reception'"
                                            type="number"
                                            class="o_input o_field_number"
                                            t-att-data-picking-id="row.picking_id"
