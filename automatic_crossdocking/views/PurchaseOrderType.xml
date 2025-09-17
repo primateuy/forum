@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <data>
+        <record id="view_purchase_order_type_form_crossdock" model="ir.ui.view">
+            <field name="name">purchase.order.type.form.crossdock</field>
+            <field name="model">purchase.order.type</field>
+            <field name="inherit_id" ref="purchase_order_type.view_purchase_order_type_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='incoterm_id']" position="after">
+                    <field name="crossdock_enabled"/>
+                    <field name="crossdock_percentage"/>
+                    <field name="distribution_rounding_method"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+
+</odoo>

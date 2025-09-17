@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        <!-- Agregar columnas a la vista tree de líneas de compra -->
         <record id="view_purchase_order_line_tree_crossdock" model="ir.ui.view">
             <field name="name">purchase.order.line.tree.crossdock</field>
             <field name="model">purchase.order.line</field>

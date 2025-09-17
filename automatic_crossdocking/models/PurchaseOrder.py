@@ -1,9 +1,31 @@
-from odoo import fields, api, models
-import logging
+from odoo import fields, api, models, SUPERUSER_ID
+
 from odoo.exceptions import ValidationError
 import math
 
-_logger = logging.getLogger(__name__)
+
+class PurchaseOrderType(models.Model):
+    _inherit = 'purchase.order.type';
+    
+    crossdock_enabled = fields.Boolean(
+        string="Crossdock habilitado",
+        default=False
+    )
+
+    crossdock_percentage = fields.Float(
+        string="Porcentaje por defecto para las líneas",
+        default=80.0
+    )
+
+    distribution_rounding_method = fields.Selection([
+        ('nearest', 'Redondeo a múltiplo más cercano'),
+        ('floor', 'Redondeo a múltiplo inferior'),
+        ('ceil', 'Redondeo a múltiplo superior')
+    ], default='nearest', string="Metódo de Redondeo");
+
+    def write(self, vals):
+        res = super(PurchaseOrderType, self).write(vals)
+        return res
 
 class PurchaseOrder(models.Model):
     _inherit = 'purchase.order'
@@ -28,6 +50,162 @@ class PurchaseOrder(models.Model):
         string='Líneas Crossdock',
         compute='_compute_crossdock_lines_count'
     )
+    
+    
+    @api.onchange('order_type')
+    def _onchange_order_type(self):
+        res = super(PurchaseOrder, self)._onchange_order_type() if hasattr(super(PurchaseOrder, self), '_onchange_order_type') else {}
+        
+        if self.order_type and hasattr(self.order_type, 'crossdock_enabled'):
+            
+            self.crossdock_enabled = self.order_type.crossdock_enabled
+            self.crossdock_percentage = self.order_type.crossdock_percentage
+            self.distribution_rounding_method = self.order_type.distribution_rounding_method
+            
+            for line in self.order_line:
+                line.use_crossdock = self.order_type.crossdock_enabled
+                line.line_crossdock_percentage = self.order_type.crossdock_percentage / 100
+                
+                
+        
+        return res
+    
+    @api.onchange('crossdock_enabled', 'crossdock_percentage')
+    def _onchange_crossdock_settings(self):
+        if self.crossdock_enabled:
+            for line in self.order_line:
+                line.use_crossdock = True
+                line.line_crossdock_percentage = self.crossdock_percentage / 100
+        else:
+            for line in self.order_line:
+                line.use_crossdock = False
+
+
+ 
+    def llamarComponente(self):
+        distributions = {}
+        datosRenderizados = []
+        crossdock_orders = self.filtered(lambda po: po.crossdock_enabled)
+        
+        for order in crossdock_orders:
+            
+            if order.state not in ('purchase', 'done'):
+                continue
+            
+            if not any(line.product_id.type in ['product', 'consu'] for line in order.order_line):
+
+                continue
+            
+            order = order.with_company(order.company_id)
+            lineas_crossdock = order.order_line.filtered(lambda l: l.use_crossdock)
+            
+            if lineas_crossdock:
+                if order._are_required_modules_installed():
+                    order_dist = order._calculate_crossdock_distribution(lineas_crossdock)
+                else:
+                    almacenes = order.env['stock.warehouse'].search([
+                        ('company_id', '=', order.company_id.id),
+                        ('active', '=', True)
+                    ])
+                    order_dist = order._calculate_equitable_distribution(lineas_crossdock, almacenes)
+                
+                for location_or_warehouse, items in order_dist.items():
+                    if location_or_warehouse in distributions:
+                        distributions[location_or_warehouse].extend(items)
+                    else:
+                        distributions[location_or_warehouse] = items
+
+        for destination, distribution_list in distributions.items():
+            for dist_item in distribution_list:
+                try:
+                    line = dist_item['line']
+                    quantity = dist_item['quantity']
+                    warehouse = dist_item['warehouse'];
+
+                    related_picking = self._find_related_picking(destination);
+                    
+                    related_move = self._find_related_move(line, destination, related_picking)
+
+                    product_display_name = line.product_id.display_name
+                    if hasattr(line.product_id, 'product_template_attribute_value_ids') and line.product_id.product_template_attribute_value_ids:
+                        display_name = product_display_name
+                    else:
+                        display_name = line.product_id.product_tmpl_id.name
+
+                    datosRenderizados.append({
+                        'picking_id': related_picking.id if related_picking else None,
+                        'picking_name': related_picking.name if related_picking else '',
+                        'product_id': line.product_id.id,
+                        'product_name': line.product_id.name,
+                        'product_display': display_name,
+                        'product_default_code': line.product_id.default_code or '',
+                        'move_id': related_move.id if related_move else None,
+                        'quantity': related_move.product_uom_qty,
+                        'crossdock': line.line_crossdock_percentage,
+                        'uom': line.product_uom.name,
+                        'source_warehouse_id': warehouse.id,
+                        'source_warehouse_name': warehouse.name,
+                        'destination_location_id': destination.id if hasattr(destination, 'id') else warehouse.lot_stock_id.id,
+                        'destination_location_name': destination.complete_name if hasattr(destination, 'complete_name') else warehouse.display_name,
+                        'purchase_order_id': line.order_id.id,
+                        'purchase_order_name': line.order_id.name,
+                        'purchase_line_id': line.id,
+                        'total_line_quantity': line.product_qty
+                    })
+                    
+                except Exception as e:
+                    self.message_post(
+                        body=f"⚠️ Error en uno de los registros: {str(e)}"
+                    )
+                    continue
+
+       
+        return {
+            'name': 'Distribución Crossdock',
+            'type': 'ir.actions.client',
+            'tag': 'crossdock_distribution_template',
+            'target': 'new',
+            'context': datosRenderizados,
+            'params': {
+                'title': 'Distribución Cross-Docking',
+                'message': '',
+                'type': 'info',
+                'sticky': True,
+            }
+        }
+
+
+
+    def _find_related_move(self, purchase_line, destination_location, picking=None):
+        domain = [
+            ('purchase_line_id', '=', purchase_line.id),
+            ('location_dest_id', '=', destination_location.id),
+            ('state', 'not in', ['cancel']),
+        ]
+        
+        if picking:
+            domain.append(('picking_id', '=', picking.id))
+        
+        move = self.env['stock.move'].search(domain, limit=1)
+        return move    
+    
+        
+
+    def _find_related_picking(self, destination_location):
+        
+        domain = [
+            ('origin', 'like', self.name),
+            ('state', 'not in', ['cancel']),
+            ('location_dest_id', '=', destination_location.id),
+        ]
+        
+        if hasattr(destination_location, 'complete_name') and 'Crossdock' in str(self.name):
+            domain.append(('origin', 'ilike', 'crossdock'))
+        
+        picking = self.env['stock.picking'].search(domain, limit=1)
+        return picking
+
+
 
     @api.depends('order_line.use_crossdock')
     def _compute_crossdock_lines_count(self):
@@ -35,111 +213,27 @@ class PurchaseOrder(models.Model):
         for record in self:
             record.crossdock_lines_count = len(record.order_line.filtered('use_crossdock'))
 
-    def action_edit_crossdock_distribution(self):
-        """Abrir wizard de edición de distribución"""
-        # Validar que haya líneas con crossdocking
-        crossdock_lines = self.order_line.filtered('use_crossdock')
-        if not crossdock_lines:
-            raise ValidationError("No hay líneas con crossdocking habilitado para distribuir.")
-        
-        return {
-            'name': 'Editar Distribución Crossdocking',
-            'type': 'ir.actions.act_window',
-            'res_model': 'crossdock.distribution.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {
-                'default_purchase_order_id': self.id,
-                'active_model': 'purchase.order',
-                'active_id': self.id,
-            }
-        }
     
-    def _create_crossdock_picking(self, order_line, distributions):
-        """Crear picking de crossdocking con múltiples destinos"""
-        
-        # 1. Obtener ubicaciones
-        source_location = self.picking_type_id.default_location_dest_id  # Donde llega la mercadería
-        
-        # 2. Agrupar distribuciones que van al mismo almacén
-        warehouse_groups = {}
-        for dist in distributions:
-            warehouse_id = dist['warehouse'].id
-            if warehouse_id not in warehouse_groups:
-                warehouse_groups[warehouse_id] = {
-                    'warehouse': dist['warehouse'],
-                    'total_quantity': 0,
-                    'is_principal': dist['is_principal']
-                }
-            warehouse_groups[warehouse_id]['total_quantity'] += dist['quantity']
-        
-        for warehouse_id, group in warehouse_groups.items():
-            if group['total_quantity'] <= 0:
-                continue
-                
-            warehouse = group['warehouse']
-            
-            picking_vals = {
-                'picking_type_id': self._get_crossdock_picking_type(warehouse).id,
-                'partner_id': self.partner_id.id,
-                'origin': f"Crossdock {self.name}",
-                'location_id': source_location.id,
-                'location_dest_id': warehouse.lot_stock_id.id,
-                'state': 'draft',
-                'move_type': 'direct',
-                
-            }
-            
-            picking = self.env['stock.picking'].create(picking_vals)
-            
-            move_vals = {
-                'name': f"Crossdock: {order_line.product_id.display_name}",
-                'product_id': order_line.product_id.id,
-                'product_uom_qty': group['total_quantity'],
-                'product_uom': order_line.product_uom.id,
-                'picking_id': picking.id,
-                'location_id': source_location.id,
-                'location_dest_id': warehouse.lot_stock_id.id,
-                'origin': f"PO {self.name}",
-                'state': 'draft',
-                'warehouse_id': warehouse.id,
-            }
-            
-            move = self.env['stock.move'].create(move_vals)
-            
-            try:
-                picking.action_confirm()
-                picking.action_assign()
-                
-                if hasattr(self, 'auto_validate_crossdock') and self.auto_validate_crossdock:
-                    for move_line in picking.move_line_ids:
-                        move_line.qty_done = move_line.product_uom_qty
-                    
-                    picking.button_validate();
-                    
-            except Exception as e:
-                _logger.error(f"Error procesando picking {picking.name}: {str(e)}")
-                # Opcional: enviar mensaje al usuario
-                self.message_post(
-                    body=f"⚠️ Error en crossdocking para {order_line.product_id.display_name}: {str(e)}"
-                )
+    
+    
+
 
     def _get_crossdock_picking_type(self, target_warehouse):
         crossdock_type = self.env['stock.picking.type'].search([
             ('code', '=', 'internal'),
             ('warehouse_id', '=', self.picking_type_id.warehouse_id.id),
             ('name', 'ilike', 'crossdock')
-        ], limit=1)
+        ], limit=1);
+
         
         if not crossdock_type:
-            # Crear tipo de picking si no existe
             crossdock_type = self.env['stock.picking.type'].create({
                 'name': 'Crossdocking',
                 'code': 'internal',
                 'sequence_code': 'CROSS',
                 'warehouse_id': self.picking_type_id.warehouse_id.id,
-                'default_location_src_id': self.picking_type_id.default_location_dest_id.id,
-                'default_location_dest_id': target_warehouse.lot_stock_id.id,
+                'default_location_src_id': self.picking_type_id.default_location_dest_id.id ,
+                'default_location_dest_id': target_warehouse.id,
                 'use_create_lots': False,
                 'use_existing_lots': True,
             })
@@ -147,206 +241,961 @@ class PurchaseOrder(models.Model):
         return crossdock_type
 
 
-    def redondeo(self, val, multiplo = 1):
+    
 
-        if self.distribution_rounding_method == 'nearest':
-            return round(val * multiplo);
-
-        elif self.distribution_rounding_method == 'floor':
-            return math.floor(val * multiplo);
-
-        else:
-            return math.ceil(val * multiplo);
 
     def button_confirm(self, *args, **kwargs):
         res = super(PurchaseOrder, self).button_confirm(*args, **kwargs)
 
-        for order in self:
-            if order.crossdock_enabled:
-                
-                order._generate_crossdock_moves()
+        
 
         return res
-
-
-    def _generate_crossdock_moves(self):
-        for line in self.order_line.filtered(lambda l: l.use_crossdock):
-            setuAdvanceReordering = self.env['ir.module.module'].sudo().search([
-                ('name', '=', 'setu_advance_reordering'),
-                ('state', '=', 'installed')
-            ], limit=1)
-
-            moduloReglasAbastecimiento = self.env['ir.module.module'].sudo().search([
-                ('name', '=', 'automatizacion_reglas_abastecimiento'),
-                ('state', '=', 'installed')
-            ], limit=1);
-            
-            porcentaje  = 0;
-            if line.line_crossdock_percentage:
-                porcentaje = line.line_crossdock_percentage;
-            else:
-                porcentaje = self.crossdock_percentage / 100;
     
 
+  
 
-            if setuAdvanceReordering and moduloReglasAbastecimiento:
-                if not line.product_id.warehouse_group_id:
-                    
-                    return;
-
-                if not line.use_crossdock:
-                    return;
+    
+    def _create_equitable_distribution_pickings(self, crossdock_lines):
+        """
+        Crea pickings para distribución equitativa entre almacenes.
+        Ahora sigue el mismo flujo completo de tres pasos:
+        1. Recepción a WH/Entrada
+        2. Distribución desde WH/Entrada a destinos
+        3. Movimiento del saldo a WH/Existencias
+        """
+        StockPicking = self.env['stock.picking']
+        all_pickings = self.env['stock.picking']
+        all_moves = self.env['stock.move']
         
-                categoriaProducto = line.product_id.categ_id;
+        almacenes = self.env['stock.warehouse'].search([
+            ('company_id', '=', self.company_id.id),
+            ('active', '=', True)
+        ])
+        
+        if len(almacenes) <= 1:
+            return self._create_crossdocking_pickings_for_lines(crossdock_lines)
+        
+        location_distribution = self._calculate_equitable_distribution(crossdock_lines, almacenes)
+        
+        if not location_distribution:
+            return
+        
+        for location, lines_data in location_distribution.items():
+            if not lines_data:
+                continue
 
+            warehouse = None
+            for almacen in almacenes:
+                if location.id in almacen.view_location_id.with_context(active_test=False).search([
+                    ('id', 'child_of', almacen.view_location_id.id)
+                ]).ids:
+                    warehouse = almacen
+                    break
+            
+            if not warehouse:
+                continue
 
-                grupoProducto = line.product_id.warehouse_group_id;       
-
-                categoriasGrupo = grupoProducto.category_rule_ids;
-                almacenesEncontrados = grupoProducto.warehouse_ids;        
-                cantidadAlmacenes = len(almacenesEncontrados) - 1;
-
-
-                if not almacenesEncontrados:
-                    self.message_post(
-                                body="No hay almacenes disponibles."
-                            )
-                    continue;
-
-                if not categoriasGrupo:
-                    raise ValidationError("El grupo no posee categorias.");
-
-                for cat in categoriasGrupo:
-                    if categoriaProducto.id == cat.id:
-                        
-
-
-
-                        for almacen in almacenesEncontrados:
-                            if almacen.id == '1':
-                                cantidadAlmacenes -= 1;
-                        
-                        
-                        
-
-
-                        if not porcentaje:
-                            raise ValueError("No se encontró un porcentaje valido.");
-
-                        if not line.distribution_multiple:
-                            raise ValueError("El número para distribución multiplo no es valido");
-                        
-                        categoriaProducto = line.product_id.categ_id;
-
-                        grupo = line.product_id.warehouse_group_id;
-
-                        if not grupo.warehouse_ids:
-                            self.message_post(
-                                
-                                body="No hay almacenes disponibles."
-                            )
-                            continue;
-
-
-                        for cat in grupo.category_rule_ids:
-                            if categoriaProducto.id == cat.id:
-                                if line.product_qty > cat.max_qty or line.product_qty < cat.min_qty:
-                                    raise ValidationError(f"Las cantidades deben estar dentro del rango {cat.min_qty} - {cat.max_qty}")
-                        
-
-
-                        cantidadPorcentaje = line.product_qty * porcentaje;
-
-                        restante = round(line.product_qty - cantidadPorcentaje);
-
-                        if cantidadAlmacenes == 0:
-                            cantidadAlmacenes -= 1;
-
-
-                        valorPerAlmacen = self.redondeo(cantidadPorcentaje / cantidadAlmacenes, line.distribution_multiple);
-
-                        if valorPerAlmacen <= 0 or valorPerAlmacen % line.distribution_multiple != 0:
-                            self.message_post(
-                                body=f"La cantidad calculada ({valorPerAlmacen}) para {line.product_id.display_name} "
-                                f"no cumple con el múltiplo {line.distribution_multiple}. "
-                                "No se puede generar distribución automática."
-                            )
-                            continue;
-
-
-                        distributions = []
-
-                        for almacen in almacenesEncontrados:
-                            if almacen.id == 1 and len(almacenesEncontrados) == 1:
-                                # Solo hay almacén principal
-                                distributions.append({
-                                    'warehouse': almacen,
-                                    'quantity': line.product_qty,
-                                    'is_principal': True
-                                })
-                                
-                            elif almacen.id == 1:
-                                # Almacén principal con cantidad restante
-                                distributions.append({
-                                    'warehouse': almacen,
-                                    'quantity': restante,
-                                    'is_principal': True
-                                })
-                                
-                            else:
-                                # Almacenes secundarios
-                                distributions.append({
-                                    'warehouse': almacen,
-                                    'quantity': valorPerAlmacen,
-                                    'is_principal': False
-                                })
-                        
-                        if distributions:
-                            self._create_crossdock_picking(line, distributions)
-
-
-                        
-                        
-
-
-            if not (setuAdvanceReordering and moduloReglasAbastecimiento and line.product_id.warehouse_group_id):
+            existing_picking = self.picking_ids.filtered(
+                lambda p: p.location_dest_id.id == location.id and 
+                p.state not in ('done', 'cancel') and
+                'Crossdock' in (p.origin or '')
+            )
+            
+            if existing_picking:
+                picking = existing_picking[0]
                 
-
-                warehouses = self.env['stock.warehouse'].search([
-                    ('company_id', '=', self.company_id.id)
-                ], order='sequence')
-
-                if not warehouses:
-                    self.message_post(body=f"⚠️ No se encontraron almacenes para el producto <b>{line.product_id.display_name}</b>.")
-                    continue
-
-                almacenes_secundarios = warehouses.filtered(lambda w: w.lot_stock_id.id != self.picking_type_id.default_location_dest_id.id)
-                almacen_principal = warehouses.filtered(lambda w: w.lot_stock_id.id == self.picking_type_id.default_location_dest_id.id)
-
-                porcentaje = line.line_crossdock_percentage or (self.crossdock_percentage / 100)
-                cantidad_total_crossdock = line.product_qty;
-
-                cantidad_por_almacen = self.redondeo(
-                    cantidad_total_crossdock / len(almacenes_secundarios),
-                    line.distribution_multiple
-                ) if almacenes_secundarios else 0
-
-
+            else:
+                picking_vals = self._prepare_picking()
+                picking_vals.update({
+                    'location_dest_id': location.id,
+                    'location_id': self._get_or_create_entrance_location().id,
+                    'origin': f"{self.name} - Crossdock Equitativo {location.complete_name}",
+                    'picking_type_id': self._get_crossdock_picking_type(warehouse).id
+                })
                 
+                picking = StockPicking.with_user(SUPERUSER_ID).create(picking_vals)
+            
+            all_pickings |= picking
+            
+            picking_moves = self._create_equitable_moves_for_picking(picking, location, lines_data)
+            all_moves |= picking_moves
+            
+            picking.message_post_with_source(
+                'mail.message_origin_link',
+                render_values={'self': picking, 'origin': self},
+                subtype_xmlid='mail.mt_note',
+            )
+        
+        if all_moves:
+            all_moves = all_moves.filtered(lambda x: x.state not in ('done', 'cancel'))._action_confirm()
+            
+            seq = 0
+            for move in sorted(all_moves, key=lambda move: move.date):
+                seq += 5
+                move.sequence = seq
+            
+            all_moves._action_assign()
+            
+            forward_pickings = self.env['stock.picking']._get_impacted_pickings(all_moves)
+            (all_pickings | forward_pickings).action_confirm()
+            
+            for picking in all_pickings:
+                if picking.state != 'confirmed':
+                    picking.write({'state': 'confirmed'})
 
-                # Preparar lista de distribuciones
-                distributions = []
 
-                # Asignar cantidades a almacenes secundarios
-                for wh in almacenes_secundarios:
-                    distributions.append({
-                        'warehouse': wh,
-                        'quantity': cantidad_por_almacen,
-                        'is_principal': False
+    def _create_equitable_moves_for_picking(self, picking, location, lines_data):
+        """Crear movimientos para picking con distribución equitativa por ubicación"""
+        
+        moves = self.env['stock.move']
+        
+        for line_data in lines_data:
+            line = line_data['line']
+            quantity = line_data['quantity']
+            warehouse = line_data['warehouse']
+            is_equitable = line_data.get('is_equitable', False)
+            is_principal = line_data.get('is_principal', False)
+            
+            if quantity <= 0:
+                continue
+
+            # Nombre descriptivo del movimiento
+            if is_principal:
+                move_name = f"Principal: {line.product_id.display_name} → {location.complete_name}"
+            elif is_equitable:
+                move_name = f"Equitativo: {line.product_id.display_name} → {location.complete_name}"
+            else:
+                move_name = f"Crossdock: {line.product_id.display_name} → {location.complete_name}"
+
+            move_vals = {
+                'name': move_name,
+                'product_id': line.product_id.id,
+                'product_uom_qty': quantity,
+                'product_uom': line.product_uom.id,
+                'location_id': self._get_or_create_entrance_location().id,
+                'location_dest_id': location.id,  # Usar la ubicación específica
+                'picking_id': picking.id,
+                'partner_id': self.partner_id.id,
+                'origin': self.name,
+                'state': 'draft',
+                'company_id': self.company_id.id,
+                'purchase_line_id': line.id,
+                'group_id': self.group_id.id,
+                'price_unit': line.price_unit,
+                'date': line.date_planned or self.date_planned or fields.Datetime.now(),
+                'date_deadline': line.date_planned,
+                'procure_method': 'make_to_stock',
+                'warehouse_id': warehouse.id,
+            }
+
+            move = self.env['stock.move'].create(move_vals)
+            moves |= move
+
+        return moves
+    
+    def _calculate_equitable_distribution(self, crossdock_lines, almacenes):
+        ubicaciones_disponibles = []
+        
+        for almacen in almacenes:
+            if self._are_required_modules_installed():
+                ubicaciones_internas = self.env['stock.location'].search([
+                    ('usage', '=', 'internal'),
+                    ('id', 'child_of', almacen.view_location_id.id),
+                    ('replenish_location', '=', True),
+                    ('automate_reordering', '=', True)
+                ])
+            else:
+                ubicaciones_internas = self.env['stock.location'].search([
+                    ('usage', '=', 'internal'),
+                    ('id', 'child_of', almacen.view_location_id.id),
+                    ('replenish_location', '=', True),
+                ])
+            
+            for ubicacion in ubicaciones_internas:
+                ubicaciones_disponibles.append((ubicacion, almacen))
+        
+        distribution = {}
+        for ubicacion, almacen in ubicaciones_disponibles:
+            distribution[ubicacion] = []
+        
+        num_ubicaciones = len(ubicaciones_disponibles)
+        
+        if num_ubicaciones == 0:
+            return {}
+        
+        main_warehouse = self.picking_type_id.warehouse_id or self.env['stock.warehouse'].search([
+            ('company_id', '=', self.company_id.id)
+        ], limit=1)
+        ubicacion_principal = main_warehouse.lot_stock_id if main_warehouse else self.picking_type_id.default_location_dest_id
+        
+        almacen_principal = None
+        ubicacion_principal_disponible = False
+        
+        for ubi, alm in ubicaciones_disponibles:
+            if ubi == ubicacion_principal:
+                ubicacion_principal_disponible = True
+                almacen_principal = alm
+                break
+        
+        if not ubicacion_principal_disponible and ubicacion_principal:
+            for almacen in almacenes:
+                if ubicacion_principal.id in almacen.view_location_id.with_context(active_test=False).search([
+                    ('id', 'child_of', almacen.view_location_id.id)
+                ]).ids:
+                    almacen_principal = almacen
+                    break
+            
+            if almacen_principal:
+                distribution[ubicacion_principal] = []
+                ubicaciones_disponibles.append((ubicacion_principal, almacen_principal))
+                ubicacion_principal_disponible = True
+                num_ubicaciones += 1
+        
+        # DISTRIBUCIÓN EQUITATIVA para líneas
+        for line in crossdock_lines:
+            porcentaje = line.line_crossdock_percentage or (self.crossdock_percentage / 100)
+            
+            if porcentaje <= 0:
+                continue
+
+            cantidad_total = line.product_qty
+            
+            # Cantidad para distribuir equitativamente (porcentaje especificado)
+            cantidad_para_distribuir = math.floor(cantidad_total * porcentaje)
+            cantidad_para_principal = math.floor(cantidad_total - cantidad_para_distribuir)
+            ubicaciones_para_distribuir = []
+            for ubi, alm in ubicaciones_disponibles:
+                if ubi != ubicacion_principal:
+                    ubicaciones_para_distribuir.append((ubi, alm))
+            
+            num_ubicaciones_distribuir = len(ubicaciones_para_distribuir)
+            
+            if num_ubicaciones_distribuir == 0:
+                # No hay ubicaciones para distribuir, todo va a la principal
+                if ubicacion_principal_disponible:
+                    distribution[ubicacion_principal].append({
+                        'line': line,
+                        'quantity': cantidad_total,
+                        'warehouse': almacen_principal,
+                        'is_equitable': False,
+                        'is_principal': True
                     })
-
-
-                # Crear picking y movimientos con el mismo método del resto del código
-                if distributions:
-                    self._create_crossdock_picking(line, distributions)
+            else:
+                # Múltiples ubicaciones para distribución equitativa
+                cantidad_por_ubicacion = cantidad_para_distribuir / num_ubicaciones_distribuir
+                cantidad_restante_distribuir = cantidad_para_distribuir
                 
+                for i, (ubicacion, almacen) in enumerate(ubicaciones_para_distribuir):
+                    if i == num_ubicaciones_distribuir - 1:
+                        # Última ubicación recibe el restante para evitar problemas de redondeo
+                        cantidad_asignada = cantidad_restante_distribuir
+                    else:
+                        cantidad_asignada = math.floor(cantidad_por_ubicacion)
+                        cantidad_restante_distribuir -= cantidad_asignada
+                    
+                    if cantidad_asignada > 0:
+                        distribution[ubicacion].append({
+                            'line': line,
+                            'quantity': cantidad_asignada,
+                            'warehouse': almacen,
+                            'is_equitable': True,
+                            'is_principal': False
+                        })
+                
+                # Asignar cantidad para la principal
+                if ubicacion_principal_disponible and cantidad_para_principal > 0:
+                    distribution[ubicacion_principal].append({
+                        'line': line,
+                        'quantity': cantidad_para_principal,
+                        'warehouse': almacen_principal,
+                        'is_equitable': False,
+                        'is_principal': True
+                    })
+        
+        # Filtrar ubicaciones sin asignaciones
+        filtered_distribution = {k: v for k, v in distribution.items() if v}
+        
+        return filtered_distribution
+    
+    def _are_required_modules_installed(self):
+            required_modules = [
+                'automatizacion_reglas_abastecimiento',  
+                'setu_advance_reordering'   
+            ]
+            
+            installed_modules = self.env['ir.module.module'].search([
+                ('name', 'in', required_modules),
+                ('state', '=', 'installed')
+            ])
+            
+            installed_names = installed_modules.mapped('name')
+            missing_modules = [mod for mod in required_modules if mod not in installed_names]
+            
+            if missing_modules:
+                return False
+            
+            return True
+
+    def _create_picking(self):
+        
+        regular_orders = self.filtered(lambda po: not po.crossdock_enabled)
+        crossdock_orders = self.filtered(lambda po: po.crossdock_enabled)
+        
+        if regular_orders:
+            super(PurchaseOrder, regular_orders)._create_picking() 
+
+        for order in crossdock_orders:
+            if order.state not in ('purchase', 'done'):
+                continue
+            
+            if not any(product.type in ['product', 'consu'] for product in order.order_line.product_id):
+                continue
+            
+            order = order.with_company(order.company_id)
+            
+            lineas_regulares = order.order_line.filtered(lambda l: not l.use_crossdock) 
+            lineas_crossdock = order.order_line.filtered(lambda l: l.use_crossdock) 
+            
+            if lineas_crossdock:
+                order._create_main_reception_picking(lineas_crossdock)
+            
+            # Crear picking regular para líneas sin crossdocking
+            if lineas_regulares:
+                order._create_regular_picking_for_lines(lineas_regulares)
+            
+            if lineas_crossdock:
+                if order._are_required_modules_installed():
+                    order._create_crossdocking_pickings_for_lines(lineas_crossdock)
+                else:
+                    order._create_equitable_distribution_pickings(lineas_crossdock)
+                
+                # Crear picking para mover el saldo no distribuido de WH/Entrada a WH/Existencias
+                order._create_balance_picking_to_stock(lineas_crossdock)
+        
+        return True
+
+    def _create_main_reception_picking(self, crossdock_lines):
+        
+        StockPicking = self.env['stock.picking']
+        
+        # Ubicación de entrada
+        entrada_location = self._get_or_create_entrance_location()
+        
+        # Verificar si ya existe un picking de recepción para esta orden que va a la ubicación de entrada
+        existing_picking = self.picking_ids.filtered(
+            lambda p: p.location_dest_id.id == entrada_location.id and 
+            p.state not in ('done', 'cancel') and
+            'Recepción Crossdock' in (p.origin or '')
+        )
+        
+        if existing_picking:
+            picking = existing_picking[0]
+        else:
+            # Crear un nuevo picking de recepción
+            picking_vals = self._prepare_picking()
+            picking_vals.update({
+                'location_dest_id': entrada_location.id,  # Destino es WH/Entrada
+                'origin': f"{self.name} - Recepción Crossdock",
+                'picking_type_id': self.picking_type_id.id  # Usar el mismo tipo de picking que la orden de compra
+            })
+            
+            picking = StockPicking.with_user(SUPERUSER_ID).create(picking_vals)
+        
+        # Crear los movimientos para cada línea de producto
+        moves = self.env['stock.move']
+        for line in crossdock_lines:
+            if line.product_qty <= 0:
+                continue
+                
+            move_vals = {
+                'name': f"Recepción: {line.product_id.display_name} → {entrada_location.display_name}",
+                'product_id': line.product_id.id,
+                'product_uom_qty': line.product_qty,  # 100% de la cantidad
+                'product_uom': line.product_uom.id,
+                'location_id': self.partner_id.property_stock_supplier.id,  # Origen es el proveedor
+                'location_dest_id': entrada_location.id,  # Destino es WH/Entrada
+                'picking_id': picking.id,
+                'partner_id': self.partner_id.id,
+                'origin': self.name,
+                'state': 'draft',
+                'company_id': self.company_id.id,
+                'purchase_line_id': line.id,
+                'group_id': self.group_id.id,
+                'price_unit': line.price_unit,
+                'date': line.date_planned or self.date_planned or fields.Datetime.now(),
+                'date_deadline': line.date_planned,
+                'procure_method': 'make_to_stock',
+                'warehouse_id': self.picking_type_id.warehouse_id.id,
+            }
+            
+            move = self.env['stock.move'].create(move_vals)
+            moves |= move
+        
+        if moves:
+            moves = moves.filtered(lambda x: x.state not in ('done', 'cancel'))._action_confirm()
+            
+            seq = 0
+            for move in sorted(moves, key=lambda move: move.date):
+                seq += 5
+                move.sequence = seq
+            
+            moves._action_assign()
+            
+            picking.message_post_with_source(
+                'mail.message_origin_link',
+                render_values={'self': picking, 'origin': self},
+                subtype_xmlid='mail.mt_note',
+            )
+            
+            forward_pickings = self.env['stock.picking']._get_impacted_pickings(moves)
+            (picking | forward_pickings).action_confirm()
+
+        # Asegurar que el picking esté en estado confirmed
+        if picking.state != 'confirmed':
+            picking.write({'state': 'confirmed'})
+        
+        return picking
+
+    def _create_balance_picking_to_stock(self, crossdock_lines):
+        """
+        Crea un picking para mover el saldo no distribuido en crossdocking 
+        desde WH/Entrada a WH/Existencias
+        Este es el último paso del flujo de crossdocking
+        """
+        StockPicking = self.env['stock.picking']
+        entrada_location = self._get_or_create_entrance_location()
+        
+        # Obtener la ubicación de existencias (stock) del almacén principal
+        main_warehouse = self.picking_type_id.warehouse_id or self.env['stock.warehouse'].search([
+            ('company_id', '=', self.company_id.id)
+        ], limit=1)
+        stock_location = main_warehouse.lot_stock_id
+        
+        # Calcular el saldo no distribuido para cada línea de producto
+        balance_quantities = {}
+        
+        # Obtener la distribución calculada para saber cuánto se distribuyó en crossdocking
+        if self._are_required_modules_installed():
+            distribution = self._calculate_crossdock_distribution(crossdock_lines)
+        else:
+            distribution = self._calculate_equitable_distribution(crossdock_lines, self.env['stock.warehouse'].search([
+                ('company_id', '=', self.company_id.id),
+                ('active', '=', True)
+            ]))
+        
+        # Calcular el saldo para cada línea
+        for line in crossdock_lines:
+            total_qty = line.product_qty
+            distributed_qty = 0
+            
+            # Sumar todas las cantidades distribuidas para esta línea
+            for location, items in distribution.items():
+                for item in items:
+                    if item['line'].id == line.id:
+                        distributed_qty += item['quantity']
+            
+            # Calcular el saldo
+            balance_qty = total_qty - distributed_qty
+            
+            if balance_qty > 0:
+                balance_quantities[line.id] = balance_qty
+        
+        if not balance_quantities:
+            return False
+        
+        existing_picking = self.picking_ids.filtered(
+            lambda p: p.location_id.id == entrada_location.id and 
+            p.location_dest_id.id == stock_location.id and
+            p.state not in ('done', 'cancel') and
+            'Saldo Crossdock' in (p.origin or '')
+        )
+        
+        if existing_picking:
+            picking = existing_picking[0]
+        else:
+            # Crear un nuevo picking interno para el saldo
+            internal_picking_type = self.env['stock.picking.type'].search([
+                ('code', '=', 'internal'),
+                ('warehouse_id', '=', main_warehouse.id),
+                ('default_location_src_id', '=', entrada_location.id),
+                ('default_location_dest_id', '=', stock_location.id),
+            ], limit=1)
+            
+            if not internal_picking_type:
+                internal_picking_type = self.env['stock.picking.type'].search([
+                    ('code', '=', 'internal'),
+                    ('warehouse_id', '=', main_warehouse.id),
+                ], limit=1)
+            
+            picking_vals = {
+                'picking_type_id': internal_picking_type.id,
+                'partner_id': self.partner_id.id,
+                'company_id': self.company_id.id,
+                'move_type': 'direct',
+                'location_id': entrada_location.id,
+                'location_dest_id': stock_location.id,
+                'origin': f"{self.name} - Saldo Crossdock",
+                'scheduled_date': self.date_planned or fields.Datetime.now(),
+                'user_id': False
+            }
+            
+            picking = StockPicking.with_user(SUPERUSER_ID).create(picking_vals)
+        
+        moves = self.env['stock.move']
+        for line_id, quantity in balance_quantities.items():
+            line = self.env['purchase.order.line'].browse(line_id)
+            
+            move_vals = {
+                'name': f"Saldo: {line.product_id.display_name} → {stock_location.display_name}",
+                'product_id': line.product_id.id,
+                'product_uom_qty': quantity,
+                'product_uom': line.product_uom.id,
+                'location_id': entrada_location.id,  # Origen es WH/Entrada
+                'location_dest_id': stock_location.id,  # Destino es WH/Existencias
+                'picking_id': picking.id,
+                'partner_id': self.partner_id.id,
+                'origin': self.name,
+                'state': 'draft',
+                'company_id': self.company_id.id,
+                'purchase_line_id': line.id,
+                'group_id': self.group_id.id,
+                'date': line.date_planned or self.date_planned or fields.Datetime.now(),
+                'date_deadline': line.date_planned,
+                'procure_method': 'make_to_stock',
+                'warehouse_id': main_warehouse.id,
+            }
+            
+            move = self.env['stock.move'].create(move_vals)
+            moves |= move
+        
+        if moves:
+            moves = moves.filtered(lambda x: x.state not in ('done', 'cancel'))._action_confirm()
+            
+            seq = 0
+            for move in sorted(moves, key=lambda move: move.date):
+                seq += 5
+                move.sequence = seq
+            
+            moves._action_assign()
+            
+            picking.message_post_with_source(
+                'mail.message_origin_link',
+                render_values={'self': picking, 'origin': self},
+                subtype_xmlid='mail.mt_note',
+            )
+            
+            forward_pickings = self.env['stock.picking']._get_impacted_pickings(moves)
+            (picking | forward_pickings).action_confirm()
+        
+        # Asegurar que el picking esté en estado confirmed
+        if picking.state != 'confirmed':
+            picking.write({'state': 'confirmed'})
+        
+        return picking
+    
+    def _create_regular_picking_for_lines(self, regular_lines):
+       
+        StockPicking = self.env['stock.picking']
+        
+        existing_picking = self.picking_ids.filtered(
+            lambda p: p.state not in ('done', 'cancel') and 
+            'Crossdock' not in (p.origin or '')
+        )
+        
+        if existing_picking:
+            picking = existing_picking[0]
+        else:
+            picking_vals = self._prepare_picking()
+            picking = StockPicking.with_user(SUPERUSER_ID).create(picking_vals)
+
+        
+        moves = regular_lines._create_stock_moves(picking)
+        moves = moves.filtered(lambda x: x.state not in ('done', 'cancel'))._action_confirm()
+        
+        seq = 0
+        for move in sorted(moves, key=lambda move: move.date):
+            seq += 5
+            move.sequence = seq
+        
+        moves._action_assign()
+        forward_pickings = self.env['stock.picking']._get_impacted_pickings(moves)
+        (picking | forward_pickings).action_confirm()
+        
+        # Asegurar que el picking esté en estado confirmed
+        if picking.state != 'confirmed':
+            picking.write({'state': 'confirmed'})
+        
+        picking.message_post_with_source(
+            'mail.message_origin_link',
+            render_values={'self': picking, 'origin': self},
+            subtype_xmlid='mail.mt_note',
+        )
+
+    def _get_main_reception_picking(self):
+     
+        entrada_location = self._get_or_create_entrance_location()
+        
+        # Buscar picking que tiene WH/Entrada como destino
+        main_reception_picking = self.picking_ids.filtered(
+            lambda p: p.location_dest_id.id == entrada_location.id and 
+            p.state not in ('done', 'cancel') and
+            'Recepción Crossdock' in (p.origin or '')
+        )
+        
+        return main_reception_picking[0] if main_reception_picking else False
+
+    def _create_crossdocking_pickings_for_lines(self, crossdock_lines):
+        
+        StockPicking = self.env['stock.picking']
+        all_pickings = self.env['stock.picking']
+        all_moves = self.env['stock.move']
+        
+        warehouse_distribution = self._calculate_crossdock_distribution(crossdock_lines)
+        
+        if not warehouse_distribution:
+            return
+        
+        for ubi, alm in warehouse_distribution.items():
+            
+
+            existing_picking = self.picking_ids.filtered(
+                lambda p: p.location_dest_id.id == ubi.id and 
+                p.state not in ('done', 'cancel') and
+                'Crossdock' in (p.origin or '')
+            )
+            
+            if existing_picking:
+                picking = existing_picking[0]
+            else:
+                picking_vals = self._prepare_picking()
+                picking_vals.update({
+                    'location_dest_id': ubi.id,
+                    'location_id': self._get_or_create_entrance_location().id,
+                    'origin': f"{self.name} - Crossdock {ubi.display_name}",
+                    'picking_type_id': self._get_crossdock_picking_type(ubi).id
+                })
+                
+                picking = StockPicking.with_user(SUPERUSER_ID).create(picking_vals)
+            
+            all_pickings |= picking
+            
+            picking_moves = self._create_crossdock_moves_for_picking(picking, ubi, alm)
+            all_moves |= picking_moves
+            
+            picking.message_post_with_source(
+                'mail.message_origin_link',
+                render_values={'self': picking, 'origin': self},
+                subtype_xmlid='mail.mt_note',
+            )
+        
+        if all_moves:
+            all_moves = all_moves.filtered(lambda x: x.state not in ('done', 'cancel'))._action_confirm()
+            
+            seq = 0
+            for move in sorted(all_moves, key=lambda move: move.date):
+                seq += 5
+                move.sequence = seq
+            
+            all_moves._action_assign()
+            
+            
+            forward_pickings = self.env['stock.picking']._get_impacted_pickings(all_moves)
+            (all_pickings | forward_pickings).action_confirm()
+            
+            # Asegurar que todos los pickings estén en estado confirmed
+            for picking in all_pickings:
+                if picking.state != 'confirmed':
+                    picking.write({'state': 'confirmed'})
+           
+
+    
+
+    def _calculate_crossdock_distribution(self, crossdock_lines):
+        distribution = {}
+        almacenes = []
+        almacenes_set = set()
+
+        if not self._are_required_modules_installed():
+            return self._calculate_equitable_distribution(crossdock_lines, self.env['stock.warehouse'].search([
+                ('company_id', '=', self.company_id.id),
+                ('active', '=', True)
+            ]));
+        
+        for line in crossdock_lines:
+            grupo = line.product_id.warehouse_group_id
+
+            if not grupo:
+                raise ValidationError("El producto no tiene asignado ningún grupo.");
+
+            grupos = self.env['stock.warehouse.group'].search([
+                ('nivel_jerarquia_id.seq', '<=', grupo.nivel_jerarquia_id.seq if grupo and grupo.nivel_jerarquia_id else 0),
+            ])
+
+            for g in grupos:
+                if g and g.warehouse_ids:
+                    for wh in g.warehouse_ids:
+                        almacenes_set.add(wh)
+
+        almacenes = list(almacenes_set)
+
+        ubicaciones_lot_stock = []
+        # Usar la ubicación de existencias del almacén principal como principal
+        main_warehouse = self.picking_type_id.warehouse_id or self.env['stock.warehouse'].search([
+            ('company_id', '=', self.company_id.id)
+        ], limit=1)
+        ubicacion_principal = main_warehouse.lot_stock_id if main_warehouse else self.picking_type_id.default_location_dest_id
+        
+        for almacen in almacenes:
+            ubicaciones_internas = None
+
+            if self._are_required_modules_installed():
+                ubicaciones_internas = self.env['stock.location'].search([
+                    ('usage', '=', 'internal'),
+                    ('id', 'child_of', almacen.view_location_id.id),
+                    ('replenish_location', '=', True),
+                ])
+                
+                if not ubicaciones_internas:
+                    ubicaciones_internas = self.env['stock.location'].search([
+                        ('usage', '=', 'internal'),
+                        ('id', 'child_of', almacen.view_location_id.id),
+                        ('replenish_location', '=', True),
+                    ])
+                    
+                if not ubicaciones_internas:
+                    ubicaciones_internas = self.env['stock.location'].search([
+                        ('usage', '=', 'internal'),
+                        ('id', 'child_of', almacen.view_location_id.id),
+                    ])
+                    
+            else:
+                ubicaciones_internas = self.env['stock.location'].search([
+                    ('usage', '=', 'internal'),
+                    ('id', 'child_of', almacen.view_location_id.id),
+                    ('replenish_location', '=', True),
+                ])
+                
+                if not ubicaciones_internas:
+                    ubicaciones_internas = self.env['stock.location'].search([
+                        ('usage', '=', 'internal'),
+                        ('id', 'child_of', almacen.view_location_id.id),
+                    ])
+            
+            for ubi in ubicaciones_internas:
+                ubicaciones_lot_stock.append((ubi, almacen))
+                distribution[ubi] = []
+
+        
+
+        if ubicacion_principal and ubicacion_principal not in distribution:
+            almacen_principal = None
+            for almacen in almacenes:
+                if ubicacion_principal.id in almacen.view_location_id.with_context(active_test=False).search([
+                    ('id', 'child_of', almacen.view_location_id.id)
+                ]).ids:
+                    almacen_principal = almacen
+                    break
+            
+            if almacen_principal:
+                distribution[ubicacion_principal] = []
+                if (ubicacion_principal, almacen_principal) not in ubicaciones_lot_stock:
+                    ubicaciones_lot_stock.append((ubicacion_principal, almacen_principal))
+
+        for line in crossdock_lines:
+            porcentaje = line.line_crossdock_percentage or (self.crossdock_percentage / 100)
+
+            if porcentaje <= 0:
+                continue
+
+            cantidad_total = line.product_qty
+            cantidad_crossdock_raw = cantidad_total * porcentaje
+            cantidad_crossdock = math.floor(cantidad_crossdock_raw) 
+            cantidad_principal = cantidad_total - cantidad_crossdock
+
+            almacen_principal = None
+            for ubi, alm in ubicaciones_lot_stock:
+                if ubi == ubicacion_principal:
+                    almacen_principal = alm
+                    break
+
+            capacidades_maximas = {}
+            total_capacidad = 0
+            
+            
+            for ubi, alm in ubicaciones_lot_stock:
+                if ubi == ubicacion_principal:
+                    continue
+                    
+                capacidad_maxima = 0
+                categoria_encontrada = False
+                
+                has_warehouse_groups = hasattr(alm, 'warehouse_group_ids') and alm.warehouse_group_ids
+                
+                if has_warehouse_groups and alm.warehouse_group_ids:
+                    
+                    for grupo in alm.warehouse_group_ids:
+                        if hasattr(grupo, 'category_rule_ids') and grupo.category_rule_ids:
+                            
+                            for cat in grupo.category_rule_ids:
+                                
+                                if cat.categ_id.id == line.product_id.categ_id.id:
+                                    categoria_encontrada = True
+                                    if hasattr(cat, 'max_qty') and cat.max_qty:
+                                        capacidad_maxima = cat.max_qty
+                                        break;
+                        if capacidad_maxima > 0:
+                            break
+                    
+                    if not categoria_encontrada:
+                        
+                        # Solo considerar ubicaciones con automate_reordering = True
+                        if hasattr(ubi, 'automate_reordering') and ubi.automate_reordering:
+                            if hasattr(ubi, 'default_max_qty') and ubi.default_max_qty:
+                                capacidad_maxima = ubi.default_max_qty
+                            
+                        else:
+                            capacidad_maxima = 0
+                    elif capacidad_maxima == 0:
+                        
+                        if hasattr(ubi, 'default_max_qty') and ubi.default_max_qty:
+                            capacidad_maxima = ubi.default_max_qty
+                        
+                else:
+                    
+                    if hasattr(ubi, 'automate_reordering') and ubi.automate_reordering:
+                        
+                        if hasattr(ubi, 'default_max_qty') and ubi.default_max_qty:
+                            capacidad_maxima = ubi.default_max_qty
+                            
+                        
+                    else:
+                        capacidad_maxima = 0
+                
+                capacidades_maximas[ubi] = capacidad_maxima
+                total_capacidad += capacidad_maxima
+
+            cantidad_restante = cantidad_crossdock
+            
+            for ubi, alm in ubicaciones_lot_stock:
+                if ubi == ubicacion_principal:
+                    continue
+                    
+                if cantidad_restante <= 0:
+                    break
+                    
+                capacidad_maxima = capacidades_maximas.get(ubi, 0)
+                
+                if capacidad_maxima > 0 and total_capacidad > 0:
+                    porcentaje_ubicacion = capacidad_maxima / total_capacidad
+                    cantidad_a_asignar = round(cantidad_crossdock * porcentaje_ubicacion)
+                    
+                    cantidad_a_asignar = min(cantidad_a_asignar, cantidad_restante)
+                    
+                    if cantidad_a_asignar > 0:
+                        distribution[ubi].append({
+                            'line': line,
+                            'quantity': cantidad_a_asignar,
+                            'warehouse': alm
+                        })
+                        cantidad_restante -= cantidad_a_asignar
+                    
+
+            if ubicacion_principal and (cantidad_principal + cantidad_restante) > 0:
+                if ubicacion_principal in distribution:
+                    if almacen_principal:
+                        cantidad_final_principal = cantidad_principal + cantidad_restante
+                        distribution[ubicacion_principal].append({
+                            'line': line,
+                            'quantity': cantidad_final_principal,
+                            'warehouse': almacen_principal
+                        })
+                        
+
+        distribuciones_con_contenido = {k: v for k, v in distribution.items() if v}
+        
+        
+        
+
+        return distribuciones_con_contenido
+
+    def _create_crossdock_moves_for_picking(self, picking, location, lines_data):
+        moves = self.env['stock.move']
+
+
+        for line_data in lines_data:
+            line = line_data['line']
+            quantity = line_data['quantity']
+            warehouse = line_data.get('warehouse')
+            if quantity <= 0:
+                continue
+
+
+            
+
+            move_vals = {
+                'name': f"Crossdock: {line.product_id.display_name} → {location.display_name}",
+                'product_id': line.product_id.id,
+                'product_uom_qty': quantity,
+                'product_uom': line.product_uom.id,
+                'location_id': self._get_or_create_entrance_location().id,
+                'location_dest_id': location.id,
+                'picking_id': picking.id,
+                'partner_id': self.partner_id.id,
+                'origin': self.name,
+                'state': 'draft',
+                'company_id': self.company_id.id,
+                'purchase_line_id': line.id,
+                'group_id': self.group_id.id,
+                'price_unit': line.price_unit,
+                'date': line.date_planned or self.date_planned or fields.Datetime.now(),
+                'date_deadline': line.date_planned,
+                'procure_method': 'make_to_stock',
+                'warehouse_id': warehouse.id if warehouse else False,
+            }
+
+            try:
+                move = self.env['stock.move'].create(move_vals)
+                moves |= move
+            except Exception as e:
+                raise
+
+        return moves
+    
+    def _get_or_create_entrance_location(self):
+        
+        main_warehouse = self.picking_type_id.warehouse_id or self.env['stock.warehouse'].search([
+            ('company_id', '=', self.company_id.id)
+        ], limit=1)
+        
+        if main_warehouse and main_warehouse.wh_input_stock_loc_id:
+            return main_warehouse.wh_input_stock_loc_id
+            
+        # Buscar ubicación de entrada por nombre
+        entrance_location = self.env['stock.location'].search([
+            ('usage', '=', 'internal'),
+            ('company_id', '=', self.company_id.id),
+            ('id', 'child_of', main_warehouse.view_location_id.id if main_warehouse else False),
+            '|', ('name', 'ilike', 'entrada'),
+                 ('name', 'ilike', 'input'),
+        ], limit=1)
+        
+        if entrance_location:
+            return entrance_location
+        
+        if main_warehouse:
+            receipts_picking_type = self.env['stock.picking.type'].search([
+                ('warehouse_id', '=', main_warehouse.id),
+                ('code', '=', 'incoming')
+            ], limit=1)
+            
+            if receipts_picking_type and receipts_picking_type.default_location_dest_id:
+                return receipts_picking_type.default_location_dest_id
+        
+        if main_warehouse and main_warehouse.lot_stock_id:
+            return main_warehouse.lot_stock_id
+        
+        default_location = self.picking_type_id.default_location_src_id
+        if default_location:
+            return default_location
+        
+
