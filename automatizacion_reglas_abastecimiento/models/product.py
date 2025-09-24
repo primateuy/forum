@@ -2,6 +2,7 @@ from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 
 
+
 class ProductProduct(models.Model):
     _inherit = 'product.product'
     
@@ -10,9 +11,12 @@ class ProductProduct(models.Model):
         string="Grupo de Almacenes",
         help="Define a qué grupo de almacenes pertenece esta variante",
     )
+
+    
     
     def generarReglasAbastecimiento(self):
         for product in self:
+
             if not product.warehouse_group_id:
                 continue
                 
@@ -80,38 +84,48 @@ class ProductTemplate(models.Model):
         help="Define a qué grupo de almacenes pertenece esta variante",
     )
 
+
     def generarReglasAbastecimiento(self):
-        for template in self:
-            if not template.warehouse_group_id:
-                continue
-                
-            variantes = template.product_variant_ids
-            for variante in variantes:
-                variante.generarReglasAbastecimiento()
+        if self.product_variant_ids:
+            self.product_variant_ids.with_context(skip_auto_rules=True).generarReglasAbastecimiento()
+            
+         
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'Reglas Generadas',
+                'message': f'Se generaron reglas para {len(self.product_variant_ids)} variantes',
+                'type': 'success',
+                'sticky': False,
+            }
+        }
 
     def write(self, vals):
-        res = super(ProductTemplate, self).write(vals)
-
-        if 'warehouse_group_id' in vals:
-            self.product_variant_ids.write({
-                'warehouse_group_id': self.warehouse_group_id.id,
-            })
+            res = super(ProductTemplate, self).write(vals)
             
-            for variante in self.product_variant_ids:
-                variante.generarReglasAbastecimiento()
+            if 'warehouse_group_id' in vals and not self._context.get('skip_auto_rules'):
+                self.product_variant_ids.with_context(skip_auto_rules=True).write({
+                    'warehouse_group_id': self.warehouse_group_id.id,
+                })
                 
-        return res
+
+                for variante in self.product_variant_ids:
+                    variante.generarReglasAbastecimiento()
+                
+                
+                
+            return res
 
     @api.model
     def create(self, vals):
         template = super(ProductTemplate, self).create(vals)
-
+        
         if 'warehouse_group_id' in vals:
-            template.product_variant_ids.write({
+            template.product_variant_ids.with_context(skip_auto_rules=True).write({
                 'warehouse_group_id': template.warehouse_group_id.id,
             })
             
-            for variante in template.product_variant_ids:
-                variante.generarReglasAbastecimiento()
-        
+            template.product_variant_ids.generarReglasAbastecimiento()
+
         return template

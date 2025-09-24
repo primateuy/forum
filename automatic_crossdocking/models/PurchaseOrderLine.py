@@ -43,6 +43,70 @@ class PurchaseOrderLine(models.Model):
                     line.line_crossdock_percentage = line.product_id.crossdock_percentage / 100.0
                 elif hasattr(line.order_id, 'crossdock_percentage'):
                     line.line_crossdock_percentage = line.order_id.crossdock_percentage / 100.0
+                
+                # Cargar múltiplo desde reglas de reabastecimiento si el módulo está instalado
+                line._load_multiple_from_reorder_rules()
+
+    def _load_multiple_from_reorder_rules(self):
+        """Cargar el múltiplo desde las reglas de reabastecimiento del producto"""
+        if not self.product_id:
+            return
+        
+        # Verificar si los módulos requeridos están instalados
+        if not self._are_required_modules_installed():
+            return
+        
+        # Buscar reglas de reabastecimiento para este producto
+        reorder_rules = self.env['stock.warehouse.orderpoint'].search([
+            ('product_id', '=', self.product_id.id),
+            ('active', '=', True)
+        ])
+
+        if len(reorder_rules) > 1:
+            product_cat = self.product_id.categ_id;
+            if not product_cat:
+                return;
+
+            product_cluster = self.product_id.warehouse_group_id;
+            if not product_cluster:
+                return;
+
+            for cat in product_cluster.category_rule_ids:
+                if cat.categ_id == product_cat:
+                        self.distribution_multiple = cat.qty_multiple;
+                        return;
+
+        
+        else:
+            for rule in reorder_rules:
+                multiple_value = 1
+                
+                # Verificar diferentes campos donde puede estar el múltiplo
+                if hasattr(rule, 'qty_multiple') and rule.qty_multiple > 0:
+                    multiple_value = int(rule.qty_multiple)
+                elif hasattr(rule, 'multiple_qty') and rule.multiple_qty > 0:
+                    multiple_value = int(rule.multiple_qty)
+                elif hasattr(rule, 'product_multiple') and rule.product_multiple > 0:
+                    multiple_value = int(rule.product_multiple)
+                
+                if multiple_value > 1:
+                    self.distribution_multiple = multiple_value
+                    return
+    
+    def _are_required_modules_installed(self):
+        """Verificar si los módulos requeridos están instalados"""
+        required_modules = [
+            'automatizacion_reglas_abastecimiento',  
+            'setu_advance_reordering'   
+        ]
+        
+        installed_modules = self.env['ir.module.module'].search([
+            ('name', 'in', required_modules),
+            ('state', '=', 'installed')
+        ])
+        
+        installed_names = installed_modules.mapped('name')
+        return len(installed_names) > 0  # Al menos uno de los módulos debe estar instalado
 
     @api.onchange('product_id')
     def _onchange_product_id_crossdock(self):
@@ -50,65 +114,11 @@ class PurchaseOrderLine(models.Model):
 
     @api.onchange('product_qty')
     def onChangeJustProductQty(self):
-        self._onchange_distribution_multiple();
+        pass
 
     @api.onchange('distribution_multiple')
     def onChangeJustDistributionMultiple(self):
-        self._onchange_distribution_multiple()
-
-    @api.onchange('distribution_multiple', 'product_qty')
-    def _onchange_distribution_multiple(self):
-        for line in self:
-            if line.distribution_multiple > 1:
-                
-                # Obtener el múltiplo configurado
-                multiple = line.distribution_multiple
-                current_qty = line.product_qty or 0
-                rounding_method = None
-                
-                if hasattr(line.order_id, 'order_type') and line.order_id.order_type:
-                    if hasattr(line.order_id.order_type, 'distribution_rounding_method'):
-                        rounding_method = line.order_id.order_type.distribution_rounding_method
-                        
-                elif hasattr(line.order_id, 'type_id') and line.order_id.type_id:
-                    if hasattr(line.order_id.type_id, 'distribution_rounding_method'):
-                        rounding_method = line.order_id.type_id.distribution_rounding_method
-                        
-                # Si no se encontró en el tipo, buscar en la orden
-                if not rounding_method and hasattr(line.order_id, 'distribution_rounding_method'):
-                    rounding_method = line.order_id.distribution_rounding_method
-                
-                # Valor predeterminado
-                if not rounding_method:
-                    rounding_method = 'nearest'
-                
-                
-                if rounding_method == 'ceil':
-                    current_qty = math.ceil(current_qty);
-                    while current_qty % multiple != 0:
-                        current_qty += 1
-
-                elif rounding_method == 'floor':
-                    current_qty = math.floor(current_qty);
-                    while current_qty % multiple != 0:
-                        current_qty -= 1
-                    if current_qty < 0:
-                        current_qty = 0
-
-                else: # nearest
-                    lower = current_qty
-                    while lower % multiple != 0:
-                        lower -= 1
-                    upper = current_qty
-                    while upper % multiple != 0:
-                        upper += 1
-                    if (current_qty - lower) <= (upper - current_qty):
-                        current_qty = lower
-                    else:
-                        current_qty = upper
-
-                
-                line.product_qty = current_qty;
+        pass
 
     def write(self, vals):
         if 'line_crossdock_percentage' in vals:
@@ -145,7 +155,6 @@ class PurchaseOrderLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        # Aplicar configuraciones de crossdock antes de crear
         for vals in vals_list:
             if 'order_id' in vals:
                 order = self.env['purchase.order'].browse(vals['order_id'])
@@ -154,7 +163,6 @@ class PurchaseOrderLine(models.Model):
                         vals['use_crossdock'] = True
                     
                     if 'line_crossdock_percentage' not in vals:
-                        # Verificar si el producto tiene porcentaje específico
                         product_id = vals.get('product_id')
                         if product_id:
                             product = self.env['product.product'].browse(product_id)
@@ -164,73 +172,36 @@ class PurchaseOrderLine(models.Model):
                                 vals['line_crossdock_percentage'] = order.crossdock_percentage / 100.0
                         else:
                             vals['line_crossdock_percentage'] = order.crossdock_percentage / 100.0
-                
-                # Aplicar múltiplo si hay cantidad y múltiplo > 1
-                if 'product_qty' in vals and vals.get('distribution_multiple', 1) > 1:
-                    multiple = vals.get('distribution_multiple', 1)
-                    qty = vals['product_qty']
                     
-                    # Aplicar redondeo según el método configurado
-                    rounding_method = self._get_rounding_method(order)
-                    vals['product_qty'] = self._apply_multiple_to_qty(qty, multiple, rounding_method)
+                    # Cargar múltiplo desde reglas de reabastecimiento si no está definido
+                    if 'distribution_multiple' not in vals and vals.get('product_id'):
+                        multiple = self._get_multiple_from_reorder_rules(vals['product_id'])
+                        if multiple > 1:
+                            vals['distribution_multiple'] = multiple
         
         lines = super(PurchaseOrderLine, self).create(vals_list)
         
         return lines
     
-    def _get_rounding_method(self, order):
-        """
-        Obtiene el método de redondeo adecuado de la orden o tipo de orden
-        """
-        rounding_method = None
+    def _get_multiple_from_reorder_rules(self, product_id):
+        """Obtener múltiplo desde las reglas de reabastecimiento de un producto"""
+        if not self._are_required_modules_installed():
+            return 1
         
-        # Primero verificar si hay un tipo de orden con configuración
-        if hasattr(order, 'order_type') and order.order_type:
-            if hasattr(order.order_type, 'distribution_rounding_method'):
-                rounding_method = order.order_type.distribution_rounding_method
-        elif hasattr(order, 'type_id') and order.type_id:
-            if hasattr(order.type_id, 'distribution_rounding_method'):
-                rounding_method = order.type_id.distribution_rounding_method
+        # Buscar reglas de reabastecimiento para este producto
+        reorder_rules = self.env['stock.warehouse.orderpoint'].search([
+            ('product_id', '=', product_id),
+            ('active', '=', True)
+        ])
         
-        # Si no hay método en el tipo, usar el de la orden
-        if not rounding_method and hasattr(order, 'distribution_rounding_method'):
-            rounding_method = order.distribution_rounding_method
+        # Si hay múltiples reglas, tomar la primera con múltiplo definido
+        for rule in reorder_rules:
+            # Verificar diferentes campos donde puede estar el múltiplo
+            if hasattr(rule, 'qty_multiple') and rule.qty_multiple > 0:
+                return int(rule.qty_multiple)
+            elif hasattr(rule, 'multiple_qty') and rule.multiple_qty > 0:
+                return int(rule.multiple_qty)
+            elif hasattr(rule, 'product_multiple') and rule.product_multiple > 0:
+                return int(rule.product_multiple)
         
-        # Valor predeterminado
-        if not rounding_method:
-            rounding_method = 'nearest'
-        
-        return rounding_method
-    
-    def _apply_multiple_to_qty(self, qty, multiple, rounding_method):
-        """
-        Aplica múltiplo a una cantidad según el método de redondeo
-        """
-        import math
-        
-        if multiple <= 1 or qty <= 0:
-            return qty
-        
-        if rounding_method == 'ceil':
-            qty = math.ceil(qty)
-            while qty % multiple != 0:
-                qty += 1
-        elif rounding_method == 'floor':
-            qty = math.floor(qty)
-            while qty % multiple != 0:
-                qty -= 1
-            if qty < 0:
-                qty = 0
-        else:  # nearest
-            lower = qty
-            while lower % multiple != 0:
-                lower -= 1
-            upper = qty
-            while upper % multiple != 0:
-                upper += 1
-            if (qty - lower) <= (upper - qty):
-                qty = lower
-            else:
-                qty = upper
-        
-        return qty
+        return 1
