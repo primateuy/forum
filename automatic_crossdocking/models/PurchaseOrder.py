@@ -27,6 +27,7 @@ class PurchaseOrderType(models.Model):
         ('ceil', 'Redondeo a múltiplo superior')
     ], default='nearest', string="Metódo de Redondeo");
 
+
     def write(self, vals):
         res = super(PurchaseOrderType, self).write(vals)
         return res
@@ -54,6 +55,13 @@ class PurchaseOrder(models.Model):
         string='Líneas Crossdock',
         compute='_compute_crossdock_lines_count'
     )
+
+    
+    exceso = fields.Boolean(
+        string="Hay exceso en la distribución",
+        default=False
+    )
+    
     
     
     @api.onchange('order_type')
@@ -251,7 +259,10 @@ class PurchaseOrder(models.Model):
     def button_confirm(self, *args, **kwargs):
         res = super(PurchaseOrder, self).button_confirm(*args, **kwargs)
 
-        
+
+        if self.exceso:
+            self.message_post(body=f"⚠️ La distribución ha generado un exceso. Se ajustó las cantidades para evitar errores en el inventario.")
+            self.write({'exceso': False})
 
         return res
     
@@ -348,6 +359,13 @@ class PurchaseOrder(models.Model):
                         picking.write({'state': 'waiting'});
                     except:
                         pass
+
+                    for move in all_moves:
+                        if move.move_line_ids:
+                            move.move_line_ids.unlink()
+                        move.write({
+                            'quantity': 0,
+                        })
                         
 
     def _create_equitable_moves_for_picking(self, picking, location, lines_data):
@@ -376,6 +394,7 @@ class PurchaseOrder(models.Model):
                 'name': move_name,
                 'product_id': line.product_id.id,
                 'product_uom_qty': quantity,
+                'quantity': 0,
                 'product_uom': line.product_uom.id,
                 'location_id': self._get_or_create_entrance_location().id,
                 'location_dest_id': location.id,  # Usar la ubicación específica
@@ -470,8 +489,8 @@ class PurchaseOrder(models.Model):
             multiple = getattr(line, 'distribution_multiple', 1) or 1
             rounding_method = self.distribution_rounding_method or 'nearest'
             
-            cantidad_para_distribuir = math.floor(cantidad_total * porcentaje)
-            cantidad_para_principal = math.floor(cantidad_total - cantidad_para_distribuir)
+            cantidad_para_distribuir = cantidad_total * porcentaje
+            cantidad_para_principal = cantidad_total - cantidad_para_distribuir
             ubicaciones_para_distribuir = []
             for ubi, alm in ubicaciones_disponibles:
                 if ubi != ubicacion_principal:
@@ -505,7 +524,7 @@ class PurchaseOrder(models.Model):
                     if i == num_ubicaciones_distribuir - 1:
                         cantidad_calculada = cantidad_restante_distribuir
                     else:
-                        cantidad_calculada = math.floor(cantidad_por_ubicacion)
+                        cantidad_calculada = cantidad_por_ubicacion
                         cantidad_restante_distribuir -= cantidad_calculada
                     
                     if cantidad_calculada > 0:
@@ -542,15 +561,11 @@ class PurchaseOrder(models.Model):
                 
                 # Asignar cantidad para la principal
                 if ubicacion_principal_disponible and cantidad_para_principal_ajustada > 0:
-                    cantidad_principal_con_multiplo = self._apply_multiple_rounding(
-                        cantidad_para_principal_ajustada, 
-                        multiple, 
-                        rounding_method
-                    )
+                    cantidad_para_principal = cantidad_para_principal_ajustada
                     
                     distribution[ubicacion_principal].append({
                         'line': line,
-                        'quantity': cantidad_principal_con_multiplo,
+                        'quantity': cantidad_para_principal,
                         'warehouse': almacen_principal,
                         'is_equitable': False,
                         'is_principal': True
@@ -613,7 +628,7 @@ class PurchaseOrder(models.Model):
                 else:
                     order._create_equitable_distribution_pickings(lineas_crossdock)
                 
-                order._create_balance_picking_to_stock(lineas_crossdock)
+                #order._create_balance_picking_to_stock(lineas_crossdock)
                 
                 # Establecer dependencias correctas entre pickings
                 order._setup_picking_dependencies()
@@ -635,12 +650,13 @@ class PurchaseOrder(models.Model):
         
         dependent_pickings = self.picking_ids.filtered(
             lambda p: p.location_id.id == entrada_location.id and 
-            ('Crossdock' in (p.origin or '') or 'Saldo' in (p.origin or '')) and
+            p.id != reception_picking.id and
             p.state not in ('done', 'cancel')
         )
         
         if reception_picking and dependent_pickings:
             reception_picking = reception_picking[0]
+
             
             for dependent_picking in dependent_pickings:
                 dependent_picking.write({'state': 'waiting'});
@@ -654,7 +670,13 @@ class PurchaseOrder(models.Model):
                             reception_move.write({
                                 'move_dest_ids': [(4, dependent_move.id)]
                             })
-            
+
+                            if dependent_move.move_line_ids:
+                                dependent_move.move_line_ids.unlink()
+                                dependent_move.write({
+                                    'quantity': 0,
+                                })
+                
             dependent_pickings.action_confirm()
             
 
@@ -862,7 +884,7 @@ class PurchaseOrder(models.Model):
                 seq += 5
                 move.sequence = seq
             
-            moves._action_assign()
+            #moves._action_assign()
             
             picking.message_post_with_source(
                 'mail.message_origin_link',
@@ -874,7 +896,8 @@ class PurchaseOrder(models.Model):
             (picking | forward_pickings).action_confirm()
 
         
-        
+
+        picking.write({'state': 'assigned'});
         return picking
 
     def _create_balance_picking_to_stock(self, crossdock_lines):
@@ -923,6 +946,7 @@ class PurchaseOrder(models.Model):
         
         if not balance_quantities:
             return False
+
         
         existing_picking = self.picking_ids.filtered(
             lambda p: p.location_id.id == entrada_location.id and 
@@ -1036,7 +1060,7 @@ class PurchaseOrder(models.Model):
             seq += 5
             move.sequence = seq
         
-        moves._action_assign()
+        #moves._action_assign()
         forward_pickings = self.env['stock.picking']._get_impacted_pickings(moves)
         (picking | forward_pickings).action_confirm()
         
@@ -1124,6 +1148,13 @@ class PurchaseOrder(models.Model):
                         picking.write({'state': 'waiting'});
                     except:
                         pass
+
+                    for move in all_moves:
+                        if move.move_line_ids:
+                            move.move_line_ids.unlink()
+                        move.write({
+                            'quantity': 0,
+                        })
                         
            
 
@@ -1145,9 +1176,10 @@ class PurchaseOrder(models.Model):
         else:  # nearest
             return round(quantity / multiple) * multiple
 
-    def _apply_distribution_with_limit_control(self, line, distributions, total_line_quantity, rounding_method):
+    def _apply_distribution_with_limit_control(self, line, distributions, total_crossdock_quantity, rounding_method):
         """
-        Aplica redondeo con control de límites para no exceder la cantidad total de la línea
+        Aplica redondeo con control de límites
+        IMPORTANTE: total_crossdock_quantity es solo la cantidad para CROSSDOCK, no la línea completa
         """
         import math
         
@@ -1173,59 +1205,34 @@ class PurchaseOrder(models.Model):
             adjusted_distributions.append({
                 'location': dist.get('location'),
                 'warehouse': dist.get('warehouse'),
-                'original_quantity': cantidad_calculada,
                 'rounded_quantity': cantidad_redondeada,
                 'line': line
             })
             
             total_distributed += cantidad_redondeada
         
-        # Verificar si excede el total de la línea
-        excess = total_distributed - total_line_quantity
-        final_distributions = []
+        # Calcular el ajuste necesario para el almacén central
+        excess = total_distributed - total_crossdock_quantity
         
         if excess > 0:
-            # HAY EXCESO: Ajustar distribuciones
-            warnings.append(f"⚠️ Redondeo excede cantidad total por {excess} unidades para {line.product_id.name}")
-            
-            reduction_factor = total_line_quantity / total_distributed
-            
-            for dist in adjusted_distributions:
-                # Reducir proporcionalmente
-                reduced_quantity = dist['rounded_quantity'] * reduction_factor
-                # Asegurar que sea múltiplo (usar floor para no exceder)
-                final_quantity = math.floor(reduced_quantity / multiple) * multiple
-                
-                if final_quantity > 0:
-                    final_distributions.append({
-                        'location': dist['location'],
-                        'warehouse': dist['warehouse'],
-                        'quantity': final_quantity,
-                        'line': line,
-                        'was_adjusted': True,
-                        'original_rounded': dist['rounded_quantity']
-                    })
-            
-            # Calcular cantidad restante después del ajuste proporcional
-            total_after_adjustment = sum(dist['quantity'] for dist in final_distributions)
-            central_quantity = total_line_quantity - total_after_adjustment
-            
-        else:
-            # NO HAY EXCESO: Usar distribuciones redondeadas
-            for dist in adjusted_distributions:
-                if dist['rounded_quantity'] > 0:
-                    final_distributions.append({
-                        'location': dist['location'],
-                        'warehouse': dist['warehouse'],
-                        'quantity': dist['rounded_quantity'],
-                        'line': line,
-                        'was_adjusted': False
-                    })
-            
-            # Cantidad restante va al depósito central
-            central_quantity = total_line_quantity - total_distributed
-            
-        return final_distributions, central_quantity, warnings
+            self.write({'exceso': True})
+        
+        # NO reducir las distribuciones - mantener el redondeo deseado
+        final_distributions = []
+        for dist in adjusted_distributions:
+            if dist['rounded_quantity'] > 0:
+                final_distributions.append({
+                    'location': dist['location'],
+                    'warehouse': dist['warehouse'],
+                    'quantity': dist['rounded_quantity'],
+                    'line': line,
+                    'was_adjusted': False
+                })
+        
+        # El exceso se compensa en la cantidad central (puede ser negativo)
+        central_adjustment = -excess
+        
+        return final_distributions, central_adjustment, warnings
 
     def _calculate_crossdock_distribution(self, crossdock_lines):
         distribution = {}
@@ -1424,7 +1431,7 @@ class PurchaseOrder(models.Model):
                 if capacidad_maxima > 0 and total_capacidad > 0:
                     # Calcular porcentaje (siempre con round)
                     porcentaje_ubicacion = capacidad_maxima / total_capacidad
-                    cantidad_calculada = round(cantidad_crossdock * porcentaje_ubicacion)
+                    cantidad_calculada = math.floor(cantidad_crossdock * porcentaje_ubicacion)
                     
                     if cantidad_calculada > 0:
                         pending_distributions.append({
@@ -1453,33 +1460,56 @@ class PurchaseOrder(models.Model):
                 
                 # Calcular cantidad restante después del control de límites
                 total_distributed = sum(dist['quantity'] for dist in final_distributions)
-                cantidad_restante = cantidad_crossdock - total_distributed + central_adjustment
+                cantidad_para_principal_ajustada = cantidad_total - total_distributed
             else:
-                cantidad_restante = cantidad_crossdock
+                cantidad_para_principal_ajustada = cantidad_principal
 
-            # Asignar cantidad restante más la cantidad principal a la ubicación principal
-            if ubicacion_principal and (cantidad_principal + cantidad_restante) > 0:
-                if ubicacion_principal in distribution:
-                    if almacen_principal:
-                        cantidad_final_principal = cantidad_principal + cantidad_restante
+            
+            cantidad_distribuida_destinos = 0
+            for dist in distribution:
+                if dist != ubicacion_principal:
+                    for item in distribution[dist]:
+                        if item['line'] == line:
+                            cantidad_distribuida_destinos += item['quantity']
+
+            # El saldo para el principal es el pedido menos lo distribuido
+            cantidad_final_principal = line.product_qty - cantidad_distribuida_destinos
+            if cantidad_final_principal < 0:
+                cantidad_final_principal = 0
+
+            if ubicacion_principal and cantidad_final_principal > 0:
+                if ubicacion_principal in distribution and almacen_principal:
+                    distribution[ubicacion_principal].append({
+                        'line': line,
+                        'quantity': cantidad_final_principal,
+                        'warehouse': almacen_principal
+                    })
                         
-                        # Aplicar múltiplo también a la cantidad principal (método simple)
-                        cantidad_principal_con_multiplo = self._apply_multiple_rounding(
-                            cantidad_final_principal,
-                            multiple,
-                            rounding_method
-                        )
-                        
-                        distribution[ubicacion_principal].append({
-                            'line': line,
-                            'quantity': cantidad_principal_con_multiplo,
-                            'warehouse': almacen_principal
-                        })
-                        
+            # cantidadesAsignadas = 0
+            # for dist in distribution:
+            #     for item in distribution[dist]:
+            #         if item['line'] == line:
+            #             cantidadesAsignadas += item['quantity']
+
+            # if cantidadesAsignadas > line.product_qty:
+            #     exceso = cantidadesAsignadas - line.product_qty
+            #     # Ajustar la cantidad del primer elemento de la lista para este producto
+            #     if distribution[ubicacion_principal]:
+            #         for item in distribution[ubicacion_principal]:
+            #             if item['line'] == line:
+            #                 item['quantity'] -= exceso
+            #                 if item['quantity'] < 0:
+            #                     item['quantity'] = 0
+
+            #                 if exceso > 0:
+            #                     _logger.info(f"CANTIDAD ASIGNADA: {cantidadesAsignadas} > CANTIDAD LINEA: {line.product_qty} - EXCESO: {exceso}")
+            #                     self.write({'exceso': True})
+            #                 _logger.info("SE ARREGLARON LAS CANTIDADES")
+            #                 break
 
         distribuciones_con_contenido = {k: v for k, v in distribution.items() if v}
         
-        
+
         
 
         return distribuciones_con_contenido
@@ -1487,21 +1517,40 @@ class PurchaseOrder(models.Model):
     def _create_crossdock_moves_for_picking(self, picking, location, lines_data):
         moves = self.env['stock.move']
 
-
+        # Agrupar por producto
+        product_quantities = {}
         for line_data in lines_data:
             line = line_data['line']
             quantity = line_data['quantity']
+            product_id = line.product_id.id
             warehouse = line_data.get('warehouse')
             if quantity <= 0:
                 continue
+            if product_id not in product_quantities:
+                product_quantities[product_id] = {
+                    'line': line,
+                    'quantity': 0,
+                    'warehouse': warehouse
+                }
+            product_quantities[product_id]['quantity'] += quantity
 
 
-            
+        _logger.info(f"=== CREANDO MOVIMIENTOS PARA PICKING {picking.name} ===")
+        _logger.info(f"Ubicación destino: {location.display_name}")
+        _logger.info(f"Cantidad de lines_data: {len(lines_data)}")
+        for idx, line_data in enumerate(lines_data):
+            _logger.info(f"  [{idx}] Producto: {line_data['line'].product_id.display_name}, Cantidad: {line_data['quantity']}")
+
+        for product_id, data in product_quantities.items():
+            line = data['line']
+            quantity = data['quantity']
+            warehouse = data['warehouse']
 
             move_vals = {
                 'name': f"Crossdock: {line.product_id.display_name} → {location.display_name}",
                 'product_id': line.product_id.id,
                 'product_uom_qty': quantity,
+                'quantity': 0,
                 'product_uom': line.product_uom.id,
                 'location_id': self._get_or_create_entrance_location().id,
                 'location_dest_id': location.id,
@@ -1519,11 +1568,8 @@ class PurchaseOrder(models.Model):
                 'warehouse_id': warehouse.id if warehouse else False,
             }
 
-            try:
-                move = self.env['stock.move'].create(move_vals)
-                moves |= move
-            except Exception as e:
-                raise
+            move = self.env['stock.move'].create(move_vals)
+            moves |= move
 
         return moves
     

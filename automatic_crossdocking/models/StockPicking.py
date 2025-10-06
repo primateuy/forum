@@ -1,5 +1,8 @@
 from odoo import models, api, fields
 
+import logging;
+_logger = logging.getLogger(__name__)
+
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
 
@@ -154,11 +157,15 @@ class StockPicking(models.Model):
                     p.id != self.id
                 )
             )
+
+            
             
             if dependent_pickings:
                 activated_pickings = []
                 
                 for picking in dependent_pickings:
+                    for move in picking.move_ids:
+                        move.write({'quantity': move.product_uom_qty});
                     try:
                         picking.write({'state': 'assigned'});
                         activated_pickings.append(picking.name)
