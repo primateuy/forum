@@ -22,8 +22,9 @@
 
             <xpath expr="//field[@name='warehouse_ids']" position="after">
 
-                <!-- <field name="nivel_jerarquia_id" invisible="1"></field> -->
-                <!-- <field invisible="not nivel_jerarquia_id" name="nivel_jerarquia_nombre"/> -->
+                <field name="nivel_jerarquia_id" invisible="1"></field>
+                <field invisible="not nivel_jerarquia_id" name="nivel_jerarquia_nombre"/>
+                <button type="object" class="btn btn-primary" name="actualizarReglasWizardManual">Actualizar Reglas</button>
             </xpath>
             
 

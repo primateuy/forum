@@ -1,10 +1,10 @@
-from odoo import models, api, fields;
+from odoo import models, api, fields
 
-
-
+import logging;
+_logger = logging.getLogger(__name__)
 
 class StockPicking(models.Model):
-    _inherit = 'stock.picking';
+    _inherit = 'stock.picking'
 
     @api.model
     def updatePickingQuantity(self, picking_id, product_id, new_quantity):
@@ -36,34 +36,31 @@ class StockPicking(models.Model):
             
             move_line.with_context(do_not_propagate=True, no_recompute=True).write({
                 'product_uom_qty': float(new_quantity),
-                'quantity': float(new_quantity)
             })
             
             purchase_line = move_line.purchase_line_id
-            balance_updated = False
+            surplus_updated = False
             
             if purchase_line and purchase_line.order_id.crossdock_enabled:
                 purchase_order = purchase_line.order_id
-                balance_updated = self._update_balance_picking_quantity(
+                # CAMBIO: Llamar al método para actualizar el picking de sobrante
+                surplus_updated = self._update_surplus_picking_quantity(
                     purchase_order, purchase_line, -quantity_difference  # Signo contrario
                 )
             
-            self._update_reception_picking(picking, move_line, old_quantity, float(new_quantity))
-            
-            if picking.state != original_state:
-                picking.write({'state': original_state})
+            picking.write({'state': original_state})
 
             message = f'Cantidad actualizada a {new_quantity} unidades'
-            if balance_updated:
+            if surplus_updated:
                 if quantity_difference > 0:
-                    message += f'. Se redujeron {quantity_difference} unidades del saldo principal.'
+                    message += f'. Se redujeron {quantity_difference} unidades del sobrante.'
                 elif quantity_difference < 0:
-                    message += f'. Se agregaron {abs(quantity_difference)} unidades al saldo principal.'
+                    message += f'. Se agregaron {abs(quantity_difference)} unidades al sobrante.'
 
             return {
                 'success': True,
                 'message': message,
-                'balance_updated': balance_updated,
+                'surplus_updated': surplus_updated,
                 'move_id': move_line.id,
                 'quantity_difference': quantity_difference
             }
@@ -71,118 +68,10 @@ class StockPicking(models.Model):
         except Exception as e:
             return {'error': str(e)}
     
-    def _update_reception_picking(self, picking, move_line, old_quantity, new_quantity):
-        
-        purchase_line = move_line.purchase_line_id
-        if not purchase_line or not purchase_line.order_id.crossdock_enabled:
-            return
-        
-
-        
-        purchase_order = purchase_line.order_id
-        
-        if not 'Crossdock' in (picking.origin or ''):
-            return
-        
-        entrance_location = purchase_order._get_or_create_entrance_location()
-        reception_pickings = purchase_order.picking_ids.filtered(
-            lambda p: p.location_dest_id.id == entrance_location.id and 
-                     p.state not in ('done', 'cancel') and
-                     'Recepción Crossdock' in (p.origin or '')
-        )
-        
-        if not reception_pickings:
-            return
-        
-        for reception_picking in reception_pickings:
-            reception_move = reception_picking.move_ids_without_package.filtered(
-                lambda m: m.purchase_line_id.id == purchase_line.id
-            )
-            
-            if reception_move:
-                # Calcular el total de la cantidad distribuida en todos los pickings de crossdocking
-                crossdock_pickings = purchase_order.picking_ids.filtered(
-                    lambda p: 'Crossdock' in (p.origin or '') and 
-                             p.id != reception_picking.id and
-                             p.state not in ('done', 'cancel')
-                )
-                
-                total_distributed = 0
-                for crossdock_picking in crossdock_pickings:
-                    for move in crossdock_picking.move_ids_without_package:
-                        if move.purchase_line_id.id == purchase_line.id:
-                            total_distributed += move.product_uom_qty
-                
-                # Actualizar la cantidad en el picking de recepción para que sea igual al total distribuido
-                if total_distributed != reception_move.product_uom_qty:
-                    reception_move.product_uom_qty = total_distributed
-
-        reception_pickings.write({'state': 'confirmed'});
-
-    @api.model
-    def updateMainReceptionQuantity(self, picking_id, product_id, new_quantity, old_quantity):
-        
-        try:
-            picking = self.env['stock.picking'].browse(picking_id)
-            if not picking.exists():
-                return {'error': 'Picking de recepción no encontrado'}
-            
-            # Verificar que es un picking de recepción hacia WH/Entrada
-            if 'Recepción Crossdock' not in (picking.origin or ''):
-                return {'error': 'Este no es un picking de recepción principal'}
-            
-            move_line = picking.move_ids_without_package.filtered(
-                lambda m: m.product_id.id == int(product_id)
-            )
-            
-            if not move_line:
-                return {'error': 'Producto no encontrado en el picking de recepción'}
-            
-            if len(move_line) > 1:
-                move_line = move_line[0]
-            
-            purchase_line = move_line.purchase_line_id
-            if not purchase_line:
-                return {'error': 'No se encontró la línea de compra asociada'}
-            
-            purchase_order = purchase_line.order_id
-            
-            quantity_difference = float(new_quantity) - float(old_quantity)
-            
-            original_state = picking.state
-            move_line.with_context(do_not_propagate=True, no_recompute=True).write({
-                'product_uom_qty': float(new_quantity),
-                'quantity': float(new_quantity)
-            })
-            
-            balance_updated = self._update_balance_picking_quantity(
-                purchase_order, purchase_line, quantity_difference
-            )
-            
-            if picking.state != original_state:
-                picking.write({'state': original_state})
-            
-            message = f'Recepción actualizada a {new_quantity} unidades'
-            if balance_updated:
-                if quantity_difference > 0:
-                    message += f'. Se agregaron {quantity_difference} unidades al saldo principal.'
-                elif quantity_difference < 0:
-                    message += f'. Se redujeron {abs(quantity_difference)} unidades del saldo principal.'
-            
-            return {
-                'success': True,
-                'message': message,
-                'balance_updated': balance_updated,
-                'move_id': move_line.id,
-                'quantity_difference': quantity_difference
-            }
-            
-        except Exception as e:
-            _logger.error(f"Error al actualizar recepción principal: {str(e)}")
-            return {'error': f'Error interno: {str(e)}'}
-    
-    def _update_balance_picking_quantity(self, purchase_order, purchase_line, quantity_difference):
-        
+    def _update_surplus_picking_quantity(self, purchase_order, purchase_line, quantity_difference):
+        """
+        Actualiza el picking de sobrante/saldo (WH/Entrada → WH/Existencia)
+        """
         try:
             entrance_location = purchase_order._get_or_create_entrance_location()
             
@@ -191,48 +80,97 @@ class StockPicking(models.Model):
             ], limit=1)
             
             if not main_warehouse:
+                _logger.warning("No se encontró almacén principal")
                 return False
             
             stock_location = main_warehouse.lot_stock_id
             
-            balance_pickings = purchase_order.picking_ids.filtered(
+            surplus_pickings = purchase_order.picking_ids.filtered(
                 lambda p: p.location_id.id == entrance_location.id and 
-                         p.location_dest_id.id == stock_location.id and
-                         p.state not in ('done', 'cancel') and
-                         'Saldo no distribuido' in (p.origin or '')
-            )
+                         p.location_dest_id.id == stock_location.id)
             
-            if not balance_pickings:
+            if not surplus_pickings:
+                _logger.warning(f"No se encontraron pickings de sobrante para la orden {purchase_order.name}")
                 return False
             
-            for balance_picking in balance_pickings:
-                balance_move = balance_picking.move_ids_without_package.filtered(
+            for surplus_picking in surplus_pickings:
+                surplus_move = surplus_picking.move_ids_without_package.filtered(
                     lambda m: m.purchase_line_id.id == purchase_line.id
                 )
                 
-                if balance_move:
-                    if len(balance_move) > 1:
-                        balance_move = balance_move[0]
+                if surplus_move:
+                    if len(surplus_move) > 1:
+                        surplus_move = surplus_move[0]
                     
-                    new_balance_quantity = balance_move.product_uom_qty + quantity_difference
+                    old_surplus_quantity = surplus_move.product_uom_qty
+                    new_surplus_quantity = old_surplus_quantity + quantity_difference
                     
-                    if new_balance_quantity < 0:
-                        new_balance_quantity = 0
+                    if new_surplus_quantity < 0:
+                        new_surplus_quantity = 0
                     
-                    original_state = balance_picking.state
-                    balance_move.with_context(do_not_propagate=True, no_recompute=True).write({
-                        'product_uom_qty': new_balance_quantity,
-                        'quantity': new_balance_quantity
+                    original_state = surplus_picking.state
+                    surplus_move.with_context(do_not_propagate=True, no_recompute=True).write({
+                        'product_uom_qty': new_surplus_quantity,
                     })
                     
-                    # Restaurar estado original
-                    if balance_picking.state != original_state:
-                        balance_picking.write({'state': original_state})
+                    if surplus_picking.state != original_state:
+                        surplus_picking.write({'state': original_state})
                     
-                    _logger.info(f"Saldo actualizado: {balance_move.product_uom_qty} -> {new_balance_quantity}")
+                    
                     return True
             
             return False
             
         except Exception as e:
+            _logger.error(f"Error al actualizar picking de sobrante: {str(e)}")
             return False
+
+    def button_validate(self):
+        result = super(StockPicking, self).button_validate()
+        
+        for picking in self:
+            if picking._is_crossdock_reception_picking():
+                picking._activate_dependent_crossdock_pickings()
+        
+        return result
+    
+    def _is_crossdock_reception_picking(self):
+        return (
+            'Recepción Crossdock' in (self.origin or '')
+        )
+    
+    def _activate_dependent_crossdock_pickings(self):
+        try:
+            purchase_order = self.purchase_id
+            if not purchase_order or not purchase_order.crossdock_enabled:
+                return
+            
+            entrada_location = purchase_order._get_or_create_entrance_location()
+            
+            dependent_pickings = purchase_order.picking_ids.filtered(
+                lambda p: (
+                    p.location_id.id == entrada_location.id and 
+                    p.state in ('waiting', 'confirmed') and
+                    p.id != self.id
+                )
+            )
+
+            
+            
+            if dependent_pickings:
+                activated_pickings = []
+                
+                for picking in dependent_pickings:
+                    for move in picking.move_ids:
+                        move.write({'quantity': move.product_uom_qty});
+                    try:
+                        picking.write({'state': 'assigned'});
+                        activated_pickings.append(picking.name)
+                    except Exception as e:
+                        _logger.warning(f"No se pudo activar el picking {picking.name}: {str(e)}")
+                
+                
+                    
+        except Exception as e:
+            _logger.error(f"Error al activar pickings dependientes: {str(e)}")
+    

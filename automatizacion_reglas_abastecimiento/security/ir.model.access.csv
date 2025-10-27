@@ -3,3 +3,4 @@ access_warehouse_group_category_rule_all,access_warehouse_group_category_rule_al
 
 access_warehouse_group_location,access_warehouse_group_location,model_warehouse_group_location,,1,1,1,1
 access_niveles_jerarquia_user,Niveles Jerarquía Usuario,model_niveles_jerarquia,base.group_user,1,1,1,1
+access_stock_warehouse_group_rules_wizard_all,stock.warehouse.group.rules.wizard all,model_stock_warehouse_group_rules_wizard,,1,1,1,1

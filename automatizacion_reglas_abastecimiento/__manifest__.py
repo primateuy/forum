@@ -23,7 +23,9 @@
         'views/StockView.xml',
         'views/WarehouseView.xml',
         'views/NivelesJerarquiaView.xml',
-        'views/ProductTemplate.xml'
+        'views/ProductTemplate.xml',
+        'views/WizardView.xml'
+
     ],
     'demo': [
         'demo/demo.xml',
