@@ -36,7 +36,6 @@ class StockPicking(models.Model):
             
             move_line.with_context(do_not_propagate=True, no_recompute=True).write({
                 'product_uom_qty': float(new_quantity),
-                'quantity': float(new_quantity)
             })
             
             purchase_line = move_line.purchase_line_id
@@ -49,8 +48,7 @@ class StockPicking(models.Model):
                     purchase_order, purchase_line, -quantity_difference  # Signo contrario
                 )
             
-            if picking.state != original_state:
-                picking.write({'state': original_state})
+            picking.write({'state': original_state})
 
             message = f'Cantidad actualizada a {new_quantity} unidades'
             if surplus_updated:
@@ -113,7 +111,6 @@ class StockPicking(models.Model):
                     original_state = surplus_picking.state
                     surplus_move.with_context(do_not_propagate=True, no_recompute=True).write({
                         'product_uom_qty': new_surplus_quantity,
-                        'quantity': new_surplus_quantity
                     })
                     
                     if surplus_picking.state != original_state:

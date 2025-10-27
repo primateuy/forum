@@ -819,14 +819,46 @@ class PurchaseOrder(models.Model):
                 }
             }
 
-    def _create_main_reception_picking(self, crossdock_lines):
+    def _get_crossdock_reception_picking_type(self):
         
+        main_warehouse = self.picking_type_id.warehouse_id or self.env['stock.warehouse'].search([
+            ('company_id', '=', self.company_id.id)
+        ], limit=1)
+        
+        crossdock_reception_type = self.env['stock.picking.type'].search([
+            ('code', '=', 'incoming'),
+            ('warehouse_id', '=', main_warehouse.id),
+            ('name', 'ilike', 'Recepción Crossdock')
+        ], limit=1)
+        
+        if not crossdock_reception_type:
+            standard_reception = self.env['stock.picking.type'].search([
+                ('code', '=', 'incoming'),
+                ('warehouse_id', '=', main_warehouse.id),
+                ('default_location_dest_id', '!=', False)
+            ], limit=1)
+            
+            crossdock_reception_type = self.env['stock.picking.type'].create({
+                'name': 'Recepción Crossdock',
+                'code': 'incoming',
+                'sequence_code': 'IN-CROSS',
+                'warehouse_id': main_warehouse.id,
+                'default_location_src_id': self.partner_id.property_stock_supplier.id,
+                'default_location_dest_id': self._get_or_create_entrance_location().id,
+                'use_create_lots': standard_reception.use_create_lots if standard_reception else False,
+                'use_existing_lots': standard_reception.use_existing_lots if standard_reception else True,
+                'show_operations': True,
+                'show_reserved': True,
+                'sequence': 1,
+            })
+        
+        return crossdock_reception_type
+
+    def _create_main_reception_picking(self, crossdock_lines):
         StockPicking = self.env['stock.picking']
         
-        # Ubicación de entrada
         entrada_location = self._get_or_create_entrance_location()
         
-        # Verificar si ya existe un picking de recepción para esta orden que va a la ubicación de entrada
         existing_picking = self.picking_ids.filtered(
             lambda p: p.location_dest_id.id == entrada_location.id and 
             p.state not in ('done', 'cancel') and
@@ -836,17 +868,15 @@ class PurchaseOrder(models.Model):
         if existing_picking:
             picking = existing_picking[0]
         else:
-            # Crear un nuevo picking de recepción
             picking_vals = self._prepare_picking()
             picking_vals.update({
-                'location_dest_id': entrada_location.id,  # Destino es WH/Entrada
+                'location_dest_id': entrada_location.id,
                 'origin': f"{self.name} - Recepción Crossdock",
-                'picking_type_id': self.picking_type_id.id  # Usar el mismo tipo de picking que la orden de compra
+                'picking_type_id': self._get_crossdock_reception_picking_type().id
             })
             
             picking = StockPicking.with_user(SUPERUSER_ID).create(picking_vals)
         
-        # Crear los movimientos para cada línea de producto
         moves = self.env['stock.move']
         for line in crossdock_lines:
             if line.product_qty <= 0:
@@ -855,10 +885,10 @@ class PurchaseOrder(models.Model):
             move_vals = {
                 'name': f"Recepción: {line.product_id.display_name} → {entrada_location.display_name}",
                 'product_id': line.product_id.id,
-                'product_uom_qty': line.product_qty,  # 100% de la cantidad
+                'product_uom_qty': line.product_qty,
                 'product_uom': line.product_uom.id,
-                'location_id': self.partner_id.property_stock_supplier.id,  # Origen es el proveedor
-                'location_dest_id': entrada_location.id,  # Destino es WH/Entrada
+                'location_id': self.partner_id.property_stock_supplier.id,
+                'location_dest_id': entrada_location.id,
                 'picking_id': picking.id,
                 'partner_id': self.partner_id.id,
                 'origin': self.name,
@@ -870,21 +900,25 @@ class PurchaseOrder(models.Model):
                 'date': line.date_planned or self.date_planned or fields.Datetime.now(),
                 'date_deadline': line.date_planned,
                 'procure_method': 'make_to_stock',
+                'quantity': line.product_qty,
                 'warehouse_id': self.picking_type_id.warehouse_id.id,
+                'propagate_cancel': False,
             }
             
             move = self.env['stock.move'].create(move_vals)
             moves |= move
         
         if moves:
-            moves = moves.filtered(lambda x: x.state not in ('done', 'cancel'))._action_confirm()
+            moves = moves.filtered(lambda x: x.state not in ('done', 'cancel'))
+            
+            for move in moves:
+                move.write({'state': 'confirmed'})
             
             seq = 0
             for move in sorted(moves, key=lambda move: move.date):
                 seq += 5
                 move.sequence = seq
             
-            #moves._action_assign()
             
             picking.message_post_with_source(
                 'mail.message_origin_link',
@@ -892,12 +926,10 @@ class PurchaseOrder(models.Model):
                 subtype_xmlid='mail.mt_note',
             )
             
-            forward_pickings = self.env['stock.picking']._get_impacted_pickings(moves)
-            (picking | forward_pickings).action_confirm()
+            # Confirmar solo el picking de recepción
+            picking.action_confirm()
+            picking.write({'state': 'assigned'})
 
-        
-
-        picking.write({'state': 'assigned'});
         return picking
 
     def _create_balance_picking_to_stock(self, crossdock_lines):
