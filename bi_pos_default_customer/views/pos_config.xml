@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record model="ir.ui.view" id="custom_bi_pos_default_customer_form_view">
+        <field name="name">res.config.setting.form.default.customer.view</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="point_of_sale.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@id='pos_interface_section']" position="inside">
+                <div class="col-12 col-lg-6 o_setting_box" title="Default customer is set in POS." id="pos_default_customer_id" >
+                    <div class="o_setting_right_pane">
+                        <div>
+                            <label string="Default Customer" for="pos_res_partner_id"/>
+                            <div class="text-muted"> Default customer set on POS order. </div>
+                                <div class="content-group mt16">
+                                <field name="pos_res_partner_id" colspan="4" nolabel="1"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>
