@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="report_access_restrict" model="ir.ui.view">
+        <field name="name">ir.actions.report.access.restrict</field>
+        <field name="model">ir.actions.report</field>
+        <field name="inherit_id" ref="base.act_report_xml_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/sheet//notebook/page" position="after">
+                <page string="Security Restrictions">
+                    <field name="hide_for_group_ids">
+                        <tree>
+                            <field name="display_name" string="Hidden for groups"/>
+                        </tree>
+                    </field>
+                    <field name="hide_for_user_ids">
+                        <tree>
+                            <field name="display_name" string="Hidden for users"/>
+                        </tree>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="actions_access_restrict" model="ir.ui.view">
+        <field name="name">ir.actions.act_window.access.restrict</field>
+        <field name="model">ir.actions.act_window</field>
+        <field name="inherit_id" ref="base.view_window_action_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook/page" position="after">
+                <page string="Security Restrictions">
+                    <field name="restrict_group_ids">
+                        <tree>
+                            <field name="display_name" string="Hidden for groups"/>
+                        </tree>
+                    </field>
+                    <field name="hide_from_user_ids">
+                        <tree>
+                            <field name="display_name" string="Hidden for users"/>
+                        </tree>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+<!--    Server Actions-->
+    <record id="actions_server_access_restrict" model="ir.ui.view">
+        <field name="name">ir.actions.server.access.restrict</field>
+        <field name="model">ir.actions.server</field>
+        <field name="inherit_id" ref="base.view_server_action_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Security Restrictions">
+                    <field name="restrict_group_ids">
+                        <tree>
+                            <field name="display_name" string="Hidden for groups"/>
+                        </tree>
+                    </field>
+                    <field name="hide_from_user_ids">
+                        <tree>
+                            <field name="display_name" string="Hidden for users"/>
+                        </tree>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

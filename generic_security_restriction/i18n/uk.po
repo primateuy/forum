@@ -1,0 +1,604 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* generic_security_restriction
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 12.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2019-09-16 11:43+0000\n"
+"PO-Revision-Date: 2019-09-16 11:43+0000\n"
+"Last-Translator: <>\n"
+"Language-Team: \n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: generic_security_restriction
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.generic_security_restriction_model_form
+msgid ""
+"<i>'no_create'</i>: it is <i>'no_quick_create'</i> and <i>'no_create_edit'</"
+"i> combined,"
+msgstr ""
+"<i>'no_create'</i>: це поєднання <i>'no_quick_create'</i> та "
+"<i>'no_create_edit'</i>,"
+
+#. module: generic_security_restriction
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.generic_security_restriction_model_form
+msgid ""
+"<i>'no_create_edit'</i>: Remove the  <b><i>\"Create and edit...\"</i></b> "
+"option."
+msgstr ""
+"<i>'no_create_edit'</i>: прибирає можливість <b><i>\"Створити та "
+"редагувати...\"</i></b>."
+
+#. module: generic_security_restriction
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.generic_security_restriction_model_form
+msgid "<i>'no_open'</i>: (in read mode) do not render as a link,"
+msgstr ""
+"<i>'no_open'</i>: (в режимі перегляду) не відображає поле як посилання,"
+
+#. module: generic_security_restriction
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.generic_security_restriction_model_form
+msgid ""
+"<i>'no_quick_create'</i>: remove the <b><i>\"Create 'foo' \"</i></b> option,"
+msgstr ""
+"<i>'no_quick_create'</i>: прибирає можливість <b><i>\"Створити 'foo' \"</i></"
+"b>,"
+
+#. module: generic_security_restriction
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.generic_security_restriction_model_form
+msgid ""
+"<span>\n"
+"                            <strong>\n"
+"                                NOTE: To apply these changes, the user must "
+"reload the page after saving the changes! In some cases need restart "
+"server!\n"
+"                            </strong>\n"
+"                        </span>"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.generic_security_restriction_model_form
+msgid "<strong>NOTE:</strong>"
+msgstr "<strong>ВАЖЛИВО:</strong>"
+
+#. module: generic_security_restriction
+#: model:ir.model,name:generic_security_restriction.model_res_groups
+msgid "Access Groups"
+msgstr "Групи доступу"
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_res_groups__menu_access_only
+msgid "Access Only Menus"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.edit_menu_access_restrict
+msgid "Access Restrict"
+msgstr "Обмежити доступ"
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_res_users__access_only_menu_ids
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.view_users_hidden_menus_form
+msgid "Access only menus"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model,name:generic_security_restriction.model_ir_actions_act_window
+msgid "Action Window"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.view_groups_form_restrict_access
+msgid "Actions Restrictions"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_model_restriction__active
+msgid "Active"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,help:generic_security_restriction.field_res_users__allowed_use_debug_mode
+msgid "Allow use debug mode for this user."
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,help:generic_security_restriction.field_res_groups__allowed_use_debug_mode
+msgid "Allow use debug mode to this group."
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_res_groups__allowed_use_debug_mode
+#: model:ir.model.fields,field_description:generic_security_restriction.field_res_users__allowed_use_debug_mode
+msgid "Allowed Use Debug Mode"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_model_restriction__apply_mode_create
+msgid "Apply Mode Create"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_model_restriction__apply_mode_read
+msgid "Apply Mode Read"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_model_restriction__apply_mode_unlink
+msgid "Apply Mode Unlink"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_model_restriction__apply_mode_write
+msgid "Apply Mode Write"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,help:generic_security_restriction.field_res_groups__model_restriction_ids
+msgid "Apply specified access restrictions to this group."
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,help:generic_security_restriction.field_generic_security_model_restriction__group_ids
+msgid "Apply this restriction to specified user groups."
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,help:generic_security_restriction.field_generic_security_model_restriction__user_ids
+msgid "Apply this restriction to specified users."
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model,name:generic_security_restriction.model_base
+msgid "Base"
+msgstr ""
+
+#. module: generic_security_restriction
+#. odoo-python
+#: code:addons/generic_security_restriction/models/generic_security_model_restriction.py:0
+#, python-format
+msgid ""
+"Cannot parse domain for rule %(rule)s is not valid!\n"
+"%(domain)s"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields.selection,name:generic_security_restriction.selection__generic_security_model_restriction__domain_type__code
+msgid "Code"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_model_restriction__create_uid
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_restriction_field__create_uid
+msgid "Created by"
+msgstr "Створив"
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_model_restriction__create_date
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_restriction_field__create_date
+msgid "Created on"
+msgstr "Створено"
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_model_restriction__display_name
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_restriction_field__display_name
+msgid "Display Name"
+msgstr "Назва для відображення"
+
+#. module: generic_security_restriction
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.view_generic_security_model_restriction_form
+msgid "Domain"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_model_restriction__domain_code
+msgid "Domain Code"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_model_restriction__domain_simple
+msgid "Domain Simple"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_model_restriction__domain_type
+msgid "Domain Type"
+msgstr ""
+
+#. module: generic_security_restriction
+#. odoo-python
+#: code:addons/generic_security_restriction/models/generic_security_model_restriction.py:0
+#, python-format
+msgid ""
+"Domain for rule %(rule)s is not valid!\n"
+"%(domain)s"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,help:generic_security_restriction.field_generic_security_model_restriction__domain_code
+msgid "Extra domain to limit the access for specific users. As code."
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,help:generic_security_restriction.field_generic_security_model_restriction__domain_simple
+msgid "Extra domain to limit the access for specific users. Simple."
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_restriction_field__field_id
+msgid "Field"
+msgstr "Поле"
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_restriction_field__field_name
+msgid "Field Name"
+msgstr "Назва поля"
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_restriction_field__field_type
+msgid "Field Type"
+msgstr "Тип поля"
+
+#. module: generic_security_restriction
+#: model:ir.model,name:generic_security_restriction.model_generic_security_restriction_field
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.generic_security_restriction_model_form
+msgid "Fields Security"
+msgstr "Безпека полів"
+
+#. module: generic_security_restriction
+#: model:ir.actions.act_window,name:generic_security_restriction.action_generic_security_model_restriction_view
+#: model:ir.ui.menu,name:generic_security_restriction.menu_generic_security_model_restriction_view
+msgid "Generic Model Restrictions"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model,name:generic_security_restriction.model_generic_security_model_restriction
+msgid "Generic Security Model Restriction"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_model_restriction__group_ids
+msgid "Group"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_restriction_field__group_ids
+#: model:ir.model.fields,field_description:generic_security_restriction.field_ir_actions_act_window__restrict_group_ids
+#: model:ir.model.fields,field_description:generic_security_restriction.field_ir_actions_server__restrict_group_ids
+#: model:ir.model.fields,field_description:generic_security_restriction.field_ir_cron__restrict_group_ids
+#: model:ir.model.fields,field_description:generic_security_restriction.field_ir_ui_menu__restrict_group_ids
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.view_generic_security_model_restriction_form
+msgid "Groups"
+msgstr "Групи"
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_ir_actions_act_window__hide_from_user_ids
+#: model:ir.model.fields,field_description:generic_security_restriction.field_res_users__hidden_actions_ids
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.view_groups_form_restrict_access
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.view_users_hidden_menus_form
+msgid "Hidden actions"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_ir_actions_server__hide_from_user_ids
+#: model:ir.model.fields,field_description:generic_security_restriction.field_ir_cron__hide_from_user_ids
+#: model:ir.model.fields,field_description:generic_security_restriction.field_res_users__hidden_server_actions_ids
+msgid "Hidden contextual server actions"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.actions_access_restrict
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.actions_server_access_restrict
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.report_access_restrict
+msgid "Hidden for groups"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.actions_access_restrict
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.actions_server_access_restrict
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.edit_menu_access_restrict
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.report_access_restrict
+msgid "Hidden for users"
+msgstr "Прихований для користувачів"
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_ir_ui_menu__hide_from_user_ids
+#: model:ir.model.fields,field_description:generic_security_restriction.field_res_users__hidden_menu_ids
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.view_users_hidden_menus_form
+msgid "Hidden menus"
+msgstr "Приховані меню"
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_res_users__hidden_reports_ids
+msgid "Hidden print reports"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_ir_actions_report__hide_for_group_ids
+msgid "Hidden print reports for Groups"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_ir_actions_report__hide_for_user_ids
+msgid "Hidden print reports for Users"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.view_groups_form_restrict_access
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.view_users_hidden_menus_form
+msgid "Hidden reports"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.view_groups_form_restrict_access
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.view_users_hidden_menus_form
+msgid "Hidden server contextual actions"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_restriction_field__hide_stat_button
+msgid "Hide Stat Button"
+msgstr "Приховати Stat Button"
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_model_restriction__id
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_restriction_field__id
+msgid "ID"
+msgstr "ID"
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,help:generic_security_restriction.field_ir_actions_act_window__restrict_group_ids
+msgid ""
+"If you have groups, the restrict of visibility of this action will be based "
+"on these groups."
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,help:generic_security_restriction.field_ir_actions_server__restrict_group_ids
+#: model:ir.model.fields,help:generic_security_restriction.field_ir_cron__restrict_group_ids
+msgid ""
+"If you have groups, the restrict of visibility of this contextual server "
+"action will be based on these groups."
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,help:generic_security_restriction.field_ir_ui_menu__restrict_group_ids
+msgid ""
+"If you have groups, the restrict of visibility of this menu will be based on "
+"these groups."
+msgstr ""
+"Якщо тут є групи, обмеження видимості цього меню базуватиметься на них."
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,help:generic_security_restriction.field_generic_security_restriction_field__set_no_open
+msgid "In read mode: do not render as a link."
+msgstr "В режимі перегляду: не відображається як посилання."
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,help:generic_security_restriction.field_generic_security_restriction_field__set_no_create
+msgid "It is no_quick_create and no_create_edit combined."
+msgstr "Це поєднання no_quick_create та no_create_edit."
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_model_restriction____last_update
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_restriction_field____last_update
+msgid "Last Modified on"
+msgstr "Остання модифікація"
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_model_restriction__write_uid
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_restriction_field__write_uid
+msgid "Last Updated by"
+msgstr "Востаннє оновив"
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_model_restriction__write_date
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_restriction_field__write_date
+msgid "Last Updated on"
+msgstr "Останнє оновлення"
+
+#. module: generic_security_restriction
+#: model:ir.model,name:generic_security_restriction.model_ir_ui_menu
+msgid "Menu"
+msgstr "Меню"
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_model_restriction__model_id
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_restriction_field__model_id
+msgid "Model"
+msgstr "Модель"
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_res_groups__model_restriction_ids
+#: model:ir.model.fields,field_description:generic_security_restriction.field_res_users__model_restriction_ids
+msgid "Model Restriction"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_model_restriction__model_name
+msgid "Model name"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model,name:generic_security_restriction.model_ir_model
+msgid "Models"
+msgstr "Моделі"
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_model_restriction__name
+msgid "Name"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,help:generic_security_restriction.field_res_groups__menu_access_only
+msgid "Only selected menus will be available for this group"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,help:generic_security_restriction.field_res_users__access_only_menu_ids
+msgid "Only selected menus will be available for this user"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model,name:generic_security_restriction.model_ir_rule
+msgid "Record Rule"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,help:generic_security_restriction.field_generic_security_restriction_field__set_no_quick_create
+msgid "Remove the *Create 'foo'* option."
+msgstr "Прибирає можливість *Створити 'foo'*."
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,help:generic_security_restriction.field_generic_security_restriction_field__set_no_create_edit
+msgid "Remove the *Create and edit...* option."
+msgstr "прибирає можливість *Створити та редагувати...*."
+
+#. module: generic_security_restriction
+#: model:ir.model,name:generic_security_restriction.model_ir_actions_report
+msgid "Report Action"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.view_groups_form_restrict_access
+msgid "Report Restrictions"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_res_groups__hidden_actions_ids
+msgid "Restrict Access Actions"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_res_groups__hidden_server_actions_ids
+msgid "Restrict Access Contextual Server Actions"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_res_groups__menu_access_restrict
+msgid "Restrict Access Menu"
+msgstr "Обмежити доступ до меню"
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_res_groups__hidden_report_ids
+msgid "Restrict Access Reoprts"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.view_users_hidden_menus_form
+msgid "Restrictions"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_restriction_field__rewrite_options
+msgid "Rewrite Options"
+msgstr "Переписати параметри"
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_ir_model__field_security_ids
+msgid "Security Fields"
+msgstr "Безпека полів"
+
+#. module: generic_security_restriction
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.actions_access_restrict
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.actions_server_access_restrict
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.report_access_restrict
+msgid "Security Restrictions"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model,name:generic_security_restriction.model_ir_actions_server
+msgid "Server Action"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.view_groups_form_restrict_access
+msgid "Server Actions Restrictions"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_restriction_field__set_invisible
+msgid "Set Invisible"
+msgstr "Зробити невидимим"
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_restriction_field__set_no_create
+msgid "Set No Create"
+msgstr "Не створювати"
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_restriction_field__set_no_create_edit
+msgid "Set No Create Edit"
+msgstr "Не 'Створити та редагувати...'"
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_restriction_field__set_no_open
+msgid "Set No Open"
+msgstr "Не відкривати"
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_restriction_field__set_no_quick_create
+msgid "Set No Quick Create"
+msgstr "Не 'Створити foo..'"
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_restriction_field__set_readonly
+msgid "Set Readonly"
+msgstr "Лише для читання"
+
+#. module: generic_security_restriction
+#: model:ir.model.fields.selection,name:generic_security_restriction.selection__generic_security_model_restriction__domain_type__simple
+msgid "Simple"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.generic_security_restriction_model_form
+msgid ""
+"The <i>Rewrite Options</i> checkbox allows you to overwrite field "
+"parameters.\n"
+"                                            If it is not set, the field "
+"parameters are set as in the view."
+msgstr ""
+"Галочка <i>Переписати параметри</i> дозволяє змінити параметри поля.\n"
+"                                            Якщо вона не встановлена, "
+"параметри поля будуть відповідати визначеним в моделі."
+
+#. module: generic_security_restriction
+#: model:ir.model.fields,help:generic_security_restriction.field_generic_security_model_restriction__name
+msgid "The name of restriction"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model:ir.model,name:generic_security_restriction.model_res_users
+#: model:ir.model.fields,field_description:generic_security_restriction.field_generic_security_model_restriction__user_ids
+msgid "User"
+msgstr ""
+
+#. module: generic_security_restriction
+#: model_terms:ir.ui.view,arch_db:generic_security_restriction.view_generic_security_model_restriction_form
+msgid "Users"
+msgstr "Користувачі"
+
+#. module: generic_security_restriction
+#: model:ir.model,name:generic_security_restriction.model_ir_ui_view
+msgid "View"
+msgstr "Перегляд"
+
+#~ msgid ""
+#~ "<span>\n"
+#~ "                            <strong>\n"
+#~ "                                NOTE: To apply these changes, the user "
+#~ "must reload the page after saving the changes!\n"
+#~ "                            </strong>\n"
+#~ "                        </span>"
+#~ msgstr ""
+#~ "<span>\n"
+#~ "                            <strong>\n"
+#~ "                                ВАЖЛИВО: для того, щоб ці зміни "
+#~ "запрацювали, після збереження необхідно перезавантажити сторінку!\n"
+#~ "                            </strong>\n"
+#~ "                        </span>"

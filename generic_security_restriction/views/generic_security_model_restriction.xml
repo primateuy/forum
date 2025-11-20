@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <record id="view_generic_security_model_restriction_search" model="ir.ui.view">
+        <field name="model">generic.security.model.restriction</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <separator/>
+                <field name="model_id"/>
+            </search>
+        </field>
+    </record>
+    <record id="view_generic_security_model_restriction_tree" model="ir.ui.view">
+        <field name="model">generic.security.model.restriction</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="model_id"/>
+                <field name="apply_mode_read"/>
+                <field name="apply_mode_write"/>
+                <field name="apply_mode_create"/>
+                <field name="apply_mode_unlink"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_generic_security_model_restriction_form" model="ir.ui.view">
+        <field name="model">generic.security.model.restriction</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                    </div>
+                    <div name="title" class="oe_title">
+                        <h2 name="header_name">
+                            <field name="name"/>
+                        </h2>
+                    </div>
+                    <group name="group_root">
+                        <group name="group_root_info">
+                            <field name="model_id"/>
+                            <field name="model_name"/>
+                            <field name="active"/>
+                        </group>
+                        <group name="group_root_perms"
+                               col="4">
+                            <field name="apply_mode_read"/>
+                            <field name="apply_mode_write"/>
+                            <field name="apply_mode_create"/>
+                            <field name="apply_mode_unlink"/>
+                        </group>
+                        <group colspan="4" string="Domain">
+                            <field name="domain_type" colspan="1"/>
+                            <field name="domain_simple" nolabel="1" colspan="2" widget="domain" options="{'model': 'model_name'}" invisible="domain_type != 'simple'" required="domain_type == 'simple'"/>
+                            <field name="domain_code" nolabel="1" colspan="2" widget="ace" options="{'mode': 'python'}" invisible="domain_type != 'code'" required="domain_type == 'code'"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="page_users" string="Users">
+                            <field name="user_ids"/>
+                        </page>
+                        <page name="page_groups" string="Groups">
+                            <field name="group_ids"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_generic_security_model_restriction_view" model="ir.actions.act_window">
+        <field name="name">Generic Model Restrictions</field>
+        <field name="res_model">generic.security.model.restriction</field>
+    </record>
+    <menuitem action="action_generic_security_model_restriction_view"
+              id="menu_generic_security_model_restriction_view"
+              parent="base.menu_security"
+              sequence="42"/>
+</odoo>

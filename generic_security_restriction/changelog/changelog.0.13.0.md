@@ -1,0 +1,1 @@
+- Added ability to set restrictions for contextual server actions
