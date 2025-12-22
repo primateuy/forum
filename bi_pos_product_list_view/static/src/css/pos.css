@@ -1,0 +1,56 @@
+.pos .view-breadcrumb {
+	width:120px;
+	height:50px;
+}
+.pos .breadcrumb-button.breadcrumb-new {
+	line-height: 47px;
+	padding: 0;
+	width: 60px;
+	font-size: 25px;
+	text-align: center;
+	background: #d3d3d3;
+}
+.pos .breadcrumb-button.breadcrumb-new.button:active{
+	background: #808080;
+}
+
+/*  ********* The product list  ********* */
+.pos .product-list-container .product-listview{
+    font-size: 13px;
+    width: 100%;
+    line-height: 30px;
+}
+.pos .product-list-container .product-list th,
+.pos .product-list-container .product-list td {
+    padding: 10px 40px;
+}
+.pos .product-list-container-view .product-listview tr{
+    transition: all 150ms linear;
+    background: rgb(230,230,230);
+}
+.pos .product-list-container-view .product-listview thead > tr,
+.pos .product-list-container-view .product-listview tr:nth-child(even) {
+    background: rgb(247,247,247);
+}
+th, td {
+  padding: 8px;
+  text-align: center;
+  border-bottom: 1px solid #c1c1c1;
+}
+
+.pos .product-listview {
+  background-color: white;
+  color: black;
+  border: 1px solid #555555;
+}
+
+.pos .product-listview th:hover {
+  background-color: #555555;
+  color: white;
+}
+
+
+
+.oe-hidden{
+    display:none !important;
+}

@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+
+<templates id="bi_pos_product_list_view" inherit_id="point_of_sale.template" xml:space="preserve">
+	<t t-name="ProductsWidget" t-inherit="point_of_sale.ProductsWidget" t-inherit-mode="extension" owl="1">
+		<xpath expr="//div[hasclass('products-widget-control')]" position="replace">
+			<div class="products-widget-control d-flex bg-view shadow-sm justify-content-between" t-att-class="{ 'h-12': showCategoryImages }">
+				<div class="view-breadcrumb " >
+					<t t-if="env.services.pos.config.enable_list_view">
+						<div class="ok fa-2x h-100 hstack " style="text-align: center;mix-blend-mode:hard-light;">
+							<span class="breadcrumb-button breadcrumb-new js-category-list btn btn-light d-flex flex-column align-items-center justify-content-center category-item p-1 h-100" t-on-click="() => this.Changeview()">
+								<i class='fa fa-list' role="img" aria-label="Grid" title="Grid"></i>
+							</span>
+
+							<span class="breadcrumb-button breadcrumb-new js-category-switch btn btn-light d-flex flex-column align-items-center justify-content-center category-item p-1 h-100" t-on-click="() => this.pos.setSelectedCategoryId(0)">
+								<i class='fa fa-th' role="img" aria-label="Grid" title="Grid"></i>
+							</span>
+						</div>
+					</t>
+				</div>
+				<CategorySelector
+					categories="getCategories()"
+					onClick="(id) => this.pos.setSelectedCategoryId(id)"
+					showImage="showCategoryImages"
+				/>
+				<Input tModel="[pos, 'searchProductWord']"
+					class="'p-2'"
+					isSmall="ui.isSmall"
+					placeholder="'Search products...'"
+					icon="{type: 'fa', value: 'fa-search'}"
+					debounceMillis="100" />
+			</div>
+		</xpath>
+		<xpath expr="//div[hasclass('product-list-container')]" position="inside">
+			<div class='product-list-container-view'>
+				<div class="product-list-scroller touch-scrollable">
+					<table class="product-listview" id="id01" >
+						<thead>
+							<tr>
+								<t t-if="env.services.pos.config.enable_list_view">
+									<t t-if="env.services.pos.config.display_product_image">
+										<th >Image</th>	
+									</t>
+									<t t-if="env.services.pos.config.display_product_code">
+										<th class="code">Code</th>	
+									</t>
+									<t t-if="env.services.pos.config.display_product_name">
+										<th class="name" >Name</th>	
+									</t>
+									<t t-if="env.services.pos.config.display_product_type">
+										<th class="type" >Type</th>	
+									</t>
+									<t t-if="env.services.pos.config.display_product_UOM">
+										<th class="uom" >UoM</th>	
+									</t>
+									<t t-if="env.services.pos.config.display_product_price">
+										<th class="price">Price</th>	
+									</t>
+									<t t-if="env.services.pos.config.display_product_on_hand_qty">
+										<th class="text-center qty">On Hand Qty</th>	
+									</t>
+									<t t-if="env.services.pos.config.display_product_forecast_qty">
+										<th class="text-center fqty">Forecasted Qty</th>	
+									</t>
+								</t>
+
+							</tr>
+						</thead>
+						<tbody class='product-list-contents'>
+							<t t-foreach="productsToDisplay" t-as="prd" t-att-data-id="prd.id" t-key="prd.id">
+								<tr t-on-keypress="(event) => event.code === 'Space' ? props.onClick(event) : ()=>{}"
+									t-att-data-product-id="props.productId"
+									t-on-click="() =>pos.addProductToCurrentOrder(prd)"
+									t-attf-aria-labelledby="article_product_{{props.productId}}">
+									<t t-if="env.services.pos.config.enable_list_view">
+										<t t-if="env.services.pos.config.display_product_image">
+											<td>
+												<t t-if="env.services.pos.config.image_size === 'small'">
+													<img t-att-src="imageUrl" height="50px" width='50px'/>
+												</t>
+												<t t-if="env.services.pos.config.image_size === 'medium'">
+													<img t-att-src="imageUrl" height="100px" width='100px'/>
+												</t>
+												<t t-if="env.services.pos.config.image_size === 'large'">
+													<img t-att-src="imageUrl" height="150px" width='150px'/>
+												</t>
+
+											</td>
+										</t>
+										<t t-if="env.services.pos.config.display_product_code">
+											<td class="product_code">
+												<t t-esc="prd.default_code || ''"/>
+											</td>
+										</t>
+										<t t-if="env.services.pos.config.display_product_name">
+											<td class="product_name">
+												<t t-esc="prd.display_name" />
+											</td>
+										</t>
+										<t t-if="env.services.pos.config.display_product_type">
+											<td class="product_type">
+												<t t-if="prd.type === 'consu'">
+													Consumable
+												</t>
+												<t t-if="prd.type === 'service'">
+													Service
+												</t>
+												<t t-if="prd.type === 'product'">
+													Storable Product
+												</t>
+											</td>
+										</t>
+										<t t-if="env.services.pos.config.display_product_UOM">
+											<td class="product_uom">
+												<t t-esc="env.services.pos.units_by_id[prd.uom_id[0]].name"/>
+											</td>
+										</t>
+										<t t-if="env.services.pos.config.display_product_price">
+											<td class="product_price">
+												<t t-esc="price" />
+											</td>
+										</t>
+										<t t-if="env.services.pos.config.display_product_on_hand_qty">
+											<td class="on_hand_qty">
+												<t t-esc="prd.qty_available" />
+											</td>
+										</t>
+										<t t-if="env.services.pos.config.display_product_forecast_qty">
+											<td class="forecast_qty">
+												<t t-esc="prd.virtual_available" />
+											</td>
+										</t>
+									</t>
+								</tr>
+							</t>
+						</tbody>
+					</table>
+				</div>
+				<span class="placeholder-ScrollbarWidget"/>
+			</div>
+		</xpath>
+	</t>
+</templates>
+

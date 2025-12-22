@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="pw_pos_salesperson.SalespersonButton">
+        <span class="control-button btn btn-light rounded-0 fw-bolder" t-on-click="() => this.click()">
+            <i class="fa fa-user me-1"></i>
+            <span> </span>
+            <span>Salesperson</span>
+        </span>
+    </t>
+    <t t-name="pw_pos_salesperson.ProductScreen" t-inherit="point_of_sale.ProductScreen" t-inherit-mode="extension">
+        <xpath expr="//ul[@t-if='line.pack_lot_lines']" position="after">
+            <t t-if="pos.config.allow_salesperson">
+                <t t-if="line.get_line_emp()">
+                    <li style="text-align: right;color:green;font-style: italic;cursor: pointer;">
+                        <t t-if="line.user_id">
+                            <img t-attf-src="/web/image?model=hr.employee&amp;field=image_128&amp;id={{line.user_id.id}}&amp;unique=1" style="width: 25px;height: 25px;border-radius: 16px;vertical-align: middle;}" t-on-click="() => this.changeEmployee(line)"/>
+                        </t>
+                        <t t-esc="line.get_line_emp().name" class="sale_person"/>
+                        <i class="fa fa-times remove_person" style="color:red;vertical-align: middle;padding-left: 5px;" t-on-click="() => this.removeEmployee(line)"/>
+                    </li>
+                </t>
+                <t t-if="!line.get_line_emp()">
+                    <li style="text-align: right;">
+                        <i t-attf-class="fa fa-user-plus sale_person" style="color:orange" t-on-click="() => this.changeEmployee(line)"/>
+                    </li>
+                </t>
+            </t>
+        </xpath>
+    </t>
+    <t t-name="pw_pos_salesperson_emp.SalespersonPopup">
+        <div class="popup popup-selection">
+            <div class="modal-header drag-handle">
+                <h4 class="modal-title"><t t-esc="props.title" /></h4>
+            </div>
+            <div style="display: inline-flex;padding: 20px;">
+                <div style="padding-top: 2px;font-weight: 600;padding-right: 20px;">Salesperson: </div>
+                <div>
+                    <input list="employee_list" t-on-change="(ev) => this.onChangeSalesperson(ev.target.value)"/>
+                    <datalist id="employee_list">
+                        <t t-foreach="props.list" t-as="item"  t-key ="item.id" t-att-data-product-id="item.id">
+                            <option t-att-value="item.label" t-att-id="item.id"/>
+                        </t>
+                    </datalist>
+                </div>
+            </div>
+            <footer class="footer modal-footer">
+                <div class="button confirm btn btn-lg btn-primary" t-on-click="confirm">
+                    <t t-esc="props.confirmText" />
+                </div>
+                <div class="button cancel btn btn-lg btn-secondary" t-on-click="cancel">
+                    <t t-esc="props.cancelText" />
+                </div>
+            </footer>
+        </div>
+    </t>
+
+</templates>
