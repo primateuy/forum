@@ -1,0 +1,343 @@
+# Traducción del Servidor Odoo.
+# Este archivo contiene la traducción de los siguientes módulos:
+# 	* zehntech_user_warehouse_restriction
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 17.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-01-15 11:56+0000\n"
+"PO-Revision-Date: 2025-01-15 11:56+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__action
+msgid "Action"
+msgstr "Acción"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__message_needaction
+msgid "Action Needed"
+msgstr "Acción Necesaria"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__active
+msgid "Active"
+msgstr "Activo"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__activity_ids
+msgid "Activities"
+msgstr "Actividades"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__activity_exception_decoration
+msgid "Activity Exception Decoration"
+msgstr "Decoración de Excepción de Actividad"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__activity_state
+msgid "Activity State"
+msgstr "Estado de la Actividad"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__activity_type_icon
+msgid "Activity Type Icon"
+msgstr "Icono del Tipo de Actividad"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,help:zehntech_user_warehouse_restriction.field_warehouse_access_log__notes
+msgid "Additional information or notes about this access log entry."
+msgstr "Información adicional o notas sobre esta entrada de registro de acceso."
+
+#. module: zehntech_user_warehouse_restriction
+#: model_terms:ir.ui.view,arch_db:zehntech_user_warehouse_restriction.view_users_form_inherit_warehouse
+msgid "Allowed Warehouses"
+msgstr "Almacenes Permitidos"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields.selection,name:zehntech_user_warehouse_restriction.selection__warehouse_access_log__action__assign
+msgid "Assign"
+msgstr "Asignar"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__message_attachment_count
+msgid "Attachment Count"
+msgstr "Número de Archivos Adjuntos"
+
+#. module: zehntech_user_warehouse_restriction
+#: model_terms:ir.actions.act_window,help:zehntech_user_warehouse_restriction.action_warehouse_access_log
+msgid "Create a new warehouse access log."
+msgstr "Crear un nuevo registro de acceso al almacén."
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__create_uid
+msgid "Created by"
+msgstr "Creado por"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__create_date
+msgid "Created on"
+msgstr "Creado en"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__display_name
+msgid "Display Name"
+msgstr "Nombre para Mostrar"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__message_follower_ids
+msgid "Followers"
+msgstr "Seguidores"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__message_partner_ids
+msgid "Followers (Partners)"
+msgstr "Seguidores (Socios)"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,help:zehntech_user_warehouse_restriction.field_warehouse_access_log__activity_type_icon
+msgid "Font awesome icon e.g. fa-tasks"
+msgstr "Icono de Font Awesome, por ejemplo fa-tasks"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields.selection,name:zehntech_user_warehouse_restriction.selection__warehouse_access_log__action__grant
+msgid "Grant"
+msgstr "Conceder"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__has_message
+msgid "Has Message"
+msgstr "Tiene Mensaje"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__id
+msgid "ID"
+msgstr "ID"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__activity_exception_icon
+msgid "Icon"
+msgstr "Icono"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,help:zehntech_user_warehouse_restriction.field_warehouse_access_log__activity_exception_icon
+msgid "Icon to indicate an exception activity."
+msgstr "Icono para indicar una actividad de excepción."
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,help:zehntech_user_warehouse_restriction.field_warehouse_access_log__message_needaction
+msgid "If checked, new messages require your attention."
+msgstr "Si está marcado, los nuevos mensajes requieren su atención."
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,help:zehntech_user_warehouse_restriction.field_warehouse_access_log__message_has_error
+#: model:ir.model.fields,help:zehntech_user_warehouse_restriction.field_warehouse_access_log__message_has_sms_error
+msgid "If checked, some messages have a delivery error."
+msgstr "Si está marcado, algunos mensajes tienen un error de entrega."
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,help:zehntech_user_warehouse_restriction.field_warehouse_access_log__active
+msgid "Indicates whether this log entry is active or archived."
+msgstr "Indica si esta entrada de registro está activa o archivada."
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_stock_warehouse__is_assigned
+msgid "Is Assigned"
+msgstr "Está Asignado"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__message_is_follower
+msgid "Is Follower"
+msgstr "Es Seguidor"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__write_uid
+msgid "Last Updated by"
+msgstr "Última Actualización por"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__write_date
+msgid "Last Updated on"
+msgstr "Última Actualización en"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__message_has_error
+msgid "Message Delivery error"
+msgstr "Error de Entrega del Mensaje"
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__message_ids
+msgid "Messages"
+msgstr "Mensajes"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__my_activity_date_deadline
+msgid "My Activity Deadline"
+msgstr "Mi Fecha Límite de Actividad"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__activity_date_deadline
+msgid "Next Activity Deadline"
+msgstr "Próxima Fecha Límite de Actividad"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__activity_summary
+msgid "Next Activity Summary"
+msgstr "Resumen de la Próxima Actividad"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__activity_type_id
+msgid "Next Activity Type"
+msgstr "Próximo Tipo de Actividad"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__notes
+msgid "Notes"
+msgstr "Notas"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__message_needaction_counter
+msgid "Number of Actions"
+msgstr "Número de Acciones"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__message_has_error_counter
+msgid "Number of errors"
+msgstr "Número de errores"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,help:zehntech_user_warehouse_restriction.field_warehouse_access_log__message_needaction_counter
+msgid "Number of messages requiring action"
+msgstr "Número de mensajes que requieren acción"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,help:zehntech_user_warehouse_restriction.field_warehouse_access_log__message_has_error_counter
+msgid "Number of messages with delivery error"
+msgstr "Número de mensajes con error de entrega"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__activity_user_id
+msgid "Responsible User"
+msgstr "Usuario Responsable"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields.selection,name:zehntech_user_warehouse_restriction.selection__warehouse_access_log__action__revoke
+msgid "Revoke"
+msgstr "Revocar"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__message_has_sms_error
+msgid "SMS Delivery error"
+msgstr "Error de entrega de SMS"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,help:zehntech_user_warehouse_restriction.field_warehouse_access_log__activity_state
+msgid ""
+"Status based on activities\n"
+"Overdue: Due date is already passed\n"
+"Today: Activity date is today\n"
+"Planned: Future activities."
+msgstr ""
+"Estado basado en las actividades\n"
+"Vencido: La fecha de vencimiento ya ha pasado\n"
+"Hoy: La fecha de la actividad es hoy\n"
+"Planificado: Actividades futuras."
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,help:zehntech_user_warehouse_restriction.field_warehouse_access_log__action
+msgid ""
+"The action performed: \"Assign\" to allocate a warehouse, \"Grant\" to allow"
+" access, or \"Revoke\" to remove access."
+msgstr ""
+"La acción realizada: \"Asignar\" para asignar un almacén, \"Conceder\" para permitir"
+" acceso, o \"Revocar\" para eliminar el acceso."
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,help:zehntech_user_warehouse_restriction.field_warehouse_access_log__timestamp
+msgid "The date and time when this log entry was created."
+msgstr "La fecha y hora en que se creó esta entrada de registro."
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,help:zehntech_user_warehouse_restriction.field_warehouse_access_log__user_id
+msgid "The user associated with this access log entry."
+msgstr "El usuario asociado con esta entrada de registro de acceso."
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,help:zehntech_user_warehouse_restriction.field_warehouse_access_log__warehouse_id
+msgid "The warehouse associated with this log entry."
+msgstr "El almacén asociado con esta entrada de registro."
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__timestamp
+msgid "Timestamp"
+msgstr "Marca de tiempo"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,help:zehntech_user_warehouse_restriction.field_warehouse_access_log__activity_exception_decoration
+msgid "Type of the exception activity on record."
+msgstr "Tipo de actividad de excepción registrada."
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model,name:zehntech_user_warehouse_restriction.model_res_users
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__user_id
+msgid "User"
+msgstr "Usuario"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model,name:zehntech_user_warehouse_restriction.model_stock_warehouse
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__warehouse_id
+msgid "Warehouse"
+msgstr "Almacén"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model,name:zehntech_user_warehouse_restriction.model_warehouse_access_log
+#: model_terms:ir.ui.view,arch_db:zehntech_user_warehouse_restriction.view_warehouse_access_log_form
+msgid "Warehouse Access Log"
+msgstr "Registro de Acceso al Almacén"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.actions.act_window,name:zehntech_user_warehouse_restriction.action_warehouse_access_log
+#: model:ir.ui.menu,name:zehntech_user_warehouse_restriction.warehouse_access_log_menu
+#: model_terms:ir.ui.view,arch_db:zehntech_user_warehouse_restriction.view_warehouse_access_log_tree
+msgid "Warehouse Access Logs"
+msgstr "Registros de Acceso al Almacén"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:res.groups,name:zehntech_user_warehouse_restriction.group_warehouse_admin
+msgid "Warehouse Admin"
+msgstr "Administrador de Almacén"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:res.groups,name:zehntech_user_warehouse_restriction.group_warehouse_manager
+msgid "Warehouse Manager"
+msgstr "Gerente de Almacén"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:res.groups,name:zehntech_user_warehouse_restriction.group_warehouse_user
+msgid "Warehouse User"
+msgstr "Usuario de Almacén"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_res_users__allowed_warehouse_ids
+msgid "Warehouses"
+msgstr "Almacenes"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,help:zehntech_user_warehouse_restriction.field_res_users__allowed_warehouse_ids
+msgid "Warehouses this user has access to."
+msgstr "Almacenes a los que este usuario tiene acceso."
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,field_description:zehntech_user_warehouse_restriction.field_warehouse_access_log__website_message_ids
+msgid "Website Messages"
+msgstr "Mensajes del Sitio Web"
+
+#. module: zehntech_user_warehouse_restriction
+#: model:ir.model.fields,help:zehntech_user_warehouse_restriction.field_warehouse_access_log__website_message_ids
+msgid "Website communication history"
+msgstr "Historial de comunicación del sitio web"

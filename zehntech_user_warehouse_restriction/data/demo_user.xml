@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <!-- Create demo user John -->
+        <record id="user_demo_john" model="res.users">
+            <field name="name">John</field>
+            <field name="login">john.jn@gmail.com</field>
+            <field name="password">demo_password</field>
+            <field name="groups_id" eval="[(6, 0, [ref('base.group_user')])]"/>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- Create demo user Michael -->
+        <record id="user_demo_michael" model="res.users">
+            <field name="name">Michael</field>
+            <field name="login">michael.mj@gmail.com</field>
+            <field name="password">password_MJ</field>
+            <field name="groups_id" eval="[(6, 0, [ref('base.group_user')])]"/>
+            <field name="active" eval="True"/>
+        </record>
+        <!-- Create demo user Michael -->
+        <record id="user_demo_michael" model="res.users">
+            <field name="name">Bob</field>
+            <field name="login">Bob@gmail.com</field>
+            <field name="password">password_MJ</field>
+            <field name="groups_id" eval="[(6, 0, [ref('base.group_user')])]"/>
+            <field name="active" eval="True"/>
+        </record>
+    </data>
+</odoo>

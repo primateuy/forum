@@ -1,0 +1,31 @@
+# Byte-compiled / optimized / DLL files
+*.py[cod]
+*$py.class
+
+# Compiled Python files
+*.pyc
+*.pyo
+*.pyd
+
+# C extensions
+*.so
+
+# Logs and databases
+*.log
+*.db
+*.sqlite3
+
+# Temporary files and backups
+*.tmp
+*.bak
+*.swp
+*.swo
+*.~*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.*

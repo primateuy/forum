@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo> 
+    
+    <!-- This is the rule for base group user access of stock.quant  DONE-->
+    <record id="rule_stock_quant_location_access" model="ir.rule">
+        <field name="name">Stock Quant Access Rule</field>
+        <field name="model_id" ref="stock.model_stock_quant"/>
+        <field name="domain_force">['|',('location_id', 'in', user.allowed_location_ids.ids),('boolean_quant_flag','=',user.check_location)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+
+
+<!-- This is the rule for base group user access of stock.warehouse  DONE-->
+    <record id="rule_stockwarehouse_allowed_user" model="ir.rule">
+        <field name="name">Stockwarehouse Allowed User</field>
+        <field name="model_id" ref="stock.model_stock_warehouse"/>
+        <field name="domain_force">['|',('view_location_id','in',user.allowed_location_ids.ids),('boolean_warehouse_flag','=',user.check_warehouse)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+<!--['|','|','|','|',('child_ids','in',user.allowed_location_ids.ids),('location_id','child_of',user.allowed_location_ids.ids),('location_id','parent_of',user.allowed_location_ids.ids),('location_id','in',user.allowed_location_ids.ids),-->
+<!--            ('id','in',user.allowed_location_ids.ids)]-->
+
+
+    <!--         This is the rule for base group user access of stock.location DONE-->
+    <record model="ir.rule" id="rule_stock_location_allowed_user_id">
+        <field name="name">Stock Location Allowed User</field>
+        <field name="model_id" ref="stock.model_stock_location"/>
+        <field name="domain_force">
+          ['|',('id','in',user.allowed_location_ids.ids),('boolean_location_flag','=',user.check_location)]
+        </field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+
+    <!--         This is the rule for base group user access of stock.move DONE-->
+    <record id="rule_stock_move_access_base_group" model="ir.rule">
+        <field name="name">Stock move Access Rule for base group</field>
+        <field name="model_id" ref="stock.model_stock_move"/>
+        <field name="domain_force">
+            ['|','|',('location_dest_id','in',user.allowed_location_ids.ids),('location_id','in',user.allowed_location_ids.ids),('bool_move_flag','=',user.check_location)]
+        </field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+
+        <!--         This is the rule for base group user access of stock.picking.type DONE-->
+    <record id="rule_stock_move_access_base_group" model="ir.rule">
+        <field name="name">Stock move Access Rule for base group</field>
+        <field name="model_id" ref="stock.model_stock_picking_type"/>
+        <field name="domain_force">
+            ['|',('id','in',user.allowed_operation_types.ids),('bool_picking_type','=',user.check_operation)]
+        </field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+
+        <!--   This is the rule for base group user access of stock.picking DONE-->
+    <record id="rule_stock_picking_type_access_base_group" model="ir.rule">
+        <field name="name">Stock picking Access Rule for base group</field>
+        <field name="model_id" ref="stock.model_stock_picking"/>
+        <field name="domain_force">
+            ['|','|',('location_dest_id','in',user.allowed_location_ids.ids),('location_id','in',user.allowed_location_ids.ids),('bool_picking_flag','=',user.check_location)]
+        </field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+
+
+    <!-- This is the rule for base group user access to products based on allowed stock locations -->
+<!--    <record id="rule_product_product_location_access" model="ir.rule">-->
+<!--        <field name="name">Product Access Based on Allowed Locations</field>-->
+<!--        <field name="model_id" ref="product.model_product_product"/>-->
+<!--        <field name="domain_force">[-->
+<!--            ('stock_quant_ids.location_id', 'in', user.allowed_location_ids.ids)-->
+<!--        ]</field>-->
+<!--        <field name="groups" eval="[(4, ref('base.group_user'))]"/>-->
+<!--    </record>-->
+
+<!--This is the rule for base group user access for stock move line based on the allowed location ids DONE -->
+    <record id="rule_stockmoveline_allowed_user" model="ir.rule">
+        <field name="name">StockMoveLine Allowed User</field>
+        <field name="model_id" ref="stock.model_stock_move_line"/>
+        <field name="domain_force">
+            ['|','|',('location_dest_id','in',user.allowed_location_ids.ids),('location_id','in',user.allowed_location_ids.ids),('bool_stock_move_line','=',user.check_location)]
+        </field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <!-- This is the rule for manager group user access of stock.location -->
+
+    <record id="warehouse_location_rule_for_manager" model="ir.rule">
+        <field name="name">Warehouse Manager for stock.location</field>
+        <field name="model_id" ref="stock.model_stock_location"/>
+        <field name="domain_force">[(1,'=',1)]</field>
+        <field name="groups" eval="[(4, ref('sttl_warehouse_access_control.group_warehouse_manager'))]"/>
+    </record>
+
+
+    <record id="warehouse_product_template_rule_for_manager" model="ir.rule">
+        <field name="name">Warehouse product template</field>
+        <field name="model_id" ref="stock.model_product_template"/>
+        <field name="domain_force">[(1,'=',1)]</field>
+        <field name="groups" eval="[(4, ref('sttl_warehouse_access_control.group_warehouse_manager'))]"/>
+    </record>
+
+
+        <!-- This is the rule for manager group user access of stock.quant -->
+    <record id="warehouse_quant_rule_for_manager" model="ir.rule">
+        <field name="name">Warehouse Manager for stock.quant</field>
+        <field name="model_id" ref="stock.model_stock_quant"/>
+        <field name="domain_force">[(1,'=',1)]</field>
+        <field name="groups" eval="[(4, ref('sttl_warehouse_access_control.group_warehouse_manager'))]"/>
+    </record>
+
+
+    <record id="rule_stock_move_access_manger_group" model="ir.rule">
+        <field name="name">Stock move Access Rule for manager group</field>
+        <field name="model_id" ref="stock.model_stock_move"/>
+        <field name="domain_force">
+            [(1,'=',1)]
+        </field>
+        <field name="groups" eval="[(4, ref('sttl_warehouse_access_control.group_warehouse_manager'))]"/>
+    </record>
+
+
+    <record id="rule_product_product_location_access_manager" model="ir.rule">
+        <field name="name">Product Access Manager Based on Allowed Locations</field>
+        <field name="model_id" ref="product.model_product_product"/>
+        <field name="domain_force">
+            [(1,'=',1)]
+        </field>
+        <field name="groups" eval="[(4, ref('sttl_warehouse_access_control.group_warehouse_manager'))]"/>
+    </record>
+
+
+    <record id="rule_stock_picking_access_manager_group" model="ir.rule">
+        <field name="name">Stock picking Access Rule for manager group</field>
+        <field name="model_id" ref="stock.model_stock_picking"/>
+        <field name="domain_force">
+            [(1,'=',1)]
+        </field>
+        <field name="groups" eval="[(4, ref('sttl_warehouse_access_control.group_warehouse_manager'))]"/>
+    </record>
+
+        <!--         This is the rule for base group user access of stock.picking.type DONE-->
+    <record id="rule_stock_picking_type_access_manager" model="ir.rule">
+        <field name="name">Stock picking Access Rule for manager group</field>
+        <field name="model_id" ref="stock.model_stock_picking_type"/>
+        <field name="domain_force">
+            [(1,'=',1)]
+        </field>
+        <field name="groups" eval="[(4, ref('sttl_warehouse_access_control.group_warehouse_manager'))]"/>
+    </record>
+
+    <record id="rule_stockwarehouse_manager_user" model="ir.rule">
+        <field name="name">Stockwarehouse manager User</field>
+        <field name="model_id" ref="stock.model_stock_warehouse"/>
+        <field name="domain_force">[(1,'=',1)]</field>
+        <field name="groups" eval="[(4, ref('sttl_warehouse_access_control.group_warehouse_manager'))]"/>
+    </record>
+
+
+    <record id="rule_stockmoveline_manager_user" model="ir.rule">
+        <field name="name">StockMoveLine manager User</field>
+        <field name="model_id" ref="stock.model_stock_move_line"/>
+        <field name="domain_force">
+            [(1,'=',1)]
+        </field>
+        <field name="groups" eval="[(4, ref('sttl_warehouse_access_control.group_warehouse_manager'))]"/>
+    </record>
+
+
+    <!-- access control rights -->
+        <!-- Base group users have read-only access to stock quant -->
+        <record id="acl_stock_quant_base_group_user" model="ir.model.access">
+            <field name="name">stock.quant base group access</field>
+            <field name="model_id" ref="stock.model_stock_quant"/>
+            <field name="group_id" ref="base.group_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <!-- Warehouse managers have full access to stock quant -->
+        <record id="acl_stock_quant_warehouse_manager" model="ir.model.access">
+            <field name="name">stock.quant warehouse manager access</field>
+            <field name="model_id" ref="stock.model_stock_quant"/>
+            <field name="group_id" ref="sttl_warehouse_access_control.group_warehouse_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+</odoo>

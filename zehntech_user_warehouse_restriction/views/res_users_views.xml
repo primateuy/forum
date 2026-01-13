@@ -1,0 +1,19 @@
+<odoo>
+    <data>
+
+        <!-- Inherit the res.users form view to add 'Allowed Warehouses' field -->
+        <record id="view_users_form_inherit_warehouse" model="ir.ui.view">
+            <field name="name">res.users.form.inherit.warehouse</field>
+            <field name="model">res.users</field>
+            <field name="inherit_id" ref="base.view_users_form" />
+            <field name="arch" type="xml">
+                <!-- Insert 'Allowed Warehouses' inside the 'Inventory' group -->
+                <xpath expr="//group[not(label)]/parent::group" position="inside">
+                    <group string="Allowed Warehouses">
+                        <field name="allowed_warehouse_ids" widget="many2many_tags" />
+                    </group>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_stock_warehouse_user,access.stock.warehouse.user,stock.model_stock_warehouse,base.group_user,1,0,0,0
+access_stock_warehouse_admin,access.stock.warehouse.admin,stock.model_stock_warehouse,base.group_system,1,1,1,1
+access_stock_warehouse_manager,access.stock.warehouse.manager,stock.model_stock_warehouse,base.group_user,1,1,1,1
+access_warehouse_access_log_user,access.warehouse.access.log.user,model_warehouse_access_log,base.group_user,1,1,1,1
+access_warehouse_access_log_admin,access.warehouse.access.log.admin,model_warehouse_access_log,base.group_system,1,1,1,1
+

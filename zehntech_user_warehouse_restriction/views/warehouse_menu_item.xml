@@ -1,0 +1,22 @@
+<odoo>
+    <data>
+        <!-- Define the action for Warehouse Access Logs -->
+        <record id="action_warehouse_access_log" model="ir.actions.act_window">
+            <field name="name">Warehouse Access Logs</field>
+            <field name="res_model">warehouse.access.log</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help" type="html">
+                <p class="oe_view_nocontent_create">
+                    Create a new warehouse access log.
+                </p>
+            </field>
+        </record>
+
+        <!-- Menu Item -->
+        <menuitem id="warehouse_access_log_menu"
+                  name="Warehouse Access Logs"
+                  sequence="10"
+                  action="action_warehouse_access_log"
+                  parent="stock.menu_stock_root" />
+    </data>
+</odoo>

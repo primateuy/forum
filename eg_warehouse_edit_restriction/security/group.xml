@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <record model="res.groups" id="stock_warehouse_edit_restriction">
+        <field name="name">Stock Warehouse Edit Restriction</field>
+    </record>
+</odoo>

@@ -1,0 +1,47 @@
+<odoo>
+     <!-- Tree View -->
+    <record id="view_warehouse_access_log_tree" model="ir.ui.view">
+        <field name="name">warehouse.access.log.tree</field>
+        <field name="model">warehouse.access.log</field>
+        <field name="arch" type="xml">
+            <tree string="Warehouse Access Logs" decoration-bf="action == 'grant'"
+                  decoration-danger="action == 'revoke'">
+                <field name="user_id" />
+                <field name="warehouse_id" />
+                <field name="action" />
+                <field name="timestamp" />
+                <field name="notes" />
+                <field name="active" />
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_warehouse_access_log_form" model="ir.ui.view">
+        <field name="name">warehouse.access.log.form</field>
+        <field name="model">warehouse.access.log</field>
+        <field name="arch" type="xml">
+            <form string="Warehouse Access Log">
+                <sheet>
+                    <group>
+                        <field name="user_id" />
+                        <field name="warehouse_id" />
+                    </group>
+                    <group>
+                        <field name="action" />
+                        <field name="timestamp" />
+                    </group>
+                    <group>
+                        <field name="notes" widget="textarea" />
+                        <field name="active" />
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_ids" widget="mail_thread" />
+                    <field name="activity_ids" widget="mail_activity" />
+                </div>
+            </form>
+        </field>
+    </record>
+
+</odoo>

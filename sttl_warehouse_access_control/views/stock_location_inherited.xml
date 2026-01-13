@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+<!--    <data>-->
+
+<!--        <record id="stock_location_form_inherit" model="ir.ui.view">-->
+<!--            <field name="name">stock.stock_location.form</field>-->
+<!--            <field name="model">stock.location</field>-->
+<!--            <field name="inherit_id" ref="ProjectName.ViewExternalID"/>-->
+<!--            <field name="priority" eval="8"/>-->
+<!--            <field name="arch" type="xml">-->
+<!--                <xpath expr="//field[@name='example_field']" position="replace">-->
+<!--                    <field name="example_field2"/>-->
+<!--                </xpath>-->
+<!--                <xpath expr="//field[@name='example_field']" position="attributes">-->
+<!--                    <attribute name="invisible">True</attribute>-->
+<!--                </xpath>-->
+<!--            </field>-->
+<!--        </record>-->
+<!--    </data>-->
+</odoo>

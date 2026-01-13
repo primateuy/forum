@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- This is the new category for warehouse access control -->
+    <record id="sttl_warehouse_access_control_category_warehouse_access" model="ir.module.category">
+        <field name="name">Warehouse Access Control</field>
+        <field name="sequence">10</field>
+    </record>
+
+    <!-- This is the group that gives access to the manager to access all locations -->
+    <record id="group_warehouse_manager" model="res.groups">
+        <field name="name">Warehouse Manager</field>
+        <field name="category_id" ref="sttl_warehouse_access_control_category_warehouse_access"/>
+    </record>
+</odoo>

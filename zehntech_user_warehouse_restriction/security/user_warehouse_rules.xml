@@ -1,0 +1,34 @@
+<odoo>
+    <!-- Record rule for restricting warehouse visibility for regular users -->
+    <record id="warehouse_user_access_rule" model="ir.rule">
+        <field name="name">Restrict Warehouse Access to Assigned</field>
+        <field name="model_id" ref="stock.model_stock_warehouse" />
+        <field name="domain_force">[('id', 'in', user.allowed_warehouse_ids.ids)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]" />
+    </record>
+
+    <!-- Admins can access all warehouses -->
+    <record id="warehouse_admin_access_rule" model="ir.rule">
+        <field name="name">Allow Admin Full Access to Warehouses</field>
+        <field name="model_id" ref="stock.model_stock_warehouse" />
+        <field name="domain_force">[]</field> <!-- No restriction for admins -->
+        <field name="groups" eval="[(4, ref('base.group_system'))]" />
+    </record>
+
+    <!-- Managers can modify warehouse access -->
+    <record id="warehouse_manager_access_rule" model="ir.rule">
+        <field name="name">Allow Managers to Modify Warehouse Access</field>
+        <field name="model_id" ref="stock.model_stock_warehouse" />
+        <field name="domain_force">[]</field> <!-- No restriction for warehouse managers -->
+       <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+    </record>
+
+    <!-- Managers can view all warehouse records -->
+    <record id="warehouse_manager_view_access_rule" model="ir.rule">
+        <field name="name">Managers View All Warehouses</field>
+        <field name="model_id" ref="stock.model_stock_warehouse" />
+        <field name="domain_force">[]</field> <!-- No restriction for warehouse managers -->
+        <field name="groups" eval="[(4, ref('base.group_system'))]" />
+    </record>
+</odoo>
+    

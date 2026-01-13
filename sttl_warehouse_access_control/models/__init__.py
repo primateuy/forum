@@ -1,0 +1,1 @@
+from . import res_users,inherited_stock_warehouse,inherited_stock_location,inherited_stock_quant,inherited_stock_move,inherited_stock_picking_type,inherited_stock_picking,inherited_stock_move_line

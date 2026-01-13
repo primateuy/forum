@@ -1,0 +1,19 @@
+<odoo>
+   <record id="group_warehouse_manager" model="res.groups">
+    <field name="name">Warehouse Manager</field>
+    <field name="category_id" ref="base.module_category_inventory"/>
+</record>
+
+
+    <!-- Create a custom Warehouse User group -->
+    <record id="group_warehouse_user" model="res.groups">
+        <field name="name">Warehouse User</field>
+        <field name="category_id" ref="base.module_category_inventory" />
+    </record>
+
+    <!-- Create a custom Warehouse Admin group -->
+    <record id="group_warehouse_admin" model="res.groups">
+        <field name="name">Warehouse Admin</field>
+        <field name="category_id" ref="base.module_category_inventory" />
+    </record>
+</odoo>
