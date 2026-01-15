@@ -1,6 +1,9 @@
 from odoo import api, models, fields
 from odoo.exceptions import ValidationError, UserError
 import math
+import logging;
+
+_logger = logging.getLogger(__name__)
 
 class PurchaseOrderLine(models.Model):
     _inherit = 'purchase.order.line'
@@ -15,10 +18,21 @@ class PurchaseOrderLine(models.Model):
         help="Porcentaje de la cantidad que irá a cross-docking.",
         default=0.0
     )
+
+
+    def _get_default_distribution_multiple(self):
+        
+        multiple = self.product_id.mutiplos_distribucion or 0
+        
+        # ✅ Si es 0, retornar 1
+        if multiple == 0:
+            return 1
+        
+        return multiple
     
     distribution_multiple = fields.Integer(
         string="Múltiplo de Distribución",
-        default=1,
+        default=_get_default_distribution_multiple,
         help="Ej: Si es 6, la cantidad se redondea a múltiplos de 6 (cajas)."
     )
 
@@ -37,6 +51,7 @@ class PurchaseOrderLine(models.Model):
         for line in self:
             if line.order_id.crossdock_enabled:
                 line.use_crossdock = True
+
                 
                 # Prioridad: producto > orden
                 if hasattr(line.product_id, 'crossdock_percentage') and line.product_id.crossdock_percentage:
@@ -44,54 +59,60 @@ class PurchaseOrderLine(models.Model):
                 elif hasattr(line.order_id, 'crossdock_percentage'):
                     line.line_crossdock_percentage = line.order_id.crossdock_percentage / 100.0
                 
-                # Cargar múltiplo desde reglas de reabastecimiento si el módulo está instalado
-                line._load_multiple_from_reorder_rules()
+                # # Cargar múltiplo desde reglas de reabastecimiento si el módulo está instalado
+                # line._load_multiple_from_reorder_rules()
 
-    def _load_multiple_from_reorder_rules(self):
-        """Cargar el múltiplo desde las reglas de reabastecimiento del producto"""
-        if not self.product_id:
-            return
+    # def _load_multiple_from_reorder_rules(self):
+    #     """Cargar el múltiplo desde las reglas de reabastecimiento o desde el producto"""
+    #     if not self.product_id:
+    #         return
         
-        # Verificar si los módulos requeridos están instalados
-        if not self._are_required_modules_installed():
-            return
+    #     # PRIMERO: Intentar obtener desde product_template.mutiplos_distribucion
+    #     if hasattr(self.product_id.product_tmpl_id, 'mutiplos_distribucion'):
+    #         if self.product_id.product_tmpl_id.mutiplos_distribucion > 1:
+    #             self.distribution_multiple = self.product_id.product_tmpl_id.mutiplos_distribucion
+    #             return
         
-        # Buscar reglas de reabastecimiento para este producto
-        reorder_rules = self.env['stock.warehouse.orderpoint'].search([
-            ('product_id', '=', self.product_id.id),
-            ('active', '=', True)
-        ])
+    #     # Verificar si los módulos requeridos están instalados
+    #     if not self._are_required_modules_installed():
+    #         return
+        
+    #     # Buscar reglas de reabastecimiento para este producto
+    #     reorder_rules = self.env['stock.warehouse.orderpoint'].search([
+    #         ('product_id', '=', self.product_id.id),
+    #         ('active', '=', True)
+    #     ])
 
-        if len(reorder_rules) > 1:
-            product_cat = self.product_id.categ_id;
-            if not product_cat:
-                return;
+    #     if len(reorder_rules) > 1:
+    #         product_cat = self.product_id.categ_id;
+    #         if not product_cat:
+    #             return;
 
-            product_cluster = self.product_id.warehouse_group_id;
-            if not product_cluster:
-                return;
+    #         product_cluster = self.product_id.warehouse_group_id;
+    #         if not product_cluster:
+    #             return;
 
-            for cat in product_cluster.category_rule_ids:
-                if cat.categ_id == product_cat:
-                        self.distribution_multiple = cat.qty_multiple;
-                        return;
+    #         for cat in product_cluster.category_rule_ids:
+    #             if cat.categ_id == product_cat:
+    #                     self.distribution_multiple = cat.qty_multiple;
+    #                     return;
 
         
-        else:
-            for rule in reorder_rules:
-                multiple_value = 1
+    #     else:
+    #         for rule in reorder_rules:
+    #             multiple_value = 1
                 
-                # Verificar diferentes campos donde puede estar el múltiplo
-                if hasattr(rule, 'qty_multiple') and rule.qty_multiple > 0:
-                    multiple_value = int(rule.qty_multiple)
-                elif hasattr(rule, 'multiple_qty') and rule.multiple_qty > 0:
-                    multiple_value = int(rule.multiple_qty)
-                elif hasattr(rule, 'product_multiple') and rule.product_multiple > 0:
-                    multiple_value = int(rule.product_multiple)
+    #             # Verificar diferentes campos donde puede estar el múltiplo
+    #             if hasattr(rule, 'qty_multiple') and rule.qty_multiple > 0:
+    #                 multiple_value = int(rule.qty_multiple)
+    #             elif hasattr(rule, 'multiple_qty') and rule.multiple_qty > 0:
+    #                 multiple_value = int(rule.multiple_qty)
+    #             elif hasattr(rule, 'product_multiple') and rule.product_multiple > 0:
+    #                 multiple_value = int(rule.product_multiple)
                 
-                if multiple_value > 1:
-                    self.distribution_multiple = multiple_value
-                    return
+    #             if multiple_value > 1:
+    #                 self.distribution_multiple = multiple_value
+    #                 return
     
     def _are_required_modules_installed(self):
         """Verificar si los módulos requeridos están instalados"""
@@ -108,9 +129,7 @@ class PurchaseOrderLine(models.Model):
         installed_names = installed_modules.mapped('name')
         return len(installed_names) > 0  # Al menos uno de los módulos debe estar instalado
 
-    @api.onchange('product_id')
-    def _onchange_product_id_crossdock(self):
-        self._apply_crossdock_defaults()
+    
 
     @api.onchange('product_qty')
     def onChangeJustProductQty(self):
@@ -119,6 +138,20 @@ class PurchaseOrderLine(models.Model):
     @api.onchange('distribution_multiple')
     def onChangeJustDistributionMultiple(self):
         pass
+
+    @api.onchange('product_id')
+    def _onchange_product_id_crossdock(self):
+        # Cargar múltiplo desde el producto
+        if self.product_id:
+            if hasattr(self.product_id, 'mutiplos_distribucion'):
+                multiplo = self.product_id.mutiplos_distribucion
+                if multiplo and multiplo > 0:
+                    self.distribution_multiple = multiplo
+                else:
+                    self.distribution_multiple = 1
+        
+        # Aplicar configuraciones de crossdock
+        self._apply_crossdock_defaults()
 
     def write(self, vals):
         if 'line_crossdock_percentage' in vals:
@@ -156,6 +189,13 @@ class PurchaseOrderLine(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            # Cargar distribution_multiple desde product_template si no está definido
+            if 'distribution_multiple' not in vals and vals.get('product_id'):
+                product = self.env['product.product'].browse(vals['product_id'])
+                if hasattr(product, 'mutiplos_distribucion'):
+                    if product.mutiplos_distribucion > 1:
+                        vals['distribution_multiple'] = product.product_tmpl_id.mutiplos_distribucion
+            
             if 'order_id' in vals:
                 order = self.env['purchase.order'].browse(vals['order_id'])
                 if order.crossdock_enabled:
@@ -172,12 +212,6 @@ class PurchaseOrderLine(models.Model):
                                 vals['line_crossdock_percentage'] = order.crossdock_percentage / 100.0
                         else:
                             vals['line_crossdock_percentage'] = order.crossdock_percentage / 100.0
-                    
-                    # Cargar múltiplo desde reglas de reabastecimiento si no está definido
-                    if 'distribution_multiple' not in vals and vals.get('product_id'):
-                        multiple = self._get_multiple_from_reorder_rules(vals['product_id'])
-                        if multiple > 1:
-                            vals['distribution_multiple'] = multiple
         
         lines = super(PurchaseOrderLine, self).create(vals_list)
         

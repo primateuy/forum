@@ -129,11 +129,34 @@ class StockPicking(models.Model):
         result = super(StockPicking, self).button_validate()
         
         for picking in self:
+
+            
             if picking._is_crossdock_reception_picking():
-                picking._activate_dependent_crossdock_pickings()
+                picking._activate_dependent_crossdock_pickings();
+        
+
         
         return result
     
+
+    def _activate_dependent_crossdock_pickings_transport(self):
+
+    
+        _logger.info("SE ENTRO A CONFIRMAR PICKING");
+        picking_receptor = self.env['stock.picking'].search([
+            ('location_id', '=', self.location_dest_id.id),
+        ], limit=1);
+    
+        picking_receptor.write({'state': 'assigned'});
+
+    def _is_transport_picking(self):
+        
+        almacenes = self.env['stock.warehouse'].search([]);
+    
+        for almacen in almacenes:
+            if almacen.crossdocking_location_id.id == self.location_id.id:
+                return True
+
     def _is_crossdock_reception_picking(self):
         return (
             'Recepción Crossdock' in (self.origin or '')
@@ -149,11 +172,12 @@ class StockPicking(models.Model):
             
             dependent_pickings = purchase_order.picking_ids.filtered(
                 lambda p: (
-                    p.location_id.id == entrada_location.id and 
                     p.state in ('waiting', 'confirmed') and
                     p.id != self.id
                 )
             )
+
+            
 
             
             

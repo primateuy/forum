@@ -21,7 +21,11 @@
         'security/security.xml',
         'views/PurchaseOrderView.xml',
         'views/PurchaseOrderLineView.xml',
-        'views/PurchaseOrderType.xml'
+        'views/PurchaseOrderType.xml',
+        'views/stock_warehouse.xml',
+        'views/product_template.xml',
+        'views/product_product.xml',
+        'views/picking_type.xml',
     ],
     
     "assets": {
@@ -35,6 +39,8 @@
     'demo': [
         'demo/demo.xml',
     ],
+    
+    'post_init_hook': 'post_init_hook',
     
 }
 

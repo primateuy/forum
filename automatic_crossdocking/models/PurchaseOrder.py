@@ -278,6 +278,7 @@ class PurchaseOrder(models.Model):
         2. Distribución desde WH/Entrada a destinos
         3. Movimiento del saldo a WH/Existencias
         """
+
         StockPicking = self.env['stock.picking']
         all_pickings = self.env['stock.picking']
         all_moves = self.env['stock.move']
@@ -310,6 +311,38 @@ class PurchaseOrder(models.Model):
             if not warehouse:
                 continue
 
+            esPrincipal = False;
+
+            main_warehouse = self.picking_type_id.warehouse_id or self.env['stock.warehouse'].search([
+            ('company_id', '=', self.company_id.id)
+            ], limit=1)
+
+            if main_warehouse.id == warehouse.id:
+                esPrincipal = True;
+            
+            if not esPrincipal:
+                if not main_warehouse.crossdocking_type_id:
+                    raise ValidationError("No se ha asignado operación para el crossdocking en el centro logístico")
+
+                crossdockingPicking = self._prepare_picking();
+                crossdockingPicking.update({
+                    'location_dest_id': warehouse.crossdocking_location_id.id,
+                    'location_id': self._get_or_create_entrance_location().id,
+                    'origin': f"{self.name} - Crossdock Equitativo {location.complete_name}",
+                    'picking_type_id': main_warehouse.crossdocking_type_id.id
+                })
+
+
+                crosspick = StockPicking.with_user(SUPERUSER_ID).create(crossdockingPicking);
+                
+
+                all_pickings |= crosspick;
+
+                picking_moves = self._create_equitable_moves_for_picking(crosspick, location, lines_data);
+                all_moves |= picking_moves;
+
+           
+
             existing_picking = self.picking_ids.filtered(
                 lambda p: p.location_dest_id.id == location.id and 
                 p.state not in ('done', 'cancel') and
@@ -321,12 +354,22 @@ class PurchaseOrder(models.Model):
                 
             else:
                 picking_vals = self._prepare_picking()
-                picking_vals.update({
-                    'location_dest_id': location.id,
-                    'location_id': self._get_or_create_entrance_location().id,
-                    'origin': f"{self.name} - Crossdock Equitativo {location.complete_name}",
-                    'picking_type_id': self._get_crossdock_picking_type(warehouse).id
-                })
+
+                if esPrincipal:
+                    picking_vals.update({
+                        'location_dest_id': location.id,
+                        'location_id': self._get_or_create_entrance_location().id,
+                        'origin': f"{self.name} - Crossdock Equitativo {location.complete_name}",
+                        'picking_type_id': main_warehouse.crossdocking_type_id.id
+                    })
+                else:
+
+                    picking_vals.update({
+                        'location_dest_id': location.id,
+                        'location_id': warehouse.crossdocking_location_id.id,
+                        'origin': f"{self.name} - Crossdock Equitativo {location.complete_name}",
+                        'picking_type_id': main_warehouse.crossdocking_type_id.id
+                    })
                 
                 picking = StockPicking.with_user(SUPERUSER_ID).create(picking_vals)
             
@@ -353,19 +396,26 @@ class PurchaseOrder(models.Model):
             forward_pickings = self.env['stock.picking']._get_impacted_pickings(all_moves)
             (all_pickings | forward_pickings).action_confirm()
             
-            for picking in all_pickings:
-                if picking.state == 'confirmed':
-                    try:
-                        picking.write({'state': 'waiting'});
-                    except:
-                        pass
+            # for picking in all_pickings:
+            #     if picking.state != 'confirmed':
+            #         try:
+            #             picking.write({'state': 'waiting'});
+            #         except:
+            #             pass
 
-                    for move in all_moves:
-                        if move.move_line_ids:
-                            move.move_line_ids.unlink()
-                        move.write({
-                            'quantity': 0,
-                        })
+            #         for move in all_moves:
+            #             if move.move_line_ids:
+            #                 move.move_line_ids.unlink()
+            #             move.write({
+            #                 'quantity': 0,
+            #             })
+
+
+            # #chequear pickings
+            # _logger.info("===============================================");
+            # for picking in all_pickings:
+            #     _logger.info("Picking creado: %s - Estado: %s", picking.name, picking.state);
+
                         
 
     def _create_equitable_moves_for_picking(self, picking, location, lines_data):
@@ -481,6 +531,13 @@ class PurchaseOrder(models.Model):
         for line in crossdock_lines:
             porcentaje = line.line_crossdock_percentage or (self.crossdock_percentage / 100)
             
+            operacion = almacen_principal.crossdocking_type_id;
+
+            if operacion and operacion.respeta_multiplos:
+                multiple = getattr(line, 'distribution_multiple', 1) or 1
+                if multiple > 1 and line.product_qty % multiple != 0:
+                    raise ValidationError("La operación respeta multiplos. La línea de orden de compra %s tiene una cantidad total (%s) que no es múltiplo de %s. Por favor, ajuste la cantidad o el múltiplo." % (line.name, line.product_qty, multiple))
+
             if porcentaje <= 0:
                 continue
 
@@ -653,7 +710,22 @@ class PurchaseOrder(models.Model):
             p.id != reception_picking.id and
             p.state not in ('done', 'cancel')
         )
+
+        almacenes = self.env['stock.warehouse'].search([]);
+
         
+
+        dependent_pickings_crossdocking = [];
+
+        for almacen in almacenes:
+            dependent_pickings_crossdocking.append(almacen.crossdocking_location_id.id);
+        
+
+        crossdocking_pickings_pendientes = self.picking_ids.filtered(
+            lambda p: p.location_id.id in dependent_pickings_crossdocking and
+            p.state not in ('done', 'cancel')
+        )
+
         if reception_picking and dependent_pickings:
             reception_picking = reception_picking[0]
 
@@ -677,7 +749,29 @@ class PurchaseOrder(models.Model):
                                     'quantity': 0,
                                 })
                 
-            dependent_pickings.action_confirm()
+            dependent_pickings.action_confirm();
+
+            for crossdock_picking in crossdocking_pickings_pendientes:
+                crossdock_picking.write({'state': 'waiting'});
+                for dependent_move in crossdock_picking.move_ids:
+                    for dependent_picking in dependent_pickings:
+                        for dep_move in dependent_picking.move_ids:
+                            if dependent_move.product_id.id == dep_move.product_id.id:
+                                # El movimiento dependiente debe esperar al movimiento de recepción
+                                dep_move.write({
+                                    'move_orig_ids': [(4, dependent_move.id)]
+                                })
+                                dependent_move.write({
+                                    'move_dest_ids': [(4, dep_move.id)]
+                                })
+
+                                if dep_move.move_line_ids:
+                                    dep_move.move_line_ids.unlink()
+                                    dep_move.write({
+                                        'quantity': 0,
+                                    })
+
+            crossdocking_pickings_pendientes.action_confirm();
             
 
         return True
@@ -824,35 +918,41 @@ class PurchaseOrder(models.Model):
         main_warehouse = self.picking_type_id.warehouse_id or self.env['stock.warehouse'].search([
             ('company_id', '=', self.company_id.id)
         ], limit=1)
+
+        if main_warehouse and main_warehouse.crossdocking_reception_type_id:
+            return main_warehouse.crossdocking_reception_type_id
         
-        crossdock_reception_type = self.env['stock.picking.type'].search([
-            ('code', '=', 'incoming'),
-            ('warehouse_id', '=', main_warehouse.id),
-            ('name', 'ilike', 'Recepción Crossdock')
-        ], limit=1)
+        raise ValidationError("No se ha definido el tipo de picking de 'Recepción Crossdock' en el almacén principal.")
+
+
+        # crossdock_reception_type = self.env['stock.picking.type'].search([
+        #     ('code', '=', 'incoming'),
+        #     ('warehouse_id', '=', main_warehouse.id),
+        #     ('name', 'ilike', 'Recepción Crossdock')
+        # ], limit=1)
         
-        if not crossdock_reception_type:
-            standard_reception = self.env['stock.picking.type'].search([
-                ('code', '=', 'incoming'),
-                ('warehouse_id', '=', main_warehouse.id),
-                ('default_location_dest_id', '!=', False)
-            ], limit=1)
+        # if not crossdock_reception_type:
+        #     standard_reception = self.env['stock.picking.type'].search([
+        #         ('code', '=', 'incoming'),
+        #         ('warehouse_id', '=', main_warehouse.id),
+        #         ('default_location_dest_id', '!=', False)
+        #     ], limit=1)
             
-            crossdock_reception_type = self.env['stock.picking.type'].create({
-                'name': 'Recepción Crossdock',
-                'code': 'incoming',
-                'sequence_code': 'IN-CROSS',
-                'warehouse_id': main_warehouse.id,
-                'default_location_src_id': self.partner_id.property_stock_supplier.id,
-                'default_location_dest_id': self._get_or_create_entrance_location().id,
-                'use_create_lots': standard_reception.use_create_lots if standard_reception else False,
-                'use_existing_lots': standard_reception.use_existing_lots if standard_reception else True,
-                'show_operations': True,
-                'show_reserved': True,
-                'sequence': 1,
-            })
+        #     crossdock_reception_type = self.env['stock.picking.type'].create({
+        #         'name': 'Recepción Crossdock',
+        #         'code': 'incoming',
+        #         'sequence_code': 'IN-CROSS',
+        #         'warehouse_id': main_warehouse.id,
+        #         'default_location_src_id': self.partner_id.property_stock_supplier.id,
+        #         'default_location_dest_id': self._get_or_create_entrance_location().id,
+        #         'use_create_lots': standard_reception.use_create_lots if standard_reception else False,
+        #         'use_existing_lots': standard_reception.use_existing_lots if standard_reception else True,
+        #         'show_operations': True,
+        #         'show_reserved': True,
+        #         'sequence': 1,
+        #     })
         
-        return crossdock_reception_type
+        # return crossdock_reception_type
 
     def _create_main_reception_picking(self, crossdock_lines):
         StockPicking = self.env['stock.picking']
@@ -942,7 +1042,7 @@ class PurchaseOrder(models.Model):
         entrada_location = self._get_or_create_entrance_location()
         
         # Obtener la ubicación de existencias (stock) del almacén principal
-        main_warehouse = self.picking_type_id.warehouse_id or self.env['stock.warehouse'].search([
+        main_warehouse = self.env['stock.warehouse'].search([
             ('company_id', '=', self.company_id.id)
         ], limit=1)
         stock_location = main_warehouse.lot_stock_id
@@ -1002,9 +1102,12 @@ class PurchaseOrder(models.Model):
                     ('code', '=', 'internal'),
                     ('warehouse_id', '=', main_warehouse.id),
                 ], limit=1)
+
+            if not main_warehouse.crossdocking_type_id:
+                raise ValidationError("No se ha definido el tipo de picking de 'Crossdocking' en el almacén principal.")
             
             picking_vals = {
-                'picking_type_id': internal_picking_type.id,
+                'picking_type_id': main_warehouse.crossdocking_type_id.id,
                 'partner_id': self.partner_id.id,
                 'company_id': self.company_id.id,
                 'move_type': 'direct',
@@ -1127,8 +1230,50 @@ class PurchaseOrder(models.Model):
         if not warehouse_distribution:
             return
         
-        for ubi, alm in warehouse_distribution.items():
+        for ubi, itm in warehouse_distribution.items():
+
+            alm = itm[0]['warehouse'];
+
+            existing_picking = self.picking_ids.filtered(
+                lambda p: p.location_dest_id.id == ubi.id and 
+                p.state not in ('done', 'cancel') and
+                'Crossdock' in (p.origin or '')
+            )
+
+            esPrincipal = False;
+
+            main_warehouse = self.picking_type_id.warehouse_id or self.env['stock.warehouse'].search([
+            ('company_id', '=', self.company_id.id)
+            ], limit=1)
+
+            if main_warehouse.id == alm.id:
+                esPrincipal = True;
             
+
+            if not main_warehouse.crossdocking_type_id:
+                raise ValidationError("No se ha definido el tipo de picking de 'Crossdocking' en el almacén principal.")
+
+            if not esPrincipal:
+
+
+                crossdockingPicking = self._prepare_picking();
+                crossdockingPicking.update({
+                    'location_dest_id': alm.crossdocking_location_id.id,
+                    'location_id': self._get_or_create_entrance_location().id,
+                    'origin': f"{self.name} - Crossdock Equitativo {ubi.complete_name}",
+                    'picking_type_id': main_warehouse.crossdocking_type_id.id
+                })
+
+
+                crosspick = StockPicking.with_user(SUPERUSER_ID).create(crossdockingPicking);
+                
+
+                all_pickings |= crosspick;
+
+                picking_moves = self._create_crossdock_moves_for_picking(crosspick, ubi, itm);
+                all_moves |= picking_moves;
+
+           
 
             existing_picking = self.picking_ids.filtered(
                 lambda p: p.location_dest_id.id == ubi.id and 
@@ -1138,20 +1283,31 @@ class PurchaseOrder(models.Model):
             
             if existing_picking:
                 picking = existing_picking[0]
+                
             else:
                 picking_vals = self._prepare_picking()
-                picking_vals.update({
-                    'location_dest_id': ubi.id,
-                    'location_id': self._get_or_create_entrance_location().id,
-                    'origin': f"{self.name} - Crossdock {ubi.display_name}",
-                    'picking_type_id': self._get_crossdock_picking_type(ubi).id
-                })
+
+                if esPrincipal:
+                    picking_vals.update({
+                        'location_dest_id': ubi.id,
+                        'location_id': self._get_or_create_entrance_location().id,
+                        'origin': f"{self.name} - Crossdock Equitativo {ubi.complete_name}",
+                        'picking_type_id': main_warehouse.crossdocking_type_id.id
+                    })
+                else:
+
+                    picking_vals.update({
+                        'location_dest_id': ubi.id,
+                        'location_id': alm.crossdocking_location_id.id,
+                        'origin': f"{self.name} - Crossdock Equitativo {ubi.complete_name}",
+                        'picking_type_id': main_warehouse.crossdocking_type_id.id
+                    })
                 
                 picking = StockPicking.with_user(SUPERUSER_ID).create(picking_vals)
             
             all_pickings |= picking
             
-            picking_moves = self._create_crossdock_moves_for_picking(picking, ubi, alm)
+            picking_moves = self._create_crossdock_moves_for_picking(picking, ubi, itm)
             all_moves |= picking_moves
             
             picking.message_post_with_source(
@@ -1159,6 +1315,10 @@ class PurchaseOrder(models.Model):
                 render_values={'self': picking, 'origin': self},
                 subtype_xmlid='mail.mt_note',
             )
+
+            
+            
+            
         
         if all_moves:
             all_moves = all_moves.filtered(lambda x: x.state not in ('done', 'cancel'))._action_confirm()
@@ -1278,8 +1438,11 @@ class PurchaseOrder(models.Model):
             ]));
         
         
+
         for line in crossdock_lines:
             grupo = line.product_id.warehouse_group_id
+
+            
 
             if not grupo:
                 raise ValidationError("El producto no tiene asignado ningún grupo.");
@@ -1370,6 +1533,14 @@ class PurchaseOrder(models.Model):
         
         for line in crossdock_lines:
             porcentaje = line.line_crossdock_percentage or (self.crossdock_percentage / 100)
+
+
+            operacion = main_warehouse.crossdocking_type_id;
+            
+            if operacion and operacion.respeta_multiplos:
+                multiple = getattr(line, 'distribution_multiple', 1) or 1
+                if multiple > 1 and line.product_qty % multiple != 0:
+                    raise ValidationError("La operación respeta multiplos. La línea de orden de compra %s tiene una cantidad total (%s) que no es múltiplo de %s. Por favor, ajuste la cantidad o el múltiplo." % (line.name, line.product_qty, multiple))
 
             if porcentaje <= 0:
                 continue
@@ -1517,27 +1688,7 @@ class PurchaseOrder(models.Model):
                         'warehouse': almacen_principal
                     })
                         
-            # cantidadesAsignadas = 0
-            # for dist in distribution:
-            #     for item in distribution[dist]:
-            #         if item['line'] == line:
-            #             cantidadesAsignadas += item['quantity']
-
-            # if cantidadesAsignadas > line.product_qty:
-            #     exceso = cantidadesAsignadas - line.product_qty
-            #     # Ajustar la cantidad del primer elemento de la lista para este producto
-            #     if distribution[ubicacion_principal]:
-            #         for item in distribution[ubicacion_principal]:
-            #             if item['line'] == line:
-            #                 item['quantity'] -= exceso
-            #                 if item['quantity'] < 0:
-            #                     item['quantity'] = 0
-
-            #                 if exceso > 0:
-            #                     _logger.info(f"CANTIDAD ASIGNADA: {cantidadesAsignadas} > CANTIDAD LINEA: {line.product_qty} - EXCESO: {exceso}")
-            #                     self.write({'exceso': True})
-            #                 _logger.info("SE ARREGLARON LAS CANTIDADES")
-            #                 break
+            
 
         distribuciones_con_contenido = {k: v for k, v in distribution.items() if v}
         
@@ -1567,9 +1718,6 @@ class PurchaseOrder(models.Model):
             product_quantities[product_id]['quantity'] += quantity
 
 
-        _logger.info(f"=== CREANDO MOVIMIENTOS PARA PICKING {picking.name} ===")
-        _logger.info(f"Ubicación destino: {location.display_name}")
-        _logger.info(f"Cantidad de lines_data: {len(lines_data)}")
         for idx, line_data in enumerate(lines_data):
             _logger.info(f"  [{idx}] Producto: {line_data['line'].product_id.display_name}, Cantidad: {line_data['quantity']}")
 
