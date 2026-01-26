@@ -4,58 +4,213 @@ from odoo.exceptions import ValidationError
 import logging
 _logger = logging.getLogger(__name__)
 
+class PosSession(models.Model):
+    _inherit = 'pos.session'
+
+    def _loader_params_product_pricelist(self):
+        result = super()._loader_params_product_pricelist()
+        result['search_params']['domain'] = [('active', '=', True)]
+        return result
+    
+    # NUEVO: Cargar información de recompensas con sus productos
+    def _loader_params_loyalty_reward(self):
+        """Extender parámetros de carga de recompensas"""
+        result = super()._loader_params_loyalty_reward()
+        # Agregar los campos relacionados a productos de precio fijo
+        result['search_params']['fields'].extend([
+            'fixed_price_line_ids',
+            'fixed_price_data',
+            'fixed_price_map'
+        ])
+        return result
+    
+    def _get_pos_ui_loyalty_reward(self, params):
+        """Cargar recompensas con sus productos asociados"""
+        rewards = super()._get_pos_ui_loyalty_reward(params)
+        
+        # Para cada recompensa de tipo fixed_price, asegurar que tenga los datos
+        for reward in rewards:
+            if reward.get('reward_type') == 'fixed_price':
+                reward_obj = self.env['loyalty.reward'].browse(reward['id'])
+                # Forzar recálculo si no tiene datos
+                if not reward.get('fixed_price_data') or not reward.get('fixed_price_map'):
+                    reward_obj._compute_fixed_price_data()
+                    reward_obj._compute_fixed_price_map()
+                    reward['fixed_price_data'] = reward_obj.fixed_price_data
+                    reward['fixed_price_map'] = reward_obj.fixed_price_map
+                
+        
+        return rewards
+
+
+
+
+class LoyaltyRewardFixedPrice(models.Model):
+    _name = 'loyalty.reward.fixed.price'
+    _description = 'Producto con Precio Fijo'
+    _order = 'sequence'
+
+    reward_id = fields.Many2one('loyalty.reward', string='Recompensa', ondelete='cascade', required=True)
+    product_id = fields.Many2one('product.product', string='Producto', required=True)
+    fixed_price = fields.Float(string='Precio Fijo', required=True, digits='Product Price')
+    sequence = fields.Integer(string='Orden', default=10)
+
+    _sql_constraints = [
+        ('unique_reward_product', 'UNIQUE(reward_id, product_id)', 
+         'No se pueden agregar productos duplicados en la misma recompensa'),
+    ]
+
+    def name_get(self):
+        result = []
+        for record in self:
+            name = f"{record.product_id.display_name} - ${record.fixed_price:.2f}"
+            result.append((record.id, name))
+        return result
+    
+    @api.model
+    def create(self, vals):
+        
+        # VALIDAR ANTES DE CREAR: ¿Ya existe este producto en esta recompensa?
+        existing = self.search([
+            ('reward_id', '=', vals.get('reward_id')),
+            ('product_id', '=', vals.get('product_id')),
+        ], limit=1)
+        
+        if existing:
+            
+            return existing;
+        
+        result = super().create(vals)
+        return result
+    
 class LoyaltyReward(models.Model):
     _inherit = 'loyalty.reward'
 
     reward_type = fields.Selection(
-    selection_add=[('pricelist_change', 'Cambio de Lista de Precios')],
-    ondelete={'pricelist_change': 'cascade'}
-)
-    pricelist_id = fields.Many2one('product.pricelist', string='Lista de Precios (Recompensa)', store=True, help='Lista de precios que se aplicará al cambiar la recompensa')
+        selection_add=[('pricelist_change', 'Cambio de Lista de Precios'), ('fixed_price', 'Precio Fijo')],
+        ondelete={'pricelist_change': 'cascade', 'fixed_price': 'cascade'}
+    )
+    pricelist_id = fields.Many2one(
+        'product.pricelist', 
+        string='Lista de Precios (Recompensa)', 
+        store=True,
+        help='Lista de precios que se aplicará al cambiar la recompensa'
+    )
+    fixed_price_line_ids = fields.One2many('loyalty.reward.fixed.price', 'reward_id', string='Productos con Precio Fijo')
+    fixed_price_data = fields.Json(string='Datos de Precios Fijos', compute='_compute_fixed_price_data', store=True, readonly=False)
+    fixed_price_map = fields.Json(string='Mapeo Producto->Precio', compute='_compute_fixed_price_map', store=True)
+    fixed_price_product_ids = fields.Json(string='IDs de Productos con Precio Fijo', compute='_compute_fixed_price_product_ids', store=True)
+    
+    reward_label = fields.Char(
+        string='Etiqueta de Recompensa',
+        compute='_compute_reward_label',
+        store=True,
+        help='Etiqueta corta que se mostrará en las líneas del POS cuando se aplique esta recompensa'
+    )
+    
+    reward_badge_color = fields.Selection([
+        ('primary', 'Azul'),
+        ('success', 'Verde'),
+        ('warning', 'Amarillo'),
+        ('danger', 'Rojo'),
+        ('info', 'Cyan'),
+        ('secondary', 'Gris'),
+    ], string='Color de Etiqueta', default='success', help='Color del badge en el POS')
 
     description = fields.Text(
-    string='Descripción',
-    compute='_compute_description',
-    store=True,
-    help='Descripción de la recompensa, se mostrará en el Punto de Venta'
+        string='Descripción',
+        compute='_compute_description',
+        store=True,
+        help='Descripción de la recompensa, se mostrará en el Punto de Venta'
     )
-
 
     @classmethod
     def _pos_ui_export_fields(cls):
-        return super()._pos_ui_export_fields() + ['pricelist_id']
+        """Exportar campos al POS incluyendo la etiqueta"""
+        return super()._pos_ui_export_fields() + [
+            'pricelist_id',
+            'fixed_price_data',
+            'fixed_price_map',
+            'fixed_price_product_ids',
+            'reward_label', 
+            'reward_badge_color'  
+        ]
+    
+    @api.depends('reward_type', 'pricelist_id', 'fixed_price_line_ids', 'discount', 'discount_mode')
+    def _compute_reward_label(self):
+        """Calcula una etiqueta corta para mostrar en las líneas del POS"""
+        for record in self:
+            if record.reward_type == 'discount':
+                if record.discount_mode == 'percent':
+                    record.reward_label = f"-{record.discount}%"
+                elif record.discount_mode == 'per_order':
+                    record.reward_label = f"-${record.discount}"
+                else:
+                    record.reward_label = "DESCUENTO"
+                    
+            elif record.reward_type == 'product':
+                record.reward_label = "REGALO"
+                
+            elif record.reward_type == 'pricelist_change':
+                if record.pricelist_id:
+                    pricelist_name = record.pricelist_id.name
+                    record.reward_label = f"💰 {pricelist_name[:15]}"
+                else:
+                    record.reward_label = "PRECIO ESPECIAL"
+                    
+            elif record.reward_type == 'fixed_price':
+                if record.fixed_price_line_ids:
+                    count = len(record.fixed_price_line_ids)
+                    record.reward_label = f"💲 PRECIO FIJO ({count})"
+                else:
+                    record.reward_label = "PRECIO FIJO"
+                    
+            else:
+                record.reward_label = "PROMOCIÓN"
+    
+    @api.depends('reward_type', 'fixed_price_line_ids', 'fixed_price_line_ids.product_id', 'fixed_price_line_ids.fixed_price')
+    def _compute_fixed_price_data(self):
+        """Calcula y serializa los datos de precios fijos para exportar al POS"""
+        for record in self:
+            if record.reward_type == 'fixed_price' and record.fixed_price_line_ids:
+                record.fixed_price_data = [
+                    {
+                        'product_id': line.product_id.id,
+                        'product_name': line.product_id.display_name,
+                        'fixed_price': line.fixed_price,
+                        'sequence': line.sequence,
+                    }
+                    for line in record.fixed_price_line_ids
+                ]
+            else:
+                record.fixed_price_data = []
 
-  
+    @api.depends('reward_type', 'fixed_price_line_ids', 'fixed_price_line_ids.product_id', 'fixed_price_line_ids.fixed_price')
+    def _compute_fixed_price_map(self):
+        """Crea un mapeo {product_id: fixed_price} para acceso rápido en POS"""
+        for record in self:
+            if record.reward_type == 'fixed_price' and record.fixed_price_line_ids:
+                record.fixed_price_map = {
+                    str(line.product_id.id): line.fixed_price
+                    for line in record.fixed_price_line_ids
+                }
+            else:
+                record.fixed_price_map = {}
+    
+    @api.depends('reward_type', 'fixed_price_line_ids', 'fixed_price_line_ids.product_id')
+    def _compute_fixed_price_product_ids(self):
+        """Calcula lista de product_ids para validación rápida"""
+        for record in self:
+            if record.reward_type == 'fixed_price' and record.fixed_price_line_ids:
+                record.fixed_price_product_ids = [
+                    line.product_id.id for line in record.fixed_price_line_ids
+                ]
+            else:
+                record.fixed_price_product_ids = []
 
-    @api.model
-    def create(self, vals):
-        _logger.info("Creando recompensa con valores: %s", vals)
-        if vals.get('reward_type') == 'pricelist_change' and not vals.get('pricelist_id'):
-            raise ValidationError("Debe seleccionar una lista de precios para el cambio.")
-
-
-
-        result = super(LoyaltyReward, self).create(vals)
-        _logger.info("Recompensa creada: %s", result)
-
-        return result;
-            
-
-    def _create_reward(self, vals):
-        if vals.get('reward_type') == 'pricelist_change' and not vals.get('pricelist_id'):
-            raise ValidationError("Debe seleccionar una lista de precios para el cambio.")
-        return super(LoyaltyReward, self).create(vals)
-
-    @api.depends('reward_type', 'pricelist_id', 'reward_product_ids', 'discount', 'discount_mode')
+    @api.depends('reward_type', 'pricelist_id', 'reward_product_ids', 'discount', 'discount_mode', 'fixed_price_line_ids')
     def _compute_description(self):
-
-        
         for reward in self:
-            _logger.info("Computando descripción para recompensa: %s", reward)
-        
-            if reward.reward_type == 'pricelist_change':
-                _logger.info("VIENDO LA PRICELIST_id %s", reward.pricelist_id.id);
-
             if reward.reward_type == 'discount':
                 if reward.discount_mode == 'percent':
                     reward.description = f"{reward.discount}% de descuento"
@@ -64,12 +219,11 @@ class LoyaltyReward(models.Model):
                 else:
                     reward.description = "Recompensa de descuento"
 
-            elif reward.reward_type == 'product':  # Cambié 'gift' por 'product'
+            elif reward.reward_type == 'product':
                 if reward.reward_product_ids:
                     if len(reward.reward_product_ids) == 1:
                         product_name = reward.reward_product_ids[0].display_name
                         if reward.reward_product_qty > 1:
-                            
                             reward.description = f"{int(reward.reward_product_qty)}x {product_name} GRATIS"
                         else:
                             reward.description = f"{product_name} GRATIS"
@@ -78,14 +232,40 @@ class LoyaltyReward(models.Model):
                 else:
                     reward.description = "Producto gratuito"
             
-            elif reward.reward_type == 'pricelist_change':  # CAMBIÉ 'if' por 'elif'
+            elif reward.reward_type == 'pricelist_change':
                 if reward.pricelist_id:
                     reward.description = f"Cambio a lista: {reward.pricelist_id.display_name}"
                 else:
                     reward.description = "Cambio de lista de precios"
+            
+            elif reward.reward_type == 'fixed_price':
+                if reward.fixed_price_line_ids:
+                    if len(reward.fixed_price_line_ids) == 1:
+                        product_name = reward.fixed_price_line_ids[0].product_id.display_name
+                        price = reward.fixed_price_line_ids[0].fixed_price
+                        reward.description = f"{product_name} a ${price:.2f}"
+                    else:
+                        reward.description = f"{len(reward.fixed_price_line_ids)} productos con precio fijo"
+                else:
+                    reward.description = "Precio fijo"
 
             else: 
                 reward.description = "Recompensa de lealtad"
+
+    @api.model
+    def create(self, vals):
+        if vals.get('reward_type') == 'pricelist_change' and not vals.get('pricelist_id'):
+            raise ValidationError("Debe seleccionar una lista de precios para el cambio.")
+        if vals.get('reward_type') == 'fixed_price' and not vals.get('fixed_price_line_ids'):
+            raise ValidationError("Debe agregar al menos un producto con precio fijo.")
+
+        result = super(LoyaltyReward, self).create(vals)
+        return result
+
+    def write(self, vals):
+        """Escribir datos - los campos computados se actualizan automáticamente"""
+        result = super(LoyaltyReward, self).write(vals)
+        return result
 
     @api.onchange('reward_type')
     def _onchange_reward_type(self):
@@ -94,14 +274,12 @@ class LoyaltyReward(models.Model):
 
     @api.onchange('pricelist_id')
     def _onchange_pricelist_id(self):
-
         if self.reward_type == 'pricelist_change' and not self.pricelist_id:
-            raise ValidationError("Debe seleccionar una lista de precios para el cambio.");
+            raise ValidationError("Debe seleccionar una lista de precios para el cambio.")
 
         if self.reward_type == 'pricelist_change' and self.pricelist_id:
             _logger.info("Cambiando lista de precios a: %s", self.pricelist_id.name)
             self.discount_max_amount = self.pricelist_id.id
-
 
     def _prepare_reward_line_vals(self, order):
         vals = super()._prepare_reward_line_vals(order)
@@ -113,8 +291,7 @@ class LoyaltyReward(models.Model):
                 'is_reward_line': True,
             })
         return vals
-            
-    
+
 class PromoEngine(models.AbstractModel):
     _name = 'promo.engine'
     _description = 'Promo Rule Engine'
@@ -123,10 +300,8 @@ class PromoEngine(models.AbstractModel):
         rewards = []
         active_programs = self.env['loyalty.program'].search([('active', '=', True)])
         
-        _logger.info("Aplicando promociones para el pedido: %s", order);
 
         for program in active_programs:
-            # Verificar condiciones del programa primero
             program_conditions_met = True
             for rule in program.rule_ids:
                 if rule.minimum_qty and sum(line.product_uom_qty for line in order.order_line) < rule.minimum_qty:
@@ -147,18 +322,13 @@ class PromoEngine(models.AbstractModel):
         return rewards
 
     def _conditions_met(self, order, reward):
-        """
-        Verifica si se cumplen las condiciones para aplicar la recompensa
-        """
+        """Verifica si se cumplen las condiciones para aplicar la recompensa"""
         program = reward.program_id
         
-        # Verificar reglas del programa
         if program.rule_ids:
             for rule in program.rule_ids:
-                # Verificar cantidad mínima
                 if rule.minimum_qty and sum(line.product_uom_qty for line in order.order_line) < rule.minimum_qty:
                     return False
-                # Verificar monto mínimo
                 if rule.minimum_amount and order.amount_total < rule.minimum_amount:
                     return False
         return True
@@ -180,9 +350,7 @@ class PosOrder(models.Model):
     _inherit = 'pos.order'
 
     def _apply_reward_pricelist(self, reward, order):
-        """
-        Aplica cambio de lista de precios en backend para POS
-        """
+        """Aplica cambio de lista de precios en backend para POS"""
         if reward.pricelist_id:
             order.write({'pricelist_id': reward.pricelist_id.id})
             return True
@@ -193,13 +361,13 @@ class PosOrder(models.Model):
         order_id = super(PosOrder, self)._process_order(order, draft, existing_order)
         pos_order = self.browse(order_id)
         
-        # ✅ BUSCAR DIRECTAMENTE LAS RECOMPENSAS DE PRICELIST_CHANGE
         pricelist_rewards = self.env['loyalty.reward'].search([
             ('reward_type', '=', 'pricelist_change'),
             ('pricelist_id', '!=', False)
         ])
 
         for reward in pricelist_rewards:
-            # Verificar si el reward es aplicable a esta orden
             if reward.program_id.active:
                 self._apply_reward_pricelist(reward, pos_order)
+        
+        return order_id
