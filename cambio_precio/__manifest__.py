@@ -10,6 +10,7 @@
     "author": "Avance Software",
     "website": "https://www.avancesoftware.us",
     "data": [
+        'security/ir.model.access.csv',
         'views/views.xml',
     ],
 
@@ -18,6 +19,7 @@
     'assets': {
         'point_of_sale._assets_pos': [
             'cambio_precio/static/src/js/pricelistReward.js',
+            'cambio_precio/static/src/xml/pricelistReward.xml',
         ],
     },
     "installable": True,

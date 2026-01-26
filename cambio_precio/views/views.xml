@@ -1,44 +1,100 @@
 <odoo>
-    <record id="view_loyalty_reward_form_inherit" model="ir.ui.view">
-        <field name="name">loyalty.reward.form.pricelist</field>
+   
+    <record id="view_loyalty_reward_form_inherit_custom_rewards" model="ir.ui.view">
+        <field name="name">loyalty.reward.form.inherit.custom.rewards</field>
         <field name="model">loyalty.reward</field>
         <field name="inherit_id" ref="loyalty.loyalty_reward_view_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='reward_type']" position="after">
-                <field name="pricelist_id" modifiers="{'invisible': [('reward_type', '!=', 'pricelist_change')], 'required': [('reward_type', '=', 'pricelist_change')]}"/>
-            </xpath>
-        </field>
-    </record>
-
-
-    <record id="view_loyalty_reward_form_inherit" model="ir.ui.view">
-        <field name="name">loyalty.reward.form.inherit.pricelist</field>
-        <field name="model">loyalty.reward</field>
-        <field name="inherit_id" ref="loyalty.loyalty_reward_view_form"/>
-        <field name="arch" type="xml">
-            <!-- Añadimos nuestro campo en el grupo de tipo de recompensa -->
             <xpath expr="//group[@name='reward_type_group']" position="inside">
-                <label for="pricelist_id" string="Lista de precios" invisible="reward_type != 'pricelist_change'"/>
-                <field name="pricelist_id" invisible="reward_type != 'pricelist_change'"/>
+                
+                <!-- Campo de Lista de Precios -->
+                <field name="pricelist_id" 
+                       column="invisible" 
+                       invisible="reward_type != 'pricelist_change'"
+                       required="reward_type == 'pricelist_change'"/>
+                
+                <!-- Campo de Productos con Precio Fijo -->
+                <label for="fixed_price_line_ids" 
+                       string="Productos con Precio Fijo" 
+                       column="invisible" 
+                       invisible="reward_type != 'fixed_price'"/>
+                <field name="fixed_price_line_ids" 
+                       column="invisible" 
+                       invisible="reward_type != 'fixed_price'"
+                       required="reward_type == 'fixed_price'"
+                       nolabel="1">
+                    <tree editable="bottom">
+                        <field name="sequence" widget="handle"/>
+                        <field name="product_id" required="1"/>
+                        <field name="fixed_price" required="1"/>
+                    </tree>
+                    <form>
+                        <group>
+                            <field name="product_id" required="1"/>
+                            <field name="fixed_price" required="1"/>
+                            <field name="sequence"/>
+                        </group>
+                    </form>
+                </field>
+            </xpath>
+            
+            <!-- Mostrar la descripción calculada (readonly) -->
+            <xpath expr="//field[@name='reward_type']" position="after">
+                <field name="description" readonly="1"/>
             </xpath>
         </field>
     </record>
 
+    <!-- Vista Tree para líneas de precio fijo -->
+    <record id="view_loyalty_reward_fixed_price_tree" model="ir.ui.view">
+        <field name="name">loyalty.reward.fixed.price.tree</field>
+        <field name="model">loyalty.reward.fixed.price</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="product_id"/>
+                <field name="fixed_price"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Vista Kanban heredada -->
     <record id="view_loyalty_reward_kanban_inherit" model="ir.ui.view">
         <field name="name">loyalty.reward.kanban.inherit.pricelist</field>
         <field name="model">loyalty.reward</field>
         <field name="inherit_id" ref="loyalty.loyalty_reward_view_kanban"/>
         <field name="arch" type="xml">
             <xpath expr="//div[@class='o_loyalty_kanban_card_left mw-75 flex-grow-1' and @name='reward_info']" position="inside">
-                <t t-if="record.reward_type.raw_value === 'pricelist_change'">
+                <!-- Cambio de Lista de Precios -->
+                <t t-if="record.reward_type and record.reward_type.raw_value === 'pricelist_change'">
                     <span class="fw-bold">Cambio de Lista de Precios</span>
+                    <!-- Mostrar descripción -->
+                    <t t-if="record.description and record.description.raw_value">
+                        <br/>
+                        <small class="text-muted">
+                            <t t-esc="record.description.raw_value"/>
+                        </small>
+                    </t>
                     <br/>
-                    <t t-if="record.pricelist_id.raw_value">
+                    <t t-if="record.pricelist_id and record.pricelist_id.raw_value">
                         <div class="d-flex">
                             <i class="fa fa-tags fa-fw" title="Price List"/>
                             <field name="pricelist_id" class="d-inline"/>
                         </div>
                     </t>
+                </t>
+                
+                <!-- Precios Fijos -->
+                <t t-if="record.reward_type and record.reward_type.raw_value === 'fixed_price'">
+                    <span class="fw-bold">Precios Fijos</span>
+                    <!-- Mostrar descripción -->
+                    <t t-if="record.description and record.description.raw_value">
+                        <br/>
+                        <small class="text-muted">
+                            <t t-esc="record.description.raw_value"/>
+                        </small>
+                    </t>
+                    <br/>
                 </t>
             </xpath>
         </field>

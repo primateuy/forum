@@ -1,2 +1,2 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_cambio_precio_cambio_precio,cambio_precio.cambio_precio,model_cambio_precio_cambio_precio,base.group_user,1,1,1,1
+access_loyalty_reward_fixed_price,loyalty.reward.fixed.price,model_loyalty_reward_fixed_price,base.group_user,1,1,1,1

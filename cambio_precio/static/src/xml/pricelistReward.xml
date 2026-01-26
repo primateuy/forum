@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    
+    <!-- Extender el template de Orderline para agregar badge de recompensa -->
+    <t t-name="point_of_sale.Orderline" t-inherit="point_of_sale.Orderline" t-inherit-mode="extension">
+        
+        <!-- Buscar el div del nombre del producto y agregar el badge después -->
+        <xpath expr="//div[hasclass('product-name')]" position="inside">
+            <t t-if="props.line.reward_label">
+                <span class="ms-2 badge" 
+                      t-att-class="'badge-' + (props.line.reward_badge_color || 'success')"
+                      style="font-size: 0.7rem; padding: 0.2em 0.5em; vertical-align: middle; font-weight: 600;">
+                    <t t-esc="props.line.reward_label"/>
+                </span>
+            </t>
+        </xpath>
+        
+    </t>
+
+</templates>
