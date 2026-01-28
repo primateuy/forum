@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="param_api_token" model="ir.config_parameter">
+            <field name="key">ksi_integration.token_api</field>
+            <field name="value">eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6NjYwLCJ1c2VybmFtZSI6ImNhcmxvc0BwcmltYXRlLnV5IiwidG9rZW5fY3JlYXRlZF9kYXRlIjoiMjAyNS0wOC0wNFQxODo0MDo0OS4xMzg2NTUifQ.qTGO9g8xrvGGbbMWxNO9IyAlSqMyOBq-OXSPXfPdwZ0</field>
+        </record>
+
+        <record id="param_base_url_ksi" model="ir.config_parameter">
+            <field name="key">ksi_integration.base_url</field>
+            <field name="value">https://la.ksivision.com/api</field>
+        </record>
+    </data>
+</odoo>

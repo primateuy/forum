@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_ksi_traffic_user,access_ksi_traffic_user,model_ksi_traffic,ksi_integration.group_ksi_data,1,0,0,0
+access_ksi_traffic_admin,access_ksi_traffic_admin,model_ksi_traffic,base.group_system,1,1,1,1

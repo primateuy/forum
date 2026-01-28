@@ -1,0 +1,5 @@
+<odoo>
+    <menuitem id="menu_pos_ksi_root" name="Integración Cámaras KSI" parent="point_of_sale.menu_point_root" groups="ksi_integration.group_ksi_data">
+        <menuitem id="menu_ksi_traffic" name="Integración Cámaras KSI" action="action_ksi_traffic" groups="ksi_integration.group_ksi_data"/>
+    </menuitem>
+</odoo>

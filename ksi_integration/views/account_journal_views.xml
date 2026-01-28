@@ -1,0 +1,14 @@
+<odoo>
+    <record id="view_account_journal_form_ksi" model="ir.ui.view">
+        <field name="name">account.journal.form.ksi</field>
+        <field name="model">account.journal</field>
+        <field name="inherit_id" ref="account.view_account_journal_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='advanced_settings']" position="inside">
+                <group string="Integración Cámaras KSI" groups="ksi_integration.group_ksi_data,base.group_system">
+                    <field name="id_ksi_locations_group" placeholder="Ej: 208"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

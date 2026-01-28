@@ -1,0 +1,15 @@
+<odoo>
+    <record id="group_ksi_data" model="res.groups">
+        <field name="name">Datos KSI</field>
+    </record>
+
+    <!-- Company-restricted Records -->
+    <record id="ksi_traffic_company_rule" model="ir.rule">
+        <field name="name">Restricted Record: multi-company Ksi Traffic</field>
+        <field name="model_id" ref="model_ksi_traffic"/>
+        <field name="global" eval="True"/>
+        <field name="domain_force">
+            [('company_id', 'in', company_ids)]
+        </field>
+    </record>
+</odoo>

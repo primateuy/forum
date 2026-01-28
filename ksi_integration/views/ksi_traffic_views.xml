@@ -1,0 +1,81 @@
+<odoo>
+    <record id="view_ksi_traffic_tree" model="ir.ui.view">
+        <field name="name">ksi.traffic.tree</field>
+        <field name="model">ksi.traffic</field>
+        <field name="arch" type="xml">
+            <tree create="0">
+                <field name="id_ksi"/>
+                <field name="journal_id"/>
+                <field name="fecha_hora"/>
+                <field name="time_code" optional="hide"/>
+                <field name="fecha"/>
+                <field name="hora"/>
+                <field name="sum_forwards_is_entrance"/>
+                <field name="sum_forwards_is_external_flow"/>
+                <field name="last_ws_update"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_ksi_traffic_form" model="ir.ui.view">
+        <field name="name">ksi.traffic.form</field>
+        <field name="model">ksi.traffic</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="id_ksi" readonly="1"/>
+                            <field name="journal_id" readonly="1"/>
+                            <field name="fecha_hora" readonly="1"/>
+                            <field name="time_code" readonly="1"/>
+                        </group>
+
+                        <group string="Fecha / Hora">
+                            <field name="fecha" readonly="1"/>
+                            <field name="hora" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <group>
+                        <group string="Tránsito de Personas">
+                            <field name="sum_forwards_is_entrance"/>
+                            <field name="sum_forwards_is_external_flow"/>
+                        </group>
+                        <group string="Información Técnica">
+                            <field name="last_ws_update" readonly="1"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                </sheet>
+
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+
+    <record id="view_ksi_traffic_pivot" model="ir.ui.view">
+        <field name="name">ksi.traffic.pivot</field>
+        <field name="model">ksi.traffic</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="sum_forwards_is_entrance" type="measure"/>
+                <field name="sum_forwards_is_external_flow" type="measure"/>
+                <field name="fecha" type="row"/>
+                <field name="journal_id" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_ksi_traffic" model="ir.actions.act_window">
+        <field name="name">Integración Cámaras KSI</field>
+        <field name="res_model">ksi.traffic</field>
+        <field name="view_mode">tree,form,pivot,graph</field>
+    </record>
+</odoo>
