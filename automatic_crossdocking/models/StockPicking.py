@@ -126,75 +126,119 @@ class StockPicking(models.Model):
             return False
 
     def button_validate(self):
+        """
+        Al validar un picking, activa automáticamente los pickings dependientes.
+        
+        Flujo:
+        1. Si se valida Recepción → activa Pickings de Crossdocking
+        2. Si se valida Crossdocking → activa Pickings de Transferencia
+        """
         result = super(StockPicking, self).button_validate()
         
         for picking in self:
-
-            
             if picking._is_crossdock_reception_picking():
-                picking._activate_dependent_crossdock_pickings();
-        
-
+                picking._activate_dependent_crossdock_pickings()
+            elif picking._is_crossdock_picking():
+                picking._activate_dependent_transfer_pickings()
         
         return result
-    
-
-    def _activate_dependent_crossdock_pickings_transport(self):
-
-    
-        _logger.info("SE ENTRO A CONFIRMAR PICKING");
-        picking_receptor = self.env['stock.picking'].search([
-            ('location_id', '=', self.location_dest_id.id),
-        ], limit=1);
-    
-        picking_receptor.write({'state': 'assigned'});
-
-    def _is_transport_picking(self):
-        
-        almacenes = self.env['stock.warehouse'].search([]);
-    
-        for almacen in almacenes:
-            if almacen.crossdocking_location_id.id == self.location_id.id:
-                return True
 
     def _is_crossdock_reception_picking(self):
+        """Determina si es un picking de Recepción Crossdock"""
+        return 'Recepción Crossdock' in (self.origin or '')
+    
+    def _is_crossdock_picking(self):
+        """Determina si es un picking de Crossdocking (Entrada → Crossdocking Location)"""
+        almacenes = self.env['stock.warehouse'].search([])
+        crossdocking_locations_ids = [alm.crossdocking_location_id.id for alm in almacenes if alm.crossdocking_location_id]
+        
         return (
-            'Recepción Crossdock' in (self.origin or '')
+            self.location_dest_id.id in crossdocking_locations_ids and
+            'Crossdock' in (self.origin or '')
         )
     
+    def _is_transfer_picking(self):
+        """Determina si es un picking de Transferencia (Crossdocking → Existencias)"""
+        almacenes = self.env['stock.warehouse'].search([])
+        crossdocking_locations_ids = [alm.crossdocking_location_id.id for alm in almacenes if alm.crossdocking_location_id]
+        
+        return (
+            self.location_id.id in crossdocking_locations_ids and
+            'Crossdock' in (self.origin or '')
+        )
+
     def _activate_dependent_crossdock_pickings(self):
+        """
+        Activa automáticamente los pickings de Crossdocking que dependen de este picking de Recepción.
+        Los activa (assigned) y luego los valida (done) para mantener la cadena lógica.
+        """
         try:
             purchase_order = self.purchase_id
             if not purchase_order or not purchase_order.crossdock_enabled:
                 return
             
-            entrada_location = purchase_order._get_or_create_entrance_location()
-            
-            dependent_pickings = purchase_order.picking_ids.filtered(
+            # Buscar pickings de crossdocking en estado waiting cuyo origen son movimientos de este picking
+            crossdocking_pickings = purchase_order.picking_ids.filtered(
                 lambda p: (
-                    p.state in ('waiting', 'confirmed') and
-                    p.id != self.id
+                    p.state == 'waiting' and
+                    p.id != self.id and
+                    'Crossdock' in (p.origin or '') and
+                    p.location_id.id == self.location_dest_id.id  # Salen desde donde llega Recepción
                 )
             )
-
             
-
-            
-            
-            if dependent_pickings:
-                activated_pickings = []
+            if crossdocking_pickings:
                 
-                for picking in dependent_pickings:
-                    for move in picking.move_ids:
-                        move.write({'quantity': move.product_uom_qty});
+                for picking in crossdocking_pickings:
                     try:
-                        picking.write({'state': 'assigned'});
-                        activated_pickings.append(picking.name)
+                        # Preparar los movimientos
+                        for move in picking.move_ids:
+                            move.write({'quantity': move.product_uom_qty})
+                        
+                        # Cambiar estado a assigned (activar)
+                        picking.write({'state': 'assigned'})
+                        
+                        # Validar automáticamente (pasar a done)
+                        picking.button_validate()
+                        
                     except Exception as e:
-                        _logger.warning(f"No se pudo activar el picking {picking.name}: {str(e)}")
-                
-                
+                        _logger.warning(f"No se pudo activar/validar el picking {picking.name}: {str(e)}")
+            
                     
         except Exception as e:
-            _logger.error(f"Error al activar pickings dependientes: {str(e)}")
+            _logger.error(f"Error al activar pickings de crossdocking: {str(e)}")
+    
+    def _activate_dependent_transfer_pickings(self):
+        """
+        Activa automáticamente los pickings de Transferencia que dependen de este picking de Crossdocking.
+        Los activa (assigned/listo) pero NO los valida, para que queden listos para validación manual.
+        """
+        try:
+            purchase_order = self.purchase_id
+            if not purchase_order or not purchase_order.crossdock_enabled:
+                return
+            
+            
+            # Buscar pickings de transferencia en estado waiting cuyo origen es este picking de crossdocking
+            transfer_pickings = purchase_order.picking_ids.filtered(
+                lambda p: (
+                    p.state == 'waiting' and
+                    p.id != self.id and
+                    'Crossdock' in (p.origin or '') and
+                    p.location_id.id == self.location_dest_id.id  # Salen desde donde llega Crossdocking
+                )
+            )
+            
+            if transfer_pickings:
+                for picking in transfer_pickings:
+                    try:
+                        for move in picking.move_ids:
+                            move.write({'quantity': move.product_uom_qty})
+                        
+                        picking.write({'state': 'assigned'})
+                    except Exception as e:
+                        _logger.warning(f"No se pudo activar el picking {picking.name}: {str(e)}")
+            
+        except Exception as e:
+            _logger.error(f"❌ Error al activar pickings de transferencia: {str(e)}")
     
