@@ -319,9 +319,12 @@ class PurchaseOrder(models.Model):
 
             if main_warehouse.id == warehouse.id:
                 esPrincipal = True;
+
+            if not warehouse.crossdocking_type_id or not warehouse.crossdocking_location_id or not warehouse.crossdocking_reception_type_id:
+                raise ValidationError("No se ha configurado correctamente el almacén %s para crossdocking. Por favor, revise la configuración." % warehouse.name)
             
             if not esPrincipal:
-                if not main_warehouse.crossdocking_type_id:
+                if not main_warehouse.crossdocking_type_id or not main_warehouse.crossdocking_location_id or not main_warehouse.crossdocking_reception_type_id:
                     raise ValidationError("No se ha asignado operación para el crossdocking en el centro logístico")
 
                 crossdockingPicking = self._prepare_picking();
@@ -329,7 +332,7 @@ class PurchaseOrder(models.Model):
                     'location_dest_id': warehouse.crossdocking_location_id.id,
                     'location_id': self._get_or_create_entrance_location().id,
                     'origin': f"{self.name} - Crossdock Equitativo {location.complete_name}",
-                    'picking_type_id': main_warehouse.crossdocking_type_id.id
+                    'picking_type_id': warehouse.crossdocking_type_id.id
                 })
 
 
@@ -368,7 +371,7 @@ class PurchaseOrder(models.Model):
                         'location_dest_id': location.id,
                         'location_id': warehouse.crossdocking_location_id.id,
                         'origin': f"{self.name} - Crossdock Equitativo {location.complete_name}",
-                        'picking_type_id': main_warehouse.crossdocking_type_id.id
+                        'picking_type_id': warehouse.crossdocking_reception_type_id.id
                     })
                 
                 picking = StockPicking.with_user(SUPERUSER_ID).create(picking_vals)
@@ -446,8 +449,8 @@ class PurchaseOrder(models.Model):
                 'product_uom_qty': quantity,
                 'quantity': 0,
                 'product_uom': line.product_uom.id,
-                'location_id': self._get_or_create_entrance_location().id,
-                'location_dest_id': location.id,  # Usar la ubicación específica
+                'location_id': picking.location_id.id,
+                'location_dest_id': picking.location_dest_id.id,
                 'picking_id': picking.id,
                 'partner_id': self.partner_id.id,
                 'origin': self.name,
@@ -1249,6 +1252,8 @@ class PurchaseOrder(models.Model):
             if main_warehouse.id == alm.id:
                 esPrincipal = True;
             
+            if not alm.crossdocking_type_id or not alm.crossdocking_location_id or not alm.crossdocking_reception_type_id:
+                raise ValidationError("No se ha configurado correctamente el almacén %s para crossdocking. Por favor, revise la configuración." % alm.name)
 
             if not main_warehouse.crossdocking_type_id:
                 raise ValidationError("No se ha definido el tipo de picking de 'Crossdocking' en el almacén principal.")
@@ -1261,7 +1266,7 @@ class PurchaseOrder(models.Model):
                     'location_dest_id': alm.crossdocking_location_id.id,
                     'location_id': self._get_or_create_entrance_location().id,
                     'origin': f"{self.name} - Crossdock Equitativo {ubi.complete_name}",
-                    'picking_type_id': main_warehouse.crossdocking_type_id.id
+                    'picking_type_id': alm.crossdocking_type_id.id
                 })
 
 
@@ -1300,7 +1305,7 @@ class PurchaseOrder(models.Model):
                         'location_dest_id': ubi.id,
                         'location_id': alm.crossdocking_location_id.id,
                         'origin': f"{self.name} - Crossdock Equitativo {ubi.complete_name}",
-                        'picking_type_id': main_warehouse.crossdocking_type_id.id
+                        'picking_type_id': alm.crossdocking_reception_type_id.id
                     })
                 
                 picking = StockPicking.with_user(SUPERUSER_ID).create(picking_vals)
@@ -1727,13 +1732,13 @@ class PurchaseOrder(models.Model):
             warehouse = data['warehouse']
 
             move_vals = {
-                'name': f"Crossdock: {line.product_id.display_name} → {location.display_name}",
+                'name': f"Crossdock: {line.product_id.display_name} → {picking.location_dest_id.display_name}",
                 'product_id': line.product_id.id,
                 'product_uom_qty': quantity,
                 'quantity': 0,
                 'product_uom': line.product_uom.id,
-                'location_id': self._get_or_create_entrance_location().id,
-                'location_dest_id': location.id,
+                'location_id': picking.location_id.id,
+                'location_dest_id': picking.location_dest_id.id,
                 'picking_id': picking.id,
                 'partner_id': self.partner_id.id,
                 'origin': self.name,
