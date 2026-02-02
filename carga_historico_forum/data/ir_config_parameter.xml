@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="forum_historico_db_name" model="ir.config_parameter">
+            <field name="key">forum_historico.db_name</field>
+            <field name="value">forum_validacion_historico</field>
+        </record>
+        <record id="forum_historico_db_user" model="ir.config_parameter">
+            <field name="key">forum_historico.db_user</field>
+            <field name="value">odoo</field>
+        </record>
+        <record id="forum_historico_db_password" model="ir.config_parameter">
+            <field name="key">forum_historico.db_password</field>
+            <field name="value">odoo</field>
+        </record>
+        <record id="forum_historico_db_host" model="ir.config_parameter">
+            <field name="key">forum_historico.db_host</field>
+            <field name="value">localhost</field>
+        </record>
+        <record id="forum_historico_db_port" model="ir.config_parameter">
+            <field name="key">forum_historico.db_port</field>
+            <field name="value">5432</field>
+        </record>
+        <record id="forum_historico_line_limit" model="ir.config_parameter">
+            <field name="key">forum_historico.line_limit</field>
+            <field name="value">5000</field>
+        </record>
+    </data>
+</odoo>
