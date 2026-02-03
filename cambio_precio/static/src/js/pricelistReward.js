@@ -73,6 +73,13 @@ patch(Order.prototype, {
         const order = this.pos.get_order();
         if (!order) return;
 
+        if (!this._originalPrices) {
+            this._originalPrices = {};
+        }
+        if (!this._originalPricelistId) {
+            this._originalPricelistId = null;
+        }
+
         this._clearRewardLabels();
 
         const orderlines = order.get_orderlines();
