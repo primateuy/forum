@@ -14,7 +14,7 @@
                        required="reward_type == 'pricelist_change'"/>
                 
                 <!-- Campo de Productos con Precio Fijo -->
-                <label for="fixed_price_line_ids" 
+                <!-- <label for="fixed_price_line_ids" 
                        string="Productos con Precio Fijo" 
                        column="invisible" 
                        invisible="reward_type != 'fixed_price'"/>
@@ -35,7 +35,9 @@
                             <field name="sequence"/>
                         </group>
                     </form>
-                </field>
+                </field> -->
+
+                <field name="fixed_price" invisible="reward_type != 'fixed_price'"/>
             </xpath>
             
             <!-- Mostrar la descripción calculada (readonly) -->
