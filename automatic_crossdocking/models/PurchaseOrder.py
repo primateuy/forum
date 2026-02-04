@@ -320,8 +320,8 @@ class PurchaseOrder(models.Model):
             if main_warehouse.id == warehouse.id:
                 esPrincipal = True;
 
-            if not warehouse.crossdocking_type_id or not warehouse.crossdocking_location_id or not warehouse.crossdocking_reception_type_id:
-                raise ValidationError("No se ha configurado correctamente el almacén %s para crossdocking. Por favor, revise la configuración." % warehouse.name)
+            if not warehouse.crossdocking_reception_type_id:
+                raise ValidationError(f"El almacén '{warehouse.name}' no tiene definido el tipo de operación para 'Recepción Crossdocking'.")
             
             if not esPrincipal:
                 if not main_warehouse.crossdocking_type_id or not main_warehouse.crossdocking_location_id or not main_warehouse.crossdocking_reception_type_id:
@@ -332,7 +332,7 @@ class PurchaseOrder(models.Model):
                     'location_dest_id': warehouse.crossdocking_location_id.id,
                     'location_id': self._get_or_create_entrance_location().id,
                     'origin': f"{self.name} - Crossdock Equitativo {location.complete_name}",
-                    'picking_type_id': warehouse.crossdocking_type_id.id
+                    'picking_type_id': main_warehouse.crossdocking_type_id.id
                 })
 
 
@@ -1252,9 +1252,9 @@ class PurchaseOrder(models.Model):
             if main_warehouse.id == alm.id:
                 esPrincipal = True;
             
-            if not alm.crossdocking_type_id or not alm.crossdocking_location_id or not alm.crossdocking_reception_type_id:
-                raise ValidationError("No se ha configurado correctamente el almacén %s para crossdocking. Por favor, revise la configuración." % alm.name)
-
+            if not alm.crossdocking_reception_type_id:
+                raise ValidationError(f"El almacén '{alm.name}' no tiene definido el tipo de operación para 'Recepción Crossdocking'.")
+            
             if not main_warehouse.crossdocking_type_id:
                 raise ValidationError("No se ha definido el tipo de picking de 'Crossdocking' en el almacén principal.")
 
@@ -1266,7 +1266,7 @@ class PurchaseOrder(models.Model):
                     'location_dest_id': alm.crossdocking_location_id.id,
                     'location_id': self._get_or_create_entrance_location().id,
                     'origin': f"{self.name} - Crossdock Equitativo {ubi.complete_name}",
-                    'picking_type_id': alm.crossdocking_type_id.id
+                    'picking_type_id': main_warehouse.crossdocking_type_id.id
                 })
 
 
