@@ -4,13 +4,103 @@ import { patch } from '@web/core/utils/patch';
 import { Order } from '@point_of_sale/app/store/models';
 import { Orderline } from "@point_of_sale/app/store/models";
 
-// Patch para Orderline para mostrar el nombre con etiqueta
+function convertPythonDomainToJSON(pythonDomain) {
+    if (!pythonDomain || pythonDomain === "[]" || pythonDomain === "") {
+        return [];
+    }
+
+    let jsonDomain = pythonDomain.replace(/'/g, '"');
+    
+    jsonDomain = jsonDomain.replace(/\(/g, '[').replace(/\)/g, ']');
+    
+    jsonDomain = jsonDomain.replace(/\bTrue\b/g, 'true');
+    jsonDomain = jsonDomain.replace(/\bFalse\b/g, 'false');
+    jsonDomain = jsonDomain.replace(/\bNone\b/g, 'null');
+    
+    return jsonDomain;
+}
+
+function evaluateDomain(domain, record) {
+    if (!domain || domain === "[]" || domain === "") {
+        return true; 
+    }
+
+    let parsedDomain;
+    try {
+        
+        if (typeof domain === 'string') {
+            const jsonDomain = convertPythonDomainToJSON(domain);
+            parsedDomain = JSON.parse(jsonDomain);
+        } else {
+            parsedDomain = domain;
+        }
+    } catch (error) {
+        console.error("❌ Error parseando dominio:", domain, error);
+        return false;
+    }
+
+    if (!Array.isArray(parsedDomain) || parsedDomain.length === 0) {
+        return true;
+    }
+
+    for (let condition of parsedDomain) {
+        if (!Array.isArray(condition)) continue;
+
+        const [field, operator, value] = condition;
+
+        let fieldValue = record[field];
+        
+        if (Array.isArray(fieldValue) && fieldValue.length >= 1) {
+            fieldValue = fieldValue[0]; // Tomar el ID
+        }
+
+        // Evaluar según el operador
+        switch (operator) {
+            case '=':
+            case '==':
+                if (fieldValue != value) return false;
+                break;
+            case '!=':
+                if (fieldValue == value) return false;
+                break;
+            case '>':
+                if (!(fieldValue > value)) return false;
+                break;
+            case '>=':
+                if (!(fieldValue >= value)) return false;
+                break;
+            case '<':
+                if (!(fieldValue < value)) return false;
+                break;
+            case '<=':
+                if (!(fieldValue <= value)) return false;
+                break;
+            case 'in':
+                if (!Array.isArray(value) || !value.includes(fieldValue)) return false;
+                break;
+            case 'not in':
+                if (Array.isArray(value) && value.includes(fieldValue)) return false;
+                break;
+            case 'like':
+            case 'ilike':
+                const fieldStr = String(fieldValue || '').toLowerCase();
+                const valueStr = String(value || '').toLowerCase();
+                if (!fieldStr.includes(valueStr)) return false;
+                break;
+            default:
+                console.warn(`⚠️ Operador no soportado: ${operator}`);
+                return false;
+        }
+    }
+
+    return true;
+}
+
 patch(Orderline.prototype, {
     
     get_full_product_name() {
         const originalName = super.get_full_product_name && super.get_full_product_name.apply(this) || this.product.display_name;
         
-        // Si tiene etiqueta de recompensa Y el tipo es "fixed_price", agregarla al nombre
         if (this.reward_label && this.reward_type === "fixed_price") {
             return `${originalName} - PRECIO FIJO`;
         }
@@ -67,18 +157,40 @@ patch(Order.prototype, {
         }
     },
 
-    _updateRewards() {
-        super._updateRewards && super._updateRewards(...arguments);
-        
-        const order = this.pos.get_order();
-        if (!order) return;
+    _productMatchesRuleDomains(product, rulesProductDomains) {
+        if (!rulesProductDomains || rulesProductDomains.length === 0) {
+            return true; // Sin restricciones de dominio
+        }
 
+        return rulesProductDomains.some(ruleDomain => {
+            const domain = ruleDomain.product_domain;
+            const matches = evaluateDomain(domain, product);
+            
+            
+            
+            return matches;
+        });
+    },
+
+    _updateRewards() {
         if (!this._originalPrices) {
             this._originalPrices = {};
         }
         if (!this._originalPricelistId) {
             this._originalPricelistId = null;
         }
+        
+        if (!this.pos || !this.pos.get_order) return;
+        const order = this.pos.get_order();
+        if (!order || !order.get_orderlines) return;
+        
+        if (!this.pos.rules || !this.pos.pricelists || !this.pos.taxes_by_id) {
+            
+            return;
+        }
+        
+        super._updateRewards && super._updateRewards(...arguments);
+        
 
         this._clearRewardLabels();
 
@@ -124,51 +236,50 @@ patch(Order.prototype, {
             r => r.reward && r.reward.reward_type === "fixed_price"
         );
 
-        // ========================================
-        // MANEJO DE FIXED PRICE REWARD
-        // ========================================
+
         if (fixedPriceReward && fixedPriceReward.reward && fixedPriceReward.reward.reward_type === "fixed_price") {
             const reward = fixedPriceReward.reward;
-            let priceMap = reward.fixed_price_map;
             
-            // Si fixed_price_map no está, intentar con fixed_price_data
-            if (!priceMap && reward.fixed_price_data) {
-                const dataArray = reward.fixed_price_data;
-                if (Array.isArray(dataArray)) {
-                    priceMap = {};
-                    dataArray.forEach(item => {
-                        priceMap[item.product_id] = item.fixed_price;
-                    });
-                }
-            }
+            const fixedPrice = reward.fixed_price;
             
-            if (priceMap && Object.keys(priceMap).length > 0) {
+            const rulesProductDomains = reward.rules_product_domains || [];
+            
+            if (fixedPrice !== undefined && fixedPrice !== null && fixedPrice !== false && fixedPrice > 0) {
                 
                 orderlines.forEach(line => {
                     const productId = line.product.id;
-                    const fixedPrice = priceMap[productId];
+                    const product = line.product;
                     const lineUuid = line.uuid || line.cid;
                     
-                    if (fixedPrice !== undefined) {
+                    const productMatchesDomain = this._productMatchesRuleDomains(product, rulesProductDomains);
+                    
+                    
+                    if (productMatchesDomain) {
                         if (!this._originalPrices[lineUuid]) {
                             this._originalPrices[lineUuid] = {
                                 price: line.get_unit_price(),
                                 productId: productId
                             };
-                            
                         }
                         
-                        // Aplicar precio fijo solo si es diferente
                         if (line.get_unit_price() !== fixedPrice) {
                             line.set_unit_price(fixedPrice);
                         }
                         
-                        // Aplicar etiqueta SOLO AQUÍ para FIXED PRICE
                         this._applyRewardLabel(line, reward);
+                    } else if (!productMatchesDomain && this._originalPrices[lineUuid]) {
+                        const originalData = this._originalPrices[lineUuid];
+                        if (originalData && originalData.productId === productId) {
+                            line.set_unit_price(originalData.price);
+                            delete this._originalPrices[lineUuid];
+                        }
                     }
                 });
+            } else {
+                console.warn("⚠️ No se encontró un precio fijo válido en la recompensa");
             } 
         } else {
+            // No hay recompensa de precio fijo - restaurar precios originales
             if (Object.keys(this._originalPrices).length > 0) { 
                 
                 orderlines.forEach(line => {
@@ -188,7 +299,9 @@ patch(Order.prototype, {
             }
         }
 
-       
+        // ========================================
+        // MANEJO DE PRICELIST CHANGE REWARD
+        // ========================================
         if (pricelistReward) {
             if (!this._originalPricelistId) {
                 this._originalPricelistId = this.pricelist ? this.pricelist.id : 1;

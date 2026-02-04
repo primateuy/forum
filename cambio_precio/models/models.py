@@ -7,25 +7,25 @@ _logger = logging.getLogger(__name__)
 class PosSession(models.Model):
     _inherit = 'pos.session'
 
-    def _loader_params_product_pricelist(self):
-        result = super()._loader_params_product_pricelist()
-        result['search_params']['domain'] = [('active', '=', True)]
-        return result
+    
     
     # NUEVO: Cargar información de recompensas con sus productos
     def _loader_params_loyalty_reward(self):
         """Extender parámetros de carga de recompensas"""
         result = super()._loader_params_loyalty_reward()
-        # Agregar los campos relacionados a productos de precio fijo
+        
+        # Agregar los campos relacionados a productos de precio fijo y dominios de reglas
         result['search_params']['fields'].extend([
+            'fixed_price',
             'fixed_price_line_ids',
             'fixed_price_data',
-            'fixed_price_map'
+            'fixed_price_map',
+            'rules_product_domains'
         ])
         return result
     
     def _get_pos_ui_loyalty_reward(self, params):
-        """Cargar recompensas con sus productos asociados"""
+        """Cargar recompensas con sus productos asociados y dominios de reglas"""
         rewards = super()._get_pos_ui_loyalty_reward(params)
         
         # Para cada recompensa de tipo fixed_price, asegurar que tenga los datos
@@ -39,6 +39,10 @@ class PosSession(models.Model):
                     reward['fixed_price_data'] = reward_obj.fixed_price_data
                     reward['fixed_price_map'] = reward_obj.fixed_price_map
                 
+                # Asegurar que los dominios de reglas estén presentes
+                if not reward.get('rules_product_domains'):
+                    reward_obj._compute_rules_product_domains()
+                    reward['rules_product_domains'] = reward_obj.rules_product_domains
         
         return rewards
 
@@ -96,10 +100,12 @@ class LoyaltyReward(models.Model):
         store=True,
         help='Lista de precios que se aplicará al cambiar la recompensa'
     )
+    fixed_price = fields.Float(string='Precio Fijo', digits='Product Price')
     fixed_price_line_ids = fields.One2many('loyalty.reward.fixed.price', 'reward_id', string='Productos con Precio Fijo')
     fixed_price_data = fields.Json(string='Datos de Precios Fijos', compute='_compute_fixed_price_data', store=True, readonly=False)
     fixed_price_map = fields.Json(string='Mapeo Producto->Precio', compute='_compute_fixed_price_map', store=True)
     fixed_price_product_ids = fields.Json(string='IDs de Productos con Precio Fijo', compute='_compute_fixed_price_product_ids', store=True)
+    rules_product_domains = fields.Json(string='Dominios de Productos de Reglas', compute='_compute_rules_product_domains', store=True)
     
     reward_label = fields.Char(
         string='Etiqueta de Recompensa',
@@ -129,9 +135,11 @@ class LoyaltyReward(models.Model):
         """Exportar campos al POS incluyendo la etiqueta"""
         return super()._pos_ui_export_fields() + [
             'pricelist_id',
+            'fixed_price',
             'fixed_price_data',
             'fixed_price_map',
             'fixed_price_product_ids',
+            'rules_product_domains',
             'reward_label', 
             'reward_badge_color'  
         ]
@@ -207,6 +215,21 @@ class LoyaltyReward(models.Model):
                 ]
             else:
                 record.fixed_price_product_ids = []
+
+    @api.depends('program_id', 'program_id.rule_ids', 'program_id.rule_ids.product_domain')
+    def _compute_rules_product_domains(self):
+        """Extrae los dominios de productos de las reglas condicionales"""
+        for record in self:
+            domains = []
+            if record.program_id and record.program_id.rule_ids:
+                for rule in record.program_id.rule_ids:
+                    if hasattr(rule, 'product_domain') and rule.product_domain:
+                        domains.append({
+                            'rule_id': rule.id,
+                            'rule_name': f"Regla {rule.id}",
+                            'product_domain': rule.product_domain,
+                        })
+            record.rules_product_domains = domains
 
     @api.depends('reward_type', 'pricelist_id', 'reward_product_ids', 'discount', 'discount_mode', 'fixed_price_line_ids')
     def _compute_description(self):
