@@ -31,12 +31,12 @@ class PosOrder(models.Model):
 
             for line in pos_order.lines:
                 if not line.product_id.excluir_logica_franquicia:
-                    self.env["sale.order.line"].create({
+                    order_line_id = self.env["sale.order.line"].create({
                         "order_id": sale_order.id,
                         "product_id": line.product_id.id,
                         "product_uom_qty": line.qty,
-                        "price_unit": line.price_unit,
-                        "discount": line.discount,
+                        # "price_unit": line.price_unit,
+                        # "discount": line.discount,
                         "name": line.product_id.display_name,
                     })
 
