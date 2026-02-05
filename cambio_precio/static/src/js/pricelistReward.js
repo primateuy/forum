@@ -108,13 +108,72 @@ patch(Orderline.prototype, {
         return originalName;
     },
     
-    // Método adicional para obtener el nombre con etiqueta
     getDisplayName() {
         return this.get_full_product_name();
-    }
+    },
+
+    _getBaseProductName() {
+        return super.get_full_product_name && super.get_full_product_name.apply(this) || this.product.display_name;
+    },
+
+    can_be_merged_with(orderline) {
+        const canMerge = super.can_be_merged_with(...arguments);
+        
+        if (!canMerge) {
+            const thisBaseName = this._getBaseProductName();
+            const otherBaseName = orderline._getBaseProductName && orderline._getBaseProductName() || 
+                                 (orderline.get_full_product_name ? 
+                                    orderline.get_full_product_name().replace(/\s*-\s*PRECIO FIJO\s*$/, '') 
+                                    : orderline.product.display_name);
+            
+            if (thisBaseName === otherBaseName) {
+                const price = parseFloat(
+                    this.pos.utils?.round_di(this.price || 0, this.pos.dp["Product Price"]).toFixed(
+                        this.pos.dp["Product Price"]
+                    ) || this.price
+                );
+                const order_line_price = orderline.get_product().get_price(
+                    orderline.order.pricelist, 
+                    this.get_quantity()
+                );
+                
+                return (
+                    !this.skipChange &&
+                    orderline.getNote() === this.getNote() &&
+                    this.get_product().id === orderline.get_product().id &&
+                    this.get_unit() &&
+                    this.is_pos_groupable() &&
+                    this.get_discount() === 0 &&
+                    orderline.get_customer_note() === this.get_customer_note() &&
+                    !this.refunded_orderline_id &&
+                    !this.isPartOfCombo() &&
+                    !orderline.isPartOfCombo()
+                );
+            }
+        }
+        
+        return canMerge;
+    },
+
+    set_quantity(quantity, keep_price) {
+        const result = super.set_quantity(...arguments);
+        
+        if (result && this.order && typeof this.order._updateRewards === 'function') {
+            try {
+                setTimeout(() => {
+                    if (this.order && typeof this.order._updateRewards === 'function') {
+                        this.order._updateRewards();
+                    }
+                }, 0);
+            } catch (error) {
+                console.error("Error actualizando recompensas en set_quantity:", error);
+            }
+        }
+        
+        return result;
+    },
 });
 
-// Patch para Order - manejo de recompensas
 patch(Order.prototype, {
 
     _getRewardLineValues(args) {
@@ -136,7 +195,6 @@ patch(Order.prototype, {
         this._originalPrices = {};
     },
 
-    // Método para limpiar etiquetas de recompensa
     _clearRewardLabels() {
         const orderlines = this.get_orderlines();
         orderlines.forEach(line => {
@@ -173,6 +231,7 @@ patch(Order.prototype, {
     },
 
     _updateRewards() {
+
         if (!this._originalPrices) {
             this._originalPrices = {};
         }
@@ -188,6 +247,7 @@ patch(Order.prototype, {
             
             return;
         }
+
         
         super._updateRewards && super._updateRewards(...arguments);
         
@@ -198,6 +258,7 @@ patch(Order.prototype, {
         let totalCantidad = 0;
         let totalBase = 0;
         let totalImpuestos = 0;
+
 
         orderlines.forEach(line => {
             const quantity = line.get_quantity();
@@ -222,7 +283,6 @@ patch(Order.prototype, {
         try {
             claimable = this.getClaimableRewards();
         } catch (error) {
-            console.error("❌ Error obteniendo recompensas:", error);
             return;
         }
 
@@ -231,10 +291,12 @@ patch(Order.prototype, {
         const pricelistReward = claimable.find(
             r => r.reward && r.reward.reward_type === "pricelist_change"
         );
+
         
         const fixedPriceReward = claimable.find(
             r => r.reward && r.reward.reward_type === "fixed_price"
         );
+
 
 
         if (fixedPriceReward && fixedPriceReward.reward && fixedPriceReward.reward.reward_type === "fixed_price") {
@@ -279,7 +341,6 @@ patch(Order.prototype, {
                 console.warn("⚠️ No se encontró un precio fijo válido en la recompensa");
             } 
         } else {
-            // No hay recompensa de precio fijo - restaurar precios originales
             if (Object.keys(this._originalPrices).length > 0) { 
                 
                 orderlines.forEach(line => {
@@ -347,7 +408,6 @@ patch(Order.prototype, {
                     }
                 }
             } else {
-                // Restaurar lista original
                 if (this._originalPricelistId) {
                     const original = this.pos.pricelists.find(
                         p => p.id === this._originalPricelistId
@@ -363,7 +423,6 @@ patch(Order.prototype, {
                 }
             }
         } else {
-            // No hay recompensa de pricelist activa - restaurar
             if (this._originalPricelistId) {
                 const original = this.pos.pricelists.find(
                     p => p.id === this._originalPricelistId

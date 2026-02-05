@@ -279,8 +279,6 @@ class LoyaltyReward(models.Model):
     def create(self, vals):
         if vals.get('reward_type') == 'pricelist_change' and not vals.get('pricelist_id'):
             raise ValidationError("Debe seleccionar una lista de precios para el cambio.")
-        if vals.get('reward_type') == 'fixed_price' and not vals.get('fixed_price_line_ids'):
-            raise ValidationError("Debe agregar al menos un producto con precio fijo.")
 
         result = super(LoyaltyReward, self).create(vals)
         return result
