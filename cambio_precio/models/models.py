@@ -25,24 +25,36 @@ class PosSession(models.Model):
         return result
     
     def _get_pos_ui_loyalty_reward(self, params):
-        """Cargar recompensas con sus productos asociados y dominios de reglas"""
+        """Cargar recompensas con sus productos asociados y dominios de reglas.
+        
+        NOTA IMPORTANTE: Los campos fixed_price_data, fixed_price_map y rules_product_domains
+        son campos computados con store=True y compute_sudo=True, por lo que Odoo los
+        recomputa automáticamente con privilegios de superusuario cuando cambian sus
+        dependencias. NO se deben invocar manualmente los métodos _compute_* aquí,
+        ya que eso dispararía un write() en loyalty.reward bajo el contexto del usuario
+        actual (cajero), quien no tiene permisos de escritura en ese modelo.
+        
+        Si los datos computados están vacíos, significa que las dependencias no han
+        cambiado o que el registro fue creado sin las líneas correspondientes.
+        El recálculo se dispara automáticamente al modificar las dependencias desde
+        el backend (donde sí hay permisos de administrador).
+        """
         rewards = super()._get_pos_ui_loyalty_reward(params)
         
-        # Para cada recompensa de tipo fixed_price, asegurar que tenga los datos
+        # Los campos computados stored con compute_sudo=True ya están disponibles
+        # en los datos cargados. No es necesario forzar recálculo manual.
+        # Si algún campo está vacío, se puede leer con sudo() sin escribir.
         for reward in rewards:
             if reward.get('reward_type') == 'fixed_price':
-                reward_obj = self.env['loyalty.reward'].browse(reward['id'])
-                # Forzar recálculo si no tiene datos
                 if not reward.get('fixed_price_data') or not reward.get('fixed_price_map'):
-                    reward_obj._compute_fixed_price_data()
-                    reward_obj._compute_fixed_price_map()
-                    reward['fixed_price_data'] = reward_obj.fixed_price_data
-                    reward['fixed_price_map'] = reward_obj.fixed_price_map
+                    # Leer los valores actuales con sudo (solo lectura, sin escritura)
+                    reward_obj = self.env['loyalty.reward'].sudo().browse(reward['id'])
+                    reward['fixed_price_data'] = reward_obj.fixed_price_data or []
+                    reward['fixed_price_map'] = reward_obj.fixed_price_map or {}
                 
-                # Asegurar que los dominios de reglas estén presentes
                 if not reward.get('rules_product_domains'):
-                    reward_obj._compute_rules_product_domains()
-                    reward['rules_product_domains'] = reward_obj.rules_product_domains
+                    reward_obj = self.env['loyalty.reward'].sudo().browse(reward['id'])
+                    reward['rules_product_domains'] = reward_obj.rules_product_domains or []
         
         return rewards
 
@@ -102,15 +114,42 @@ class LoyaltyReward(models.Model):
     )
     fixed_price = fields.Float(string='Precio Fijo', digits='Product Price')
     fixed_price_line_ids = fields.One2many('loyalty.reward.fixed.price', 'reward_id', string='Productos con Precio Fijo')
-    fixed_price_data = fields.Json(string='Datos de Precios Fijos', compute='_compute_fixed_price_data', store=True, readonly=False)
-    fixed_price_map = fields.Json(string='Mapeo Producto->Precio', compute='_compute_fixed_price_map', store=True)
-    fixed_price_product_ids = fields.Json(string='IDs de Productos con Precio Fijo', compute='_compute_fixed_price_product_ids', store=True)
-    rules_product_domains = fields.Json(string='Dominios de Productos de Reglas', compute='_compute_rules_product_domains', store=True)
+    
+    # CORRECCIÓN: Se agrega compute_sudo=True explícitamente en todos los campos
+    # computados stored que acceden a datos de otros modelos. Aunque en Odoo 17+
+    # compute_sudo=True es el default para campos stored, lo declaramos explícitamente
+    # para mayor claridad y para evitar problemas si el comportamiento default cambia.
+    fixed_price_data = fields.Json(
+        string='Datos de Precios Fijos', 
+        compute='_compute_fixed_price_data', 
+        store=True, 
+        compute_sudo=True,
+        readonly=False
+    )
+    fixed_price_map = fields.Json(
+        string='Mapeo Producto->Precio', 
+        compute='_compute_fixed_price_map', 
+        store=True,
+        compute_sudo=True
+    )
+    fixed_price_product_ids = fields.Json(
+        string='IDs de Productos con Precio Fijo', 
+        compute='_compute_fixed_price_product_ids', 
+        store=True,
+        compute_sudo=True
+    )
+    rules_product_domains = fields.Json(
+        string='Dominios de Productos de Reglas', 
+        compute='_compute_rules_product_domains', 
+        store=True,
+        compute_sudo=True
+    )
     
     reward_label = fields.Char(
         string='Etiqueta de Recompensa',
         compute='_compute_reward_label',
         store=True,
+        compute_sudo=True,
         help='Etiqueta corta que se mostrará en las líneas del POS cuando se aplique esta recompensa'
     )
     
@@ -127,6 +166,7 @@ class LoyaltyReward(models.Model):
         string='Descripción',
         compute='_compute_description',
         store=True,
+        compute_sudo=True,
         help='Descripción de la recompensa, se mostrará en el Punto de Venta'
     )
 
