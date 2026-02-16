@@ -169,8 +169,55 @@ patch(Order.prototype, {
         return super._getRewardLineValues(...arguments);
     },
 
-    init_from_JSON() {
-        super.init_from_JSON(...arguments);
+    /**
+     * No lanzar error cuando la orden se está restaurando desde JSON o cuando se aplica un reward.
+     * - Restauración: init_from_JSON crea líneas vía _createLineFromVals → set_quantity.
+     * - Aplicar descuento/lealtad: _applyReward crea la línea de descuento y set_quantity llama
+     *   assert_editable(); si la orden está finalized por timing/backend, falla "Finalized Order cannot be modified".
+     */
+    assert_editable() {
+        if (this._restoringFromJSON || this._addingRewardLine) {
+            return;
+        }
+        return super.assert_editable(...arguments);
+    },
+
+    /**
+     * Envuelve la aplicación de recompensas (código de descuento, lealtad) para marcar la orden
+     * como "añadiendo línea de reward" y así evitar que assert_editable() lance al crear la línea.
+     */
+    _applyReward(reward, options) {
+        if (typeof super._applyReward !== "function") {
+            return;
+        }
+        this._addingRewardLine = true;
+        try {
+            return super._applyReward(...arguments);
+        } finally {
+            this._addingRewardLine = false;
+        }
+    },
+
+    /**
+     * Restaura la orden desde JSON (sesión, servidor, etc.).
+     * Marcamos _restoringFromJSON para que assert_editable no lance durante la creación de líneas.
+     */
+    init_from_JSON(json) {
+        this._restoringFromJSON = true;
+        try {
+            const wasFinalized = json && json.finalized === true;
+            if (json) {
+                const savedFinalized = json.finalized;
+                json.finalized = false;
+                super.init_from_JSON(...arguments);
+                json.finalized = savedFinalized;
+                this.finalized = wasFinalized;
+            } else {
+                super.init_from_JSON(...arguments);
+            }
+        } finally {
+            this._restoringFromJSON = false;
+        }
         this._restoringPricelist = false;
         this._originalPrices = {};
     },
