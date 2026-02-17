@@ -35,7 +35,7 @@ function evaluateDomain(domain, record) {
             parsedDomain = domain;
         }
     } catch (error) {
-        console.error("❌ Error parseando dominio:", domain, error);
+        console.error("Error parseando dominio:", domain, error);
         return false;
     }
 
@@ -51,10 +51,9 @@ function evaluateDomain(domain, record) {
         let fieldValue = record[field];
         
         if (Array.isArray(fieldValue) && fieldValue.length >= 1) {
-            fieldValue = fieldValue[0]; // Tomar el ID
+            fieldValue = fieldValue[0];
         }
 
-        // Evaluar según el operador
         switch (operator) {
             case '=':
             case '==':
@@ -88,7 +87,6 @@ function evaluateDomain(domain, record) {
                 if (!fieldStr.includes(valueStr)) return false;
                 break;
             default:
-                console.warn(`⚠️ Operador no soportado: ${operator}`);
                 return false;
         }
     }
@@ -155,23 +153,11 @@ patch(Orderline.prototype, {
         return canMerge;
     },
 
-    set_quantity(quantity, keep_price) {
-        const result = super.set_quantity(...arguments);
-        
-        if (result && this.order && typeof this.order._updateRewards === 'function') {
-            try {
-                setTimeout(() => {
-                    if (this.order && typeof this.order._updateRewards === 'function') {
-                        this.order._updateRewards();
-                    }
-                }, 0);
-            } catch (error) {
-                console.error("Error actualizando recompensas en set_quantity:", error);
-            }
-        }
-        
-        return result;
-    },
+    // CORRECCIÓN: Se eliminó el patch de set_quantity que disparaba _updateRewards
+    // con setTimeout. Esto causaba recálculos asíncronos que interferían con
+    // operaciones estándar del POS (borrar líneas, buscar clientes, validar pagos).
+    // El _updateRewards() de Odoo ya se dispara automáticamente cuando corresponde
+    // a través del mecanismo estándar de recompensas.
 });
 
 patch(Order.prototype, {
@@ -242,10 +228,12 @@ patch(Order.prototype, {
         this._originalPrices = {};
     },
 
+    // CORRECCIÓN: _clearRewardLabels ahora solo limpia labels de NUESTRAS
+    // recompensas custom (fixed_price), no toca las recompensas estándar de Odoo.
     _clearRewardLabels() {
         const orderlines = this.get_orderlines();
         orderlines.forEach(line => {
-            if (line.reward_label) {
+            if (line.reward_label && line.reward_type === "fixed_price") {
                 delete line.reward_label;
                 delete line.reward_type;
                 delete line.reward_badge_color;
@@ -264,17 +252,28 @@ patch(Order.prototype, {
 
     _productMatchesRuleDomains(product, rulesProductDomains) {
         if (!rulesProductDomains || rulesProductDomains.length === 0) {
-            return true; // Sin restricciones de dominio
+            return true;
         }
 
         return rulesProductDomains.some(ruleDomain => {
             const domain = ruleDomain.product_domain;
             const matches = evaluateDomain(domain, product);
-            
-            
-            
             return matches;
         });
+    },
+
+    // CORRECCIÓN: _hasCustomRewards() verifica si hay recompensas custom activas
+    // (pricelist_change o fixed_price) entre las reclamables. Si no las hay,
+    // _updateRewards() no ejecuta lógica adicional y deja que Odoo estándar 
+    // se encargue de todo.
+    _hasCustomRewards(claimable) {
+        if (!claimable || !Array.isArray(claimable)) return false;
+        return claimable.some(r => 
+            r.reward && (
+                r.reward.reward_type === "pricelist_change" || 
+                r.reward.reward_type === "fixed_price"
+            )
+        );
     },
 
     _updateRewards() {
@@ -286,82 +285,77 @@ patch(Order.prototype, {
             this._originalPricelistId = null;
         }
         
-        if (!this.pos || !this.pos.get_order) return;
-        const order = this.pos.get_order();
-        if (!order || !order.get_orderlines) return;
-        
-        if (!this.pos.rules || !this.pos.pricelists || !this.pos.taxes_by_id) {
-            
-            return;
+        // CORRECCIÓN CRÍTICA: Primero dejamos que Odoo estándar procese sus
+        // recompensas (descuentos, cupones, programas de lealtad, etc.).
+        // Esto debe ejecutarse SIEMPRE, sin importar si hay recompensas custom.
+        let superResult;
+        try {
+            superResult = super._updateRewards && super._updateRewards(...arguments);
+        } catch (error) {
+            console.error("Error en super._updateRewards:", error);
+            return superResult;
         }
 
+        // CORRECCIÓN: Verificaciones de seguridad antes de continuar.
+        // Si el entorno no está listo, retornamos sin interferir.
+        if (!this.pos || !this.pos.get_order) return superResult;
+        const order = this.pos.get_order();
+        if (!order || !order.get_orderlines) return superResult;
         
-        super._updateRewards && super._updateRewards(...arguments);
-        
+        if (!this.pos.rules || !this.pos.pricelists || !this.pos.taxes_by_id) {
+            return superResult;
+        }
 
-        this._clearRewardLabels();
-
-        const orderlines = order.get_orderlines();
-        let totalCantidad = 0;
-        let totalBase = 0;
-        let totalImpuestos = 0;
-
-
-        orderlines.forEach(line => {
-            const quantity = line.get_quantity();
-            const unitPrice = line.get_unit_price();
-            const baseLine = quantity * unitPrice;
-
-            totalBase += baseLine;
-            totalCantidad += quantity;
-
-            const productTaxes = line.product.taxes_id || [];
-            productTaxes.forEach(taxId => {
-                const tax = this.pos.taxes_by_id[taxId];
-                if (tax) {
-                    totalImpuestos += baseLine * (tax.amount / 100);
-                }
-            });
-        });
-
-        const totalPrecio = totalBase + totalImpuestos;
-
+        // CORRECCIÓN: Obtener recompensas reclamables. Si falla (por ejemplo,
+        // durante el proceso de pago), retornamos sin interferir.
         let claimable;
         try {
             claimable = this.getClaimableRewards();
         } catch (error) {
-            return;
+            return superResult;
         }
 
-        if (!claimable || !Array.isArray(claimable)) return;
+        if (!claimable || !Array.isArray(claimable)) return superResult;
 
-        const pricelistReward = claimable.find(
-            r => r.reward && r.reward.reward_type === "pricelist_change"
-        );
+        // CORRECCIÓN CRÍTICA: Si no hay recompensas custom (pricelist_change 
+        // o fixed_price), NO ejecutamos ninguna lógica adicional.
+        // Esto permite que las promociones estándar de Odoo (descuentos por
+        // código, cupones, etc.) funcionen sin interferencia.
+        if (!this._hasCustomRewards(claimable)) {
+            // Restaurar precios originales si había fixed_price activo antes
+            this._restoreOriginalPrices(order);
+            // Restaurar pricelist original si había pricelist_change activo antes
+            this._restoreOriginalPricelist();
+            return superResult;
+        }
 
-        
+        // A partir de aquí solo se ejecuta si hay recompensas custom activas.
+        this._clearRewardLabels();
+
+        const orderlines = order.get_orderlines();
+
+        // ========================================
+        // MANEJO DE FIXED PRICE REWARD
+        // ========================================
         const fixedPriceReward = claimable.find(
             r => r.reward && r.reward.reward_type === "fixed_price"
         );
 
-
-
-        if (fixedPriceReward && fixedPriceReward.reward && fixedPriceReward.reward.reward_type === "fixed_price") {
+        if (fixedPriceReward && fixedPriceReward.reward) {
             const reward = fixedPriceReward.reward;
-            
             const fixedPrice = reward.fixed_price;
-            
             const rulesProductDomains = reward.rules_product_domains || [];
             
             if (fixedPrice !== undefined && fixedPrice !== null && fixedPrice !== false && fixedPrice > 0) {
-                
                 orderlines.forEach(line => {
+                    // No tocar líneas de recompensa estándar de Odoo
+                    if (line.is_reward_line) return;
+                    
                     const productId = line.product.id;
                     const product = line.product;
                     const lineUuid = line.uuid || line.cid;
                     
                     const productMatchesDomain = this._productMatchesRuleDomains(product, rulesProductDomains);
-                    
                     
                     if (productMatchesDomain) {
                         if (!this._originalPrices[lineUuid]) {
@@ -384,32 +378,18 @@ patch(Order.prototype, {
                         }
                     }
                 });
-            } else {
-                console.warn("⚠️ No se encontró un precio fijo válido en la recompensa");
-            } 
-        } else {
-            if (Object.keys(this._originalPrices).length > 0) { 
-                
-                orderlines.forEach(line => {
-                    const lineUuid = line.uuid || line.cid;
-                    const originalData = this._originalPrices[lineUuid];
-                    
-                    if (originalData && originalData.productId === line.product.id) {
-                        const currentPrice = line.get_unit_price();
-                        
-                        if (currentPrice !== originalData.price) {
-                            line.set_unit_price(originalData.price);
-                        }
-                    }
-                });
-                
-                this._originalPrices = {};
             }
+        } else {
+            this._restoreOriginalPrices(order);
         }
 
         // ========================================
         // MANEJO DE PRICELIST CHANGE REWARD
         // ========================================
+        const pricelistReward = claimable.find(
+            r => r.reward && r.reward.reward_type === "pricelist_change"
+        );
+
         if (pricelistReward) {
             if (!this._originalPricelistId) {
                 this._originalPricelistId = this.pricelist ? this.pricelist.id : 1;
@@ -417,19 +397,42 @@ patch(Order.prototype, {
 
             const pricelistChangeRules = this.pos.rules.filter(rule => {
                 if (!rule.program_id || !rule.program_id.rewards) return false;
-                
                 return rule.program_id.rewards.some(
                     reward => reward.reward_type === 'pricelist_change'
                 );
             });
 
             if (pricelistChangeRules.length === 0) {
-                console.warn("⚠️ No hay reglas de pricelist_change");
-                return;
+                return superResult;
             }
 
+            // Calcular totales solo para las líneas que NO son reward lines
+            let totalCantidad = 0;
+            let totalBase = 0;
+            let totalImpuestos = 0;
+
+            orderlines.forEach(line => {
+                if (line.is_reward_line) return;
+                
+                const quantity = line.get_quantity();
+                const unitPrice = line.get_unit_price();
+                const baseLine = quantity * unitPrice;
+
+                totalBase += baseLine;
+                totalCantidad += quantity;
+
+                const productTaxes = line.product.taxes_id || [];
+                productTaxes.forEach(taxId => {
+                    const tax = this.pos.taxes_by_id[taxId];
+                    if (tax) {
+                        totalImpuestos += baseLine * (tax.amount / 100);
+                    }
+                });
+            });
+
+            const totalPrecio = totalBase + totalImpuestos;
+
             let cumpleAlgunaRegla = false;
-            let reglaCumplida = null;
 
             for (const rule of pricelistChangeRules) {
                 const cumpleEstaRegla = 
@@ -438,7 +441,6 @@ patch(Order.prototype, {
 
                 if (cumpleEstaRegla) {
                     cumpleAlgunaRegla = true;
-                    reglaCumplida = rule;
                     break;
                 }
             }
@@ -455,36 +457,55 @@ patch(Order.prototype, {
                     }
                 }
             } else {
-                if (this._originalPricelistId) {
-                    const original = this.pos.pricelists.find(
-                        p => p.id === this._originalPricelistId
-                    );
-                    
-                    if (original && this.pricelist?.id !== original.id) {
-                        this.set_pricelist(original);
-                        
-                        if (typeof this._resetTaxesAndPrices === 'function') {
-                            this._resetTaxesAndPrices();
-                        }
-                    }
-                }
+                this._restoreOriginalPricelist();
             }
         } else {
-            if (this._originalPricelistId) {
-                const original = this.pos.pricelists.find(
-                    p => p.id === this._originalPricelistId
-                );
-                
-                if (original && this.pricelist?.id !== original.id) {
-                    this.set_pricelist(original);
-                    
-                    if (typeof this._resetTaxesAndPrices === 'function') {
-                        this._resetTaxesAndPrices();
-                    }
+            this._restoreOriginalPricelist();
+        }
+
+        return superResult;
+    },
+
+    // CORRECCIÓN: Método extraído para restaurar precios originales.
+    // Se llama cuando ya no hay fixed_price reward activo.
+    _restoreOriginalPrices(order) {
+        if (!this._originalPrices || Object.keys(this._originalPrices).length === 0) return;
+        
+        const orderlines = order ? order.get_orderlines() : 
+                          (this.pos && this.pos.get_order() ? this.pos.get_order().get_orderlines() : []);
+        
+        orderlines.forEach(line => {
+            const lineUuid = line.uuid || line.cid;
+            const originalData = this._originalPrices[lineUuid];
+            
+            if (originalData && originalData.productId === line.product.id) {
+                const currentPrice = line.get_unit_price();
+                if (currentPrice !== originalData.price) {
+                    line.set_unit_price(originalData.price);
                 }
-                
-                this._originalPricelistId = null;
+            }
+        });
+        
+        this._originalPrices = {};
+    },
+
+    // CORRECCIÓN: Método extraído para restaurar la pricelist original.
+    // Se llama cuando ya no hay pricelist_change reward activo.
+    _restoreOriginalPricelist() {
+        if (!this._originalPricelistId) return;
+        
+        const original = this.pos.pricelists.find(
+            p => p.id === this._originalPricelistId
+        );
+        
+        if (original && this.pricelist?.id !== original.id) {
+            this.set_pricelist(original);
+            
+            if (typeof this._resetTaxesAndPrices === 'function') {
+                this._resetTaxesAndPrices();
             }
         }
+        
+        this._originalPricelistId = null;
     }
 });
