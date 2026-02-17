@@ -155,13 +155,19 @@ class AccountMove(models.Model):
             return []
 
         # Bloque: consulta parametrizada con filtro por lista de IDs.
+        # Columnas de migración: deben existir en forum_his_invoice_detail para copiarse.
+        # NO se cargan: product_tags_snapshot, price_group_snapshot_id, price_group_snapshot.
         query = """
             SELECT
                 invoice_detail_amount,
                 precio_unt,
                 invoice_detail_id,
                 odoo_product_id,
-                invoice_id
+                invoice_id,
+                product_sku,
+                product_name,
+                operational_cost,
+                standard_cost_snapshot
             FROM forum_his_invoice_detail
             WHERE invoice_id = ANY(%s)
         """
@@ -497,6 +503,24 @@ class AccountMove(models.Model):
                 }
                 if income_account:
                     line_vals['account_id'] = income_account.id
+
+                # Bloque: copia de campos de migración desde el histórico (si existen en la BD).
+                # x_mig_product_tags_snapshot, x_mig_price_group_* NO se cargan por decisión de negocio.
+                if line.get('product_sku') is not None:
+                    line_vals['x_mig_product_sku'] = line.get('product_sku') or ''
+                if line.get('product_name') is not None:
+                    line_vals['x_mig_product_name'] = line.get('product_name') or ''
+                try:
+                    if line.get('operational_cost') is not None:
+                        line_vals['x_mig_operational_cost'] = float(line.get('operational_cost'))
+                except (TypeError, ValueError):
+                    pass
+                try:
+                    if line.get('standard_cost_snapshot') is not None:
+                        line_vals['x_mig_standard_cost_snapshot'] = float(line.get('standard_cost_snapshot'))
+                except (TypeError, ValueError):
+                    pass
+
                 invoice_lines.append((0, 0, line_vals))
 
             # Bloque: omitir facturas sin líneas válidas.
