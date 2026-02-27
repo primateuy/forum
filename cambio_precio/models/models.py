@@ -411,7 +411,8 @@ class PosOrder(models.Model):
     _inherit = 'pos.order'
 
     def _apply_reward_pricelist(self, reward, order):
-        """Aplica cambio de lista de precios en backend para POS"""
+        """Aplica cambio de lista de precios en backend para POS.
+        Usado solo cuando se debe forzar la pricelist y el payload no la trae."""
         if reward.pricelist_id:
             order.write({'pricelist_id': reward.pricelist_id.id})
             return True
@@ -419,16 +420,110 @@ class PosOrder(models.Model):
 
     @api.model
     def _process_order(self, order, draft, existing_order):
-        order_id = super(PosOrder, self)._process_order(order, draft, existing_order)
-        pos_order = self.browse(order_id)
-        
-        pricelist_rewards = self.env['loyalty.reward'].search([
-            ('reward_type', '=', 'pricelist_change'),
-            ('pricelist_id', '!=', False)
-        ])
+        """
+        Procesa la orden del POS sin sobrescribir datos que ya vienen del frontend.
 
-        for reward in pricelist_rewards:
-            if reward.program_id.active:
-                self._apply_reward_pricelist(reward, pos_order)
-        
-        return order_id
+        El frontend (pricelistReward.js) ya envía pricelist_id en el payload cuando
+        el cliente califica para la recompensa pricelist_change. Hacer write() aquí
+        sobre pricelist_id después de super() puede:
+        - Sobrescribir con una lista incorrecta si hay varios programas con
+          pricelist_change (se aplicaban todos en bucle y ganaba el último).
+        - Interferir con el módulo de lealtad (advanced_loyalty_management / estándar),
+          que aplica los puntos en la misma transacción; el write() puede alterar
+          el estado de la orden y provocar que los puntos no se persistan.
+
+        Por tanto, no aplicamos pricelist en backend: confiamos en el pricelist_id
+        que envía el frontend. Si en el futuro se necesita aplicar pricelist solo
+        cuando el payload no la trae, debe comprobarse order.get('data', {}).get('pricelist_id')
+        y aplicar solo en ese caso, y preferiblemente solo la recompensa realmente
+        reclamada en la orden (no todas las activas).
+        """
+        order_data = order.get("data") if isinstance(order, dict) else order
+        cpc = order_data.get("coupon_point_changes") if isinstance(order_data, dict) else None
+
+        result = super(PosOrder, self)._process_order(order, draft, existing_order)
+
+        # Aplicar puntos de lealtad al cupón/tarjeta cuando el payload trae coupon_point_changes.
+        if not draft and cpc and isinstance(cpc, dict) and self.env.get('loyalty.card'):
+            self._apply_coupon_point_changes(cpc)
+
+        return result
+
+    @api.model
+    def create_from_ui(self, orders, draft=False):
+        """
+        Crea órdenes desde la UI y aplica coupon_point_changes a loyalty.card.
+
+        Dependemos de odoo_pos_no_invoice para que este método se ejecute primero en la
+        cadena (MRO) y así tengamos acceso al payload antes de que otros módulos lo consuman.
+        Extraemos coupon_point_changes ANTES de super() porque el core/sync puede modificar
+        o reemplazar la lista orders; aplicamos los puntos DESPUÉS de super() para que la
+        orden ya esté creada.
+        """
+        # Extraer coupon_point_changes de cada orden antes de que super() modifique orders.
+        coupon_point_changes_list = []
+        for order_payload in (orders or []):
+            if not isinstance(order_payload, dict):
+                coupon_point_changes_list.append(None)
+                continue
+            order_data = order_payload.get('data') or order_payload
+            if not isinstance(order_data, dict):
+                coupon_point_changes_list.append(None)
+                continue
+            cpc = order_data.get('coupon_point_changes')
+            coupon_point_changes_list.append(cpc if (cpc and isinstance(cpc, dict)) else None)
+
+        result = super(PosOrder, self).create_from_ui(orders, draft)
+
+        if draft:
+            return result
+        # Comprobar si el modelo loyalty.card existe (pos_loyalty / advanced_loyalty_management).
+        try:
+            self.env['loyalty.card']
+        except KeyError:
+            _logger.debug(
+                "[cambio_precio] create_from_ui: modelo loyalty.card no disponible, no se aplican puntos"
+            )
+            return result
+
+        num_cpc = sum(1 for c in coupon_point_changes_list if c)
+        if num_cpc:
+            _logger.info(
+                "[cambio_precio] create_from_ui: aplicando puntos en %s orden(es)",
+                num_cpc,
+            )
+        for cpc in coupon_point_changes_list:
+            if cpc:
+                _logger.info(
+                    "[cambio_precio] create_from_ui: aplicando coupon_point_changes keys=%s",
+                    list(cpc.keys()),
+                )
+                self._apply_coupon_point_changes(cpc)
+
+        return result
+
+    @api.model
+    def _apply_coupon_point_changes(self, coupon_point_changes):
+        """
+        Suma los puntos indicados en coupon_point_changes a las tarjetas loyalty.card
+        correspondientes. coupon_point_changes es un dict { card_id: { points, program_id, ... } }
+        tal como lo envía el frontend (pos_loyalty / advanced_loyalty_management).
+        """
+        LoyaltyCard = self.env['loyalty.card'].sudo()
+        for card_id_str, change in coupon_point_changes.items():
+            if not change or not isinstance(change, dict):
+                continue
+            points = change.get('points')
+            if points is None:
+                continue
+            try:
+                card_id = int(card_id_str)
+            except (TypeError, ValueError):
+                _logger.warning("[cambio_precio] _apply_coupon_point_changes: id no válido %s", card_id_str)
+                continue
+            card = LoyaltyCard.browse(card_id)
+            if not card.exists():
+                _logger.warning("[cambio_precio] _apply_coupon_point_changes: loyalty.card %s no existe", card_id)
+                continue
+            card.points = card.points + points
+            _logger.info("[cambio_precio] _apply_coupon_point_changes: card %s +%s puntos (nuevo total: %s)", card_id, points, card.points)

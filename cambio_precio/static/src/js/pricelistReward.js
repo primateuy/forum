@@ -3,6 +3,16 @@
 import { patch } from '@web/core/utils/patch';
 import { Order } from '@point_of_sale/app/store/models';
 import { Orderline } from "@point_of_sale/app/store/models";
+import { PosStore } from "@point_of_sale/app/store/pos_store";
+
+// Activar para depurar persistencia de puntos de lealtad (consola del navegador).
+const CAMBIO_PRECIO_DEBUG_LOYALTY = true;
+function _log(msg, data) {
+    if (CAMBIO_PRECIO_DEBUG_LOYALTY && typeof console !== "undefined" && console.log) {
+        if (data !== undefined) console.log("[cambio_precio]", msg, data);
+        else console.log("[cambio_precio]", msg);
+    }
+}
 
 function convertPythonDomainToJSON(pythonDomain) {
     if (!pythonDomain || pythonDomain === "[]" || pythonDomain === "") {
@@ -169,6 +179,24 @@ patch(Order.prototype, {
         return super._getRewardLineValues(...arguments);
     },
 
+    /**
+     * Incluir coupon_point_changes en el payload (igual que el estándar pos_loyalty).
+     * Si otro módulo (p. ej. advanced_loyalty_management) no llama a super y construye
+     * el JSON desde cero, este patch no se ejecutará al exportar; por eso además
+     * inyectamos en push_single_order.
+     */
+    export_as_JSON() {
+        const json = super.export_as_JSON(...arguments);
+        if (this.couponPointChanges && Object.keys(this.couponPointChanges).length > 0) {
+            json.coupon_point_changes = this.couponPointChanges;
+            _log("export_as_JSON: añadido coupon_point_changes al payload", {
+                keys: Object.keys(this.couponPointChanges),
+                sample: Object.values(this.couponPointChanges)[0],
+            });
+        }
+        return json;
+    },
+
     init_from_JSON() {
         super.init_from_JSON(...arguments);
         this._restoringPricelist = false;
@@ -237,7 +265,7 @@ patch(Order.prototype, {
         if (!this._originalPricelistId) {
             this._originalPricelistId = null;
         }
-        
+
         // CORRECCIÓN CRÍTICA: Primero dejamos que Odoo estándar procese sus
         // recompensas (descuentos, cupones, programas de lealtad, etc.).
         // Esto debe ejecutarse SIEMPRE, sin importar si hay recompensas custom.
@@ -249,36 +277,39 @@ patch(Order.prototype, {
             return superResult;
         }
 
-        // CORRECCIÓN: Verificaciones de seguridad antes de continuar.
-        // Si el entorno no está listo, retornamos sin interferir.
+        // Preservar los puntos que acaba de calcular el estándar (super). Nuestra
+        // lógica (set_pricelist / _resetTaxesAndPrices) puede borrarlos; al guardar
+        // aquí y restaurar al final, el backend los recibe en export_as_JSON.
+        const savedCouponPointChanges = this.couponPointChanges && Object.keys(this.couponPointChanges).length > 0
+            ? JSON.parse(JSON.stringify(this.couponPointChanges))
+            : null;
+        if (savedCouponPointChanges) {
+            _log("_updateRewards: puntos guardados tras super", {
+                numEntries: Object.keys(savedCouponPointChanges).length,
+                entries: Object.entries(savedCouponPointChanges).map(([k, v]) => ({ id: k, points: v.points, program_id: v.program_id })),
+            });
+        }
+
+        // Verificaciones de seguridad antes de continuar.
         if (!this.pos || !this.pos.get_order) return superResult;
         const order = this.pos.get_order();
         if (!order || !order.get_orderlines) return superResult;
-        
-        if (!this.pos.rules || !this.pos.pricelists || !this.pos.taxes_by_id) {
-            return superResult;
-        }
+        if (!this.pos.rules || !this.pos.pricelists || !this.pos.taxes_by_id) return superResult;
 
-        // CORRECCIÓN: Obtener recompensas reclamables. Si falla (por ejemplo,
-        // durante el proceso de pago), retornamos sin interferir.
         let claimable;
         try {
             claimable = this.getClaimableRewards();
         } catch (error) {
+            if (savedCouponPointChanges) this.couponPointChanges = savedCouponPointChanges;
             return superResult;
         }
-
         if (!claimable || !Array.isArray(claimable)) return superResult;
 
-        // CORRECCIÓN CRÍTICA: Si no hay recompensas custom (pricelist_change 
-        // o fixed_price), NO ejecutamos ninguna lógica adicional.
-        // Esto permite que las promociones estándar de Odoo (descuentos por
-        // código, cupones, etc.) funcionen sin interferencia.
+        // Si no hay recompensas custom, no ejecutamos lógica adicional.
         if (!this._hasCustomRewards(claimable)) {
-            // Restaurar precios originales si había fixed_price activo antes
             this._restoreOriginalPrices(order);
-            // Restaurar pricelist original si había pricelist_change activo antes
             this._restoreOriginalPricelist();
+            if (savedCouponPointChanges) this.couponPointChanges = savedCouponPointChanges;
             return superResult;
         }
 
@@ -356,6 +387,7 @@ patch(Order.prototype, {
             });
 
             if (pricelistChangeRules.length === 0) {
+                if (savedCouponPointChanges) this.couponPointChanges = savedCouponPointChanges;
                 return superResult;
             }
 
@@ -416,6 +448,12 @@ patch(Order.prototype, {
             this._restoreOriginalPricelist();
         }
 
+        // Restaurar puntos de lealtad para que no se pierdan (p. ej. al cambiar pricelist).
+        if (savedCouponPointChanges) {
+            this.couponPointChanges = savedCouponPointChanges;
+            _log("_updateRewards: puntos restaurados al final");
+        }
+
         return superResult;
     },
 
@@ -461,4 +499,60 @@ patch(Order.prototype, {
         
         this._originalPricelistId = null;
     }
+});
+
+/**
+ * Asegura que el payload enviado al backend incluya coupon_point_changes.
+ * Otros módulos (p. ej. advanced_loyalty_management) pueden reemplazar
+ * Order.export_as_JSON sin llamar a super, por lo que el payload puede
+ * no incluir los puntos. Aquí envolvemos la orden antes de enviarla para
+ * que cualquier llamada a export_as_JSON devuelva también coupon_point_changes.
+ */
+patch(PosStore.prototype, {
+    async push_single_order(order) {
+        const hasPoints = order.couponPointChanges && Object.keys(order.couponPointChanges).length > 0;
+        _log("push_single_order: llamada", {
+            hasCouponPointChanges: hasPoints,
+            keys: hasPoints ? Object.keys(order.couponPointChanges) : [],
+        });
+
+        const originalExport = order.export_as_JSON.bind(order);
+        order.export_as_JSON = function () {
+            const json = originalExport();
+            if (order.couponPointChanges && Object.keys(order.couponPointChanges).length > 0) {
+                json.coupon_point_changes = order.couponPointChanges;
+                _log("push_single_order (wrapper export_as_JSON): inyectado coupon_point_changes", {
+                    keys: Object.keys(json.coupon_point_changes),
+                    hasInPayload: "coupon_point_changes" in json,
+                });
+            } else {
+                _log("push_single_order (wrapper export_as_JSON): orden sin couponPointChanges, no se inyecta");
+            }
+            return json;
+        };
+        try {
+            const result = await super.push_single_order(...arguments);
+            // Actualizar couponCache en el POS para que el "Points Balance" muestre el saldo
+            // ya persistido en backend; si no, la siguiente pantalla sigue mostrando el saldo viejo.
+            if (result && hasPoints && order.couponPointChanges) {
+                if (!this.couponCache) this.couponCache = {};
+                const cache = { ...this.couponCache };
+                for (const [couponIdStr, change] of Object.entries(order.couponPointChanges)) {
+                    const points = change && typeof change.points === 'number' ? change.points : 0;
+                    if (points === 0) continue;
+                    const couponId = isNaN(Number(couponIdStr)) ? couponIdStr : Number(couponIdStr);
+                    const prev = cache[couponId];
+                    const currentBalance = (prev && typeof prev.balance === 'number') ? prev.balance : 0;
+                    cache[couponId] = { ...(prev || {}), id: couponId, balance: currentBalance + points };
+                }
+                this.couponCache = cache;
+                _log("push_single_order: actualizado couponCache tras éxito", {
+                    keys: Object.keys(order.couponPointChanges),
+                });
+            }
+            return result;
+        } finally {
+            order.export_as_JSON = originalExport;
+        }
+    },
 });
