@@ -2,68 +2,51 @@
 from odoo import api, models, _
 from odoo.exceptions import UserError
 
+
 class PurchaseOrder(models.Model):
     _inherit = "purchase.order"
 
     def button_confirm(self):
-        # Validación de cantidades vs Acuerdo de compra (Orden abierta / Blanket)
         for order in self:
-            if not order.requisition_id or order.requisition_id.type != "blanket_order":
-                continue
+            req = order.requisition_id  # blanket link
+            if req:
+                # Map allowed qty per product on requisition lines
+                allowed = {}
+                for l in req.line_ids:
+                    allowed[l.product_id.id] = allowed.get(l.product_id.id, 0.0) + (l.product_qty or 0.0)
 
-            # Solo validar líneas que vienen del acuerdo (link a requisition line)
-            if "requisition_line_id" not in self.env["purchase.order.line"]._fields:
-                continue
-
-            # Agrupar por línea del acuerdo
-            lines_by_req_line = {}
-            for line in order.order_line.filtered(lambda l: l.requisition_line_id):
-                lines_by_req_line.setdefault(line.requisition_line_id, self.env["purchase.order.line"])
-                lines_by_req_line[line.requisition_line_id] |= line
-
-            for req_line, lines in lines_by_req_line.items():
-                agreement_qty = req_line.product_qty or 0.0
-                agreement_uom = req_line.product_uom_id
-
-                # Cantidad de ESTE pedido (convertida a UoM del acuerdo)
-                current_qty = 0.0
-                for l in lines:
-                    qty = l.product_qty or 0.0
-                    if l.product_uom and agreement_uom and l.product_uom != agreement_uom:
-                        qty = l.product_uom._compute_quantity(qty, agreement_uom)
-                    current_qty += qty
-
-                # Cantidad ya comprometida en otros pedidos confirmados (purchase/done)
-                other_lines = self.env["purchase.order.line"].search([
-                    ("requisition_line_id", "=", req_line.id),
-                    ("order_id", "!=", order.id),
-                    ("order_id.state", "in", ("purchase", "done")),
+                # Already confirmed qty across other POs of this requisition
+                confirmed_orders = self.search([
+                    ("requisition_id", "=", req.id),
+                    ("state", "in", ["purchase", "done"]),
+                    ("id", "!=", order.id),
                 ])
+                used = {}
+                for po in confirmed_orders:
+                    for line in po.order_line:
+                        pid = line.product_id.id
+                        used[pid] = used.get(pid, 0.0) + (line.product_qty or 0.0)
 
-                other_qty = 0.0
-                for ol in other_lines:
-                    qty = ol.product_qty or 0.0
-                    if ol.product_uom and agreement_uom and ol.product_uom != agreement_uom:
-                        qty = ol.product_uom._compute_quantity(qty, agreement_uom)
-                    other_qty += qty
+                # Current order qty
+                current = {}
+                for line in order.order_line:
+                    pid = line.product_id.id
+                    current[pid] = current.get(pid, 0.0) + (line.product_qty or 0.0)
 
-                total_qty = other_qty + current_qty
-                # tolerancia mínima flotante
-                if total_qty > agreement_qty + 1e-6:
-                    raise UserError(_(
-                        "No se puede confirmar el pedido porque excede la cantidad acordada en la Orden de compra abierta.\n\n"
-                        "Producto: %(product)s\n"
-                        "Cantidad acordada: %(ag)s %(uom)s\n"
-                        "Ya confirmada en otros pedidos: %(other)s %(uom)s\n"
-                        "Este pedido intenta confirmar: %(cur)s %(uom)s\n"
-                        "Total confirmado quedaría en: %(tot)s %(uom)s\n"
-                    ) % {
-                        "product": req_line.product_id.display_name,
-                        "ag": agreement_qty,
-                        "other": other_qty,
-                        "cur": current_qty,
-                        "tot": total_qty,
-                        "uom": agreement_uom.display_name if agreement_uom else "",
-                    })
+                # Validate
+                errors = []
+                for pid, qty in current.items():
+                    max_qty = allowed.get(pid, 0.0)
+                    if max_qty <= 0:
+                        # If not in blanket, skip (blanket may have generic lines; keep strict? we skip)
+                        continue
+                    new_total = used.get(pid, 0.0) + qty
+                    if new_total > max_qty + 1e-9:
+                        product = self.env["product.product"].browse(pid)
+                        errors.append(_("- %s: permitido %.2f / ya confirmado %.2f / intentando confirmar %.2f (total %.2f)") % (
+                            product.display_name, max_qty, used.get(pid, 0.0), qty, new_total
+                        ))
+                if errors:
+                    raise UserError(_("El pedido excede las cantidades acordadas en el Acuerdo de compra:\n%s") % ("\n".join(errors)))
 
         return super().button_confirm()

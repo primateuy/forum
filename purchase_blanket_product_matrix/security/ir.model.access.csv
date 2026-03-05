@@ -1,4 +1,2 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_purchase_requisition_matrix_wizard,purchase.requisition.matrix.wizard,model_purchase_requisition_matrix_wizard,purchase.group_purchase_user,1,1,1,1
-access_purchase_requisition_matrix_line,purchase.requisition.matrix.line,model_purchase_requisition_matrix_line,purchase.group_purchase_user,1,1,1,1
-access_purchase_requisition_matrix_row,purchase.requisition.matrix.row,model_purchase_requisition_matrix_row,purchase.group_purchase_user,1,1,1,1
+access_purchase_blanket_product_matrix_user,purchase_blanket_product_matrix_user,base.model_purchase_requisition,base.group_user,1,1,1,0
