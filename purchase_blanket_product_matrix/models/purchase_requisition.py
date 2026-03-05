@@ -33,8 +33,8 @@ class PurchaseRequisition(models.Model):
 
     def action_open_variant_matrix(self):
         self.ensure_one()
-        # Wizard model from purchase_product_matrix
-        wizard_model = "purchase.variant.matrix.wizard"
+        # Wizard model provided by product_matrix / purchase_product_matrix (OCA)
+        wizard_model = "product.matrix.wizard"
         if not self.env["ir.model"].search([("model", "=", wizard_model)], limit=1):
             raise UserError(_("No se encontró el wizard de matriz (%s). Verifique que 'purchase_product_matrix' esté instalado.") % wizard_model)
 
@@ -47,6 +47,5 @@ class PurchaseRequisition(models.Model):
             "context": {
                 "active_model": "purchase.requisition",
                 "active_id": self.id,
-                "default_requisition_id": self.id,
             },
         }

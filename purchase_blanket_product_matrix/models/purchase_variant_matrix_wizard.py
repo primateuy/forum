@@ -4,7 +4,8 @@ from odoo.exceptions import UserError
 
 
 class PurchaseVariantMatrixWizard(models.TransientModel):
-    _inherit = "purchase.variant.matrix.wizard"
+    # OCA product_matrix wizard used by purchase_product_matrix
+    _inherit = "product.matrix.wizard"
 
     def _pbpm_get_active(self):
         active_model = self.env.context.get("active_model")
@@ -24,10 +25,11 @@ class PurchaseVariantMatrixWizard(models.TransientModel):
         # purchase_product_matrix wizard usually stores matrix values in lines; we use its helper if exists.
         # Most OCA implementations provide method _get_matrix() or field matrix_line_ids.
         matrix_lines = []
-        if hasattr(self, "matrix_line_ids"):
-            matrix_lines = self.matrix_line_ids
-        elif hasattr(self, "line_ids"):
+        # Common names across OCA forks
+        if hasattr(self, "line_ids"):
             matrix_lines = self.line_ids
+        elif hasattr(self, "matrix_line_ids"):
+            matrix_lines = self.matrix_line_ids
 
         if not matrix_lines:
             # fallback: try generic get qty mapping
@@ -42,7 +44,9 @@ class PurchaseVariantMatrixWizard(models.TransientModel):
                 product = getattr(ml, "product_id", False)
                 qty = getattr(ml, "qty", None)
                 if qty is None:
-                    qty = getattr(ml, "quantity", 0.0)
+                    qty = getattr(ml, "quantity", None)
+                if qty is None:
+                    qty = getattr(ml, "product_qty", 0.0)
                 if product and qty:
                     qty_map[product.id] = qty_map.get(product.id, 0.0) + float(qty)
 
