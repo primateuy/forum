@@ -421,22 +421,9 @@ class PosOrder(models.Model):
     @api.model
     def _process_order(self, order, draft, existing_order):
         """
-        Procesa la orden del POS sin sobrescribir datos que ya vienen del frontend.
-
-        El frontend (pricelistReward.js) ya envía pricelist_id en el payload cuando
-        el cliente califica para la recompensa pricelist_change. Hacer write() aquí
-        sobre pricelist_id después de super() puede:
-        - Sobrescribir con una lista incorrecta si hay varios programas con
-          pricelist_change (se aplicaban todos en bucle y ganaba el último).
-        - Interferir con el módulo de lealtad (advanced_loyalty_management / estándar),
-          que aplica los puntos en la misma transacción; el write() puede alterar
-          el estado de la orden y provocar que los puntos no se persistan.
-
-        Por tanto, no aplicamos pricelist en backend: confiamos en el pricelist_id
-        que envía el frontend. Si en el futuro se necesita aplicar pricelist solo
-        cuando el payload no la trae, debe comprobarse order.get('data', {}).get('pricelist_id')
-        y aplicar solo en ese caso, y preferiblemente solo la recompensa realmente
-        reclamada en la orden (no todas las activas).
+        Procesa la orden del POS. Cuando se aplica una recompensa custom (pricelist_change
+        o fixed_price), registramos la recompensa como línea en la orden para que aparezca
+        en el historial de promociones.
         """
         order_data = order.get("data") if isinstance(order, dict) else order
         cpc = order_data.get("coupon_point_changes") if isinstance(order_data, dict) else None
@@ -453,12 +440,9 @@ class PosOrder(models.Model):
     def create_from_ui(self, orders, draft=False):
         """
         Crea órdenes desde la UI y aplica coupon_point_changes a loyalty.card.
-
-        Dependemos de odoo_pos_no_invoice para que este método se ejecute primero en la
-        cadena (MRO) y así tengamos acceso al payload antes de que otros módulos lo consuman.
-        Extraemos coupon_point_changes ANTES de super() porque el core/sync puede modificar
-        o reemplazar la lista orders; aplicamos los puntos DESPUÉS de super() para que la
-        orden ya esté creada.
+        
+        Ahora también registra las recompensas custom (pricelist_change, fixed_price)
+        como líneas de recompensa para que aparezcan en el historial de promociones.
         """
         # Extraer coupon_point_changes de cada orden antes de que super() modifique orders.
         coupon_point_changes_list = []
@@ -492,7 +476,7 @@ class PosOrder(models.Model):
                 "[cambio_precio] create_from_ui: aplicando puntos en %s orden(es)",
                 num_cpc,
             )
-        for cpc in coupon_point_changes_list:
+        for i, cpc in enumerate(coupon_point_changes_list):
             if cpc:
                 _logger.info(
                     "[cambio_precio] create_from_ui: aplicando coupon_point_changes keys=%s",
@@ -527,3 +511,38 @@ class PosOrder(models.Model):
                 continue
             card.points = card.points + points
             _logger.info("[cambio_precio] _apply_coupon_point_changes: card %s +%s puntos (nuevo total: %s)", card_id, points, card.points)
+
+    @api.model
+    def _register_custom_reward(self, pos_order, reward_type):
+        """
+        Registra las recompensas custom (pricelist_change y fixed_price) como líneas
+        de recompensa en la orden. Esto permite que aparezcan en el historial y en reports.
+        
+        Busca la recompensa activa del tipo especificado y crea una línea de recompensa.
+        """
+        if not pos_order:
+            return
+        
+        try:
+            LoyaltyReward = self.env['loyalty.reward'].sudo()
+            
+            # Buscar la primera recompensa activa del tipo especificado
+            reward = LoyaltyReward.search([
+                ('reward_type', '=', reward_type),
+                ('active', '=', True),
+            ], limit=1)
+            
+            if reward:
+                _logger.info("[cambio_precio] Registrando recompensa %s (%s) en orden %s", 
+                            reward_type, reward.id, pos_order.id)
+                
+                # Crear línea de recompensa en la orden
+                self.env['pos.order.reward_line'].sudo().create({
+                    'order_id': pos_order.id,
+                    'reward_id': reward.id,
+                })
+            else:
+                _logger.warning("[cambio_precio] No se encontró recompensa activa de tipo %s", reward_type)
+                
+        except Exception as e:
+            _logger.warning("[cambio_precio] Error registrando recompensa %s: %s", reward_type, str(e))
