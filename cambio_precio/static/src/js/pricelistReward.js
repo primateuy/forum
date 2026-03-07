@@ -115,7 +115,6 @@ function evaluateDomain(domain, record) {
 patch(Orderline.prototype, {
 
     set_unit_price(price) {
-        if (this._settingFixedPrice) return;
         return super.set_unit_price(...arguments);
     },
 
@@ -494,6 +493,10 @@ patch(Order.prototype, {
                         line.set_unit_price(originalData.price);
                     } finally {
                         line._settingFixedPrice = false;
+
+                        delete line.reward_label;
+                        delete line.reward_type;
+                        delete line.reward_badge_color;
                     }
                 }
             }
