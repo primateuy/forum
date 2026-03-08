@@ -7,14 +7,9 @@ _logger = logging.getLogger(__name__)
 class PosSession(models.Model):
     _inherit = 'pos.session'
 
-    
-    
-    # NUEVO: Cargar información de recompensas con sus productos
     def _loader_params_loyalty_reward(self):
         """Extender parámetros de carga de recompensas"""
         result = super()._loader_params_loyalty_reward()
-        
-        # Agregar los campos relacionados a productos de precio fijo y dominios de reglas
         result['search_params']['fields'].extend([
             'fixed_price',
             'fixed_price_line_ids',
@@ -23,42 +18,23 @@ class PosSession(models.Model):
             'rules_product_domains'
         ])
         return result
-    
+
     def _get_pos_ui_loyalty_reward(self, params):
-        """Cargar recompensas con sus productos asociados y dominios de reglas.
-        
-        NOTA IMPORTANTE: Los campos fixed_price_data, fixed_price_map y rules_product_domains
-        son campos computados con store=True y compute_sudo=True, por lo que Odoo los
-        recomputa automáticamente con privilegios de superusuario cuando cambian sus
-        dependencias. NO se deben invocar manualmente los métodos _compute_* aquí,
-        ya que eso dispararía un write() en loyalty.reward bajo el contexto del usuario
-        actual (cajero), quien no tiene permisos de escritura en ese modelo.
-        
-        Si los datos computados están vacíos, significa que las dependencias no han
-        cambiado o que el registro fue creado sin las líneas correspondientes.
-        El recálculo se dispara automáticamente al modificar las dependencias desde
-        el backend (donde sí hay permisos de administrador).
-        """
+        """Cargar recompensas con sus productos asociados y dominios de reglas."""
         rewards = super()._get_pos_ui_loyalty_reward(params)
-        
-        # Los campos computados stored con compute_sudo=True ya están disponibles
-        # en los datos cargados. No es necesario forzar recálculo manual.
-        # Si algún campo está vacío, se puede leer con sudo() sin escribir.
+
         for reward in rewards:
             if reward.get('reward_type') == 'fixed_price':
                 if not reward.get('fixed_price_data') or not reward.get('fixed_price_map'):
-                    # Leer los valores actuales con sudo (solo lectura, sin escritura)
                     reward_obj = self.env['loyalty.reward'].sudo().browse(reward['id'])
                     reward['fixed_price_data'] = reward_obj.fixed_price_data or []
                     reward['fixed_price_map'] = reward_obj.fixed_price_map or {}
-                
+
                 if not reward.get('rules_product_domains'):
                     reward_obj = self.env['loyalty.reward'].sudo().browse(reward['id'])
                     reward['rules_product_domains'] = reward_obj.rules_product_domains or []
-        
+
         return rewards
-
-
 
 
 class LoyaltyRewardFixedPrice(models.Model):
@@ -72,7 +48,7 @@ class LoyaltyRewardFixedPrice(models.Model):
     sequence = fields.Integer(string='Orden', default=10)
 
     _sql_constraints = [
-        ('unique_reward_product', 'UNIQUE(reward_id, product_id)', 
+        ('unique_reward_product', 'UNIQUE(reward_id, product_id)',
          'No se pueden agregar productos duplicados en la misma recompensa'),
     ]
 
@@ -82,23 +58,18 @@ class LoyaltyRewardFixedPrice(models.Model):
             name = f"{record.product_id.display_name} - ${record.fixed_price:.2f}"
             result.append((record.id, name))
         return result
-    
+
     @api.model
     def create(self, vals):
-        
-        # VALIDAR ANTES DE CREAR: ¿Ya existe este producto en esta recompensa?
         existing = self.search([
             ('reward_id', '=', vals.get('reward_id')),
             ('product_id', '=', vals.get('product_id')),
         ], limit=1)
-        
         if existing:
-            
-            return existing;
-        
-        result = super().create(vals)
-        return result
-    
+            return existing
+        return super().create(vals)
+
+
 class LoyaltyReward(models.Model):
     _inherit = 'loyalty.reward'
 
@@ -107,44 +78,40 @@ class LoyaltyReward(models.Model):
         ondelete={'pricelist_change': 'cascade', 'fixed_price': 'cascade'}
     )
     pricelist_id = fields.Many2one(
-        'product.pricelist', 
-        string='Lista de Precios (Recompensa)', 
+        'product.pricelist',
+        string='Lista de Precios (Recompensa)',
         store=True,
         help='Lista de precios que se aplicará al cambiar la recompensa'
     )
     fixed_price = fields.Float(string='Precio Fijo', digits='Product Price')
     fixed_price_line_ids = fields.One2many('loyalty.reward.fixed.price', 'reward_id', string='Productos con Precio Fijo')
-    
-    # CORRECCIÓN: Se agrega compute_sudo=True explícitamente en todos los campos
-    # computados stored que acceden a datos de otros modelos. Aunque en Odoo 17+
-    # compute_sudo=True es el default para campos stored, lo declaramos explícitamente
-    # para mayor claridad y para evitar problemas si el comportamiento default cambia.
+
     fixed_price_data = fields.Json(
-        string='Datos de Precios Fijos', 
-        compute='_compute_fixed_price_data', 
-        store=True, 
+        string='Datos de Precios Fijos',
+        compute='_compute_fixed_price_data',
+        store=True,
         compute_sudo=True,
         readonly=False
     )
     fixed_price_map = fields.Json(
-        string='Mapeo Producto->Precio', 
-        compute='_compute_fixed_price_map', 
+        string='Mapeo Producto->Precio',
+        compute='_compute_fixed_price_map',
         store=True,
         compute_sudo=True
     )
     fixed_price_product_ids = fields.Json(
-        string='IDs de Productos con Precio Fijo', 
-        compute='_compute_fixed_price_product_ids', 
+        string='IDs de Productos con Precio Fijo',
+        compute='_compute_fixed_price_product_ids',
         store=True,
         compute_sudo=True
     )
     rules_product_domains = fields.Json(
-        string='Dominios de Productos de Reglas', 
-        compute='_compute_rules_product_domains', 
+        string='Dominios de Productos de Reglas',
+        compute='_compute_rules_product_domains',
         store=True,
         compute_sudo=True
     )
-    
+
     reward_label = fields.Char(
         string='Etiqueta de Recompensa',
         compute='_compute_reward_label',
@@ -152,7 +119,7 @@ class LoyaltyReward(models.Model):
         compute_sudo=True,
         help='Etiqueta corta que se mostrará en las líneas del POS cuando se aplique esta recompensa'
     )
-    
+
     reward_badge_color = fields.Selection([
         ('primary', 'Azul'),
         ('success', 'Verde'),
@@ -180,13 +147,12 @@ class LoyaltyReward(models.Model):
             'fixed_price_map',
             'fixed_price_product_ids',
             'rules_product_domains',
-            'reward_label', 
-            'reward_badge_color'  
+            'reward_label',
+            'reward_badge_color'
         ]
-    
+
     @api.depends('reward_type', 'pricelist_id', 'fixed_price_line_ids', 'discount', 'discount_mode')
     def _compute_reward_label(self):
-        """Calcula una etiqueta corta para mostrar en las líneas del POS"""
         for record in self:
             if record.reward_type == 'discount':
                 if record.discount_mode == 'percent':
@@ -195,30 +161,24 @@ class LoyaltyReward(models.Model):
                     record.reward_label = f"-${record.discount}"
                 else:
                     record.reward_label = "DESCUENTO"
-                    
             elif record.reward_type == 'product':
                 record.reward_label = "REGALO"
-                
             elif record.reward_type == 'pricelist_change':
                 if record.pricelist_id:
-                    pricelist_name = record.pricelist_id.name
-                    record.reward_label = f"💰 {pricelist_name[:15]}"
+                    record.reward_label = f"💰 {record.pricelist_id.name[:15]}"
                 else:
                     record.reward_label = "PRECIO ESPECIAL"
-                    
             elif record.reward_type == 'fixed_price':
                 if record.fixed_price_line_ids:
                     count = len(record.fixed_price_line_ids)
                     record.reward_label = f"💲 PRECIO FIJO ({count})"
                 else:
                     record.reward_label = "PRECIO FIJO"
-                    
             else:
                 record.reward_label = "PROMOCIÓN"
-    
+
     @api.depends('reward_type', 'fixed_price_line_ids', 'fixed_price_line_ids.product_id', 'fixed_price_line_ids.fixed_price')
     def _compute_fixed_price_data(self):
-        """Calcula y serializa los datos de precios fijos para exportar al POS"""
         for record in self:
             if record.reward_type == 'fixed_price' and record.fixed_price_line_ids:
                 record.fixed_price_data = [
@@ -235,7 +195,6 @@ class LoyaltyReward(models.Model):
 
     @api.depends('reward_type', 'fixed_price_line_ids', 'fixed_price_line_ids.product_id', 'fixed_price_line_ids.fixed_price')
     def _compute_fixed_price_map(self):
-        """Crea un mapeo {product_id: fixed_price} para acceso rápido en POS"""
         for record in self:
             if record.reward_type == 'fixed_price' and record.fixed_price_line_ids:
                 record.fixed_price_map = {
@@ -244,10 +203,9 @@ class LoyaltyReward(models.Model):
                 }
             else:
                 record.fixed_price_map = {}
-    
+
     @api.depends('reward_type', 'fixed_price_line_ids', 'fixed_price_line_ids.product_id')
     def _compute_fixed_price_product_ids(self):
-        """Calcula lista de product_ids para validación rápida"""
         for record in self:
             if record.reward_type == 'fixed_price' and record.fixed_price_line_ids:
                 record.fixed_price_product_ids = [
@@ -258,7 +216,6 @@ class LoyaltyReward(models.Model):
 
     @api.depends('program_id', 'program_id.rule_ids', 'program_id.rule_ids.product_domain')
     def _compute_rules_product_domains(self):
-        """Extrae los dominios de productos de las reglas condicionales"""
         for record in self:
             domains = []
             if record.program_id and record.program_id.rule_ids:
@@ -281,7 +238,6 @@ class LoyaltyReward(models.Model):
                     reward.description = f"${reward.discount} de descuento"
                 else:
                     reward.description = "Recompensa de descuento"
-
             elif reward.reward_type == 'product':
                 if reward.reward_product_ids:
                     if len(reward.reward_product_ids) == 1:
@@ -294,13 +250,11 @@ class LoyaltyReward(models.Model):
                         reward.description = f"{len(reward.reward_product_ids)} productos GRATIS"
                 else:
                     reward.description = "Producto gratuito"
-            
             elif reward.reward_type == 'pricelist_change':
                 if reward.pricelist_id:
                     reward.description = f"Cambio a lista: {reward.pricelist_id.display_name}"
                 else:
                     reward.description = "Cambio de lista de precios"
-            
             elif reward.reward_type == 'fixed_price':
                 if reward.fixed_price_line_ids:
                     if len(reward.fixed_price_line_ids) == 1:
@@ -311,22 +265,17 @@ class LoyaltyReward(models.Model):
                         reward.description = f"{len(reward.fixed_price_line_ids)} productos con precio fijo"
                 else:
                     reward.description = "Precio fijo"
-
-            else: 
+            else:
                 reward.description = "Recompensa de lealtad"
 
     @api.model
     def create(self, vals):
         if vals.get('reward_type') == 'pricelist_change' and not vals.get('pricelist_id'):
             raise ValidationError("Debe seleccionar una lista de precios para el cambio.")
-
-        result = super(LoyaltyReward, self).create(vals)
-        return result
+        return super(LoyaltyReward, self).create(vals)
 
     def write(self, vals):
-        """Escribir datos - los campos computados se actualizan automáticamente"""
-        result = super(LoyaltyReward, self).write(vals)
-        return result
+        return super(LoyaltyReward, self).write(vals)
 
     @api.onchange('reward_type')
     def _onchange_reward_type(self):
@@ -337,7 +286,6 @@ class LoyaltyReward(models.Model):
     def _onchange_pricelist_id(self):
         if self.reward_type == 'pricelist_change' and not self.pricelist_id:
             raise ValidationError("Debe seleccionar una lista de precios para el cambio.")
-
         if self.reward_type == 'pricelist_change' and self.pricelist_id:
             _logger.info("Cambiando lista de precios a: %s", self.pricelist_id.name)
             self.discount_max_amount = self.pricelist_id.id
@@ -353,6 +301,7 @@ class LoyaltyReward(models.Model):
             })
         return vals
 
+
 class PromoEngine(models.AbstractModel):
     _name = 'promo.engine'
     _description = 'Promo Rule Engine'
@@ -360,8 +309,6 @@ class PromoEngine(models.AbstractModel):
     def apply_promotions(self, order):
         rewards = []
         active_programs = self.env['loyalty.program'].search([('active', '=', True)])
-        
-
         for program in active_programs:
             program_conditions_met = True
             for rule in program.rule_ids:
@@ -371,7 +318,6 @@ class PromoEngine(models.AbstractModel):
                 if rule.minimum_amount and order.amount_total < rule.minimum_amount:
                     program_conditions_met = False
                     break
-            
             if program_conditions_met:
                 for reward in program.reward_ids:
                     if reward.reward_type == 'pricelist_change' and reward.pricelist_id:
@@ -383,9 +329,7 @@ class PromoEngine(models.AbstractModel):
         return rewards
 
     def _conditions_met(self, order, reward):
-        """Verifica si se cumplen las condiciones para aplicar la recompensa"""
         program = reward.program_id
-        
         if program.rule_ids:
             for rule in program.rule_ids:
                 if rule.minimum_qty and sum(line.product_uom_qty for line in order.order_line) < rule.minimum_qty:
@@ -411,8 +355,7 @@ class PosOrder(models.Model):
     _inherit = 'pos.order'
 
     def _apply_reward_pricelist(self, reward, order):
-        """Aplica cambio de lista de precios en backend para POS.
-        Usado solo cuando se debe forzar la pricelist y el payload no la trae."""
+        """Aplica cambio de lista de precios en backend para POS."""
         if reward.pricelist_id:
             order.write({'pricelist_id': reward.pricelist_id.id})
             return True
@@ -421,128 +364,23 @@ class PosOrder(models.Model):
     @api.model
     def _process_order(self, order, draft, existing_order):
         """
-        Procesa la orden del POS. Cuando se aplica una recompensa custom (pricelist_change
-        o fixed_price), registramos la recompensa como línea en la orden para que aparezca
-        en el historial de promociones.
+        Procesa la orden del POS.
+
+        CORRECCIÓN: Se eliminaron las llamadas manuales a _apply_coupon_point_changes
+        y el override de create_from_ui. El módulo pos_loyalty estándar de Odoo maneja
+        correctamente la creación de tarjetas de lealtad y cupones de próxima compra
+        a través de su propio _process_order, siempre que el payload incluya
+        coupon_point_changes.
+
+        El frontend (pricelistReward.js) ya garantiza que coupon_point_changes se
+        preserve correctamente en export_as_JSON mediante savedCouponPointChanges
+        dentro de _updateRewards(), por lo que no es necesario intervenir aquí.
+
+        Intervenir manualmente causaba:
+        1. Doble aplicación de puntos (super() ya los aplica via pos_loyalty).
+        2. Tarjetas nuevas no se creaban (la lógica de creación ya fue consumida
+           por super() en el primer pase).
+        3. Cupones de próxima compra no se generaban (se bypaseaba el mecanismo
+           estándar loyalty.program._update_loyalty_points()).
         """
-        order_data = order.get("data") if isinstance(order, dict) else order
-        cpc = order_data.get("coupon_point_changes") if isinstance(order_data, dict) else None
-
-        result = super(PosOrder, self)._process_order(order, draft, existing_order)
-
-        # Aplicar puntos de lealtad al cupón/tarjeta cuando el payload trae coupon_point_changes.
-        if not draft and cpc and isinstance(cpc, dict) and self.env.get('loyalty.card'):
-            self._apply_coupon_point_changes(cpc)
-
-        return result
-
-    @api.model
-    def create_from_ui(self, orders, draft=False):
-        """
-        Crea órdenes desde la UI y aplica coupon_point_changes a loyalty.card.
-        
-        Ahora también registra las recompensas custom (pricelist_change, fixed_price)
-        como líneas de recompensa para que aparezcan en el historial de promociones.
-        """
-        # Extraer coupon_point_changes de cada orden antes de que super() modifique orders.
-        coupon_point_changes_list = []
-        for order_payload in (orders or []):
-            if not isinstance(order_payload, dict):
-                coupon_point_changes_list.append(None)
-                continue
-            order_data = order_payload.get('data') or order_payload
-            if not isinstance(order_data, dict):
-                coupon_point_changes_list.append(None)
-                continue
-            cpc = order_data.get('coupon_point_changes')
-            coupon_point_changes_list.append(cpc if (cpc and isinstance(cpc, dict)) else None)
-
-        result = super(PosOrder, self).create_from_ui(orders, draft)
-
-        if draft:
-            return result
-        # Comprobar si el modelo loyalty.card existe (pos_loyalty / advanced_loyalty_management).
-        try:
-            self.env['loyalty.card']
-        except KeyError:
-            _logger.debug(
-                "[cambio_precio] create_from_ui: modelo loyalty.card no disponible, no se aplican puntos"
-            )
-            return result
-
-        num_cpc = sum(1 for c in coupon_point_changes_list if c)
-        if num_cpc:
-            _logger.info(
-                "[cambio_precio] create_from_ui: aplicando puntos en %s orden(es)",
-                num_cpc,
-            )
-        for i, cpc in enumerate(coupon_point_changes_list):
-            if cpc:
-                _logger.info(
-                    "[cambio_precio] create_from_ui: aplicando coupon_point_changes keys=%s",
-                    list(cpc.keys()),
-                )
-                self._apply_coupon_point_changes(cpc)
-
-        return result
-
-    @api.model
-    def _apply_coupon_point_changes(self, coupon_point_changes):
-        """
-        Suma los puntos indicados en coupon_point_changes a las tarjetas loyalty.card
-        correspondientes. coupon_point_changes es un dict { card_id: { points, program_id, ... } }
-        tal como lo envía el frontend (pos_loyalty / advanced_loyalty_management).
-        """
-        LoyaltyCard = self.env['loyalty.card'].sudo()
-        for card_id_str, change in coupon_point_changes.items():
-            if not change or not isinstance(change, dict):
-                continue
-            points = change.get('points')
-            if points is None:
-                continue
-            try:
-                card_id = int(card_id_str)
-            except (TypeError, ValueError):
-                _logger.warning("[cambio_precio] _apply_coupon_point_changes: id no válido %s", card_id_str)
-                continue
-            card = LoyaltyCard.browse(card_id)
-            if not card.exists():
-                _logger.warning("[cambio_precio] _apply_coupon_point_changes: loyalty.card %s no existe", card_id)
-                continue
-            card.points = card.points + points
-            _logger.info("[cambio_precio] _apply_coupon_point_changes: card %s +%s puntos (nuevo total: %s)", card_id, points, card.points)
-
-    @api.model
-    def _register_custom_reward(self, pos_order, reward_type):
-        """
-        Registra las recompensas custom (pricelist_change y fixed_price) como líneas
-        de recompensa en la orden. Esto permite que aparezcan en el historial y en reports.
-        
-        Busca la recompensa activa del tipo especificado y crea una línea de recompensa.
-        """
-        if not pos_order:
-            return
-        
-        try:
-            LoyaltyReward = self.env['loyalty.reward'].sudo()
-            
-            # Buscar la primera recompensa activa del tipo especificado
-            reward = LoyaltyReward.search([
-                ('reward_type', '=', reward_type),
-                ('active', '=', True),
-            ], limit=1)
-            
-            if reward:
-                _logger.info("[cambio_precio] Registrando recompensa %s (%s) en orden %s", 
-                            reward_type, reward.id, pos_order.id)
-                
-                # Crear línea de recompensa en la orden
-                self.env['pos.order.reward_line'].sudo().create({
-                    'order_id': pos_order.id,
-                    'reward_id': reward.id,
-                })
-            else:
-                _logger.warning("[cambio_precio] No se encontró recompensa activa de tipo %s", reward_type)
-                
-        except Exception as e:
-            _logger.warning("[cambio_precio] Error registrando recompensa %s: %s", reward_type, str(e))
+        return super(PosOrder, self)._process_order(order, draft, existing_order)
