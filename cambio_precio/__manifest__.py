@@ -1,27 +1,15 @@
 {
-    "name": "Cambio de Lista de Precios",
-    "version": "1.0",
-    "depends": ["loyalty","point_of_sale", "sale_management"],
-    "category": "Point of Sale",
-    "summary": "Módulo para cambiar la lista de precios en el Punto de Venta",
-    "description": """
-    Este módulo permite cambiar la lista de precios en el Punto de Venta.
-    """,
-    "author": "Avance Software",
-    "website": "https://www.avancesoftware.us",
-    "data": [
-        'security/ir.model.access.csv',
-        'views/views.xml',
-    ],
-
-    'icon': '/cambio_precio/static/description/icon.png',
-    'license': 'LGPL-3',
-    'assets': {
-        'point_of_sale._assets_pos': [
-            'cambio_precio/static/src/js/pricelistReward.js',
-            'cambio_precio/static/src/xml/pricelistReward.xml',
-        ],
+    "name": "Cambio de Precio POS (Safe)",
+    "version": "17.0.1.0.0",
+    "summary": "Extiende recompensas de POS sin interferir con loyalty estándar",
+    "author": "Custom",
+    "depends": ["point_of_sale", "pos_loyalty"],
+    "assets": {
+        "point_of_sale._assets_pos": [
+            "cambio_precio/static/src/js/reward_patch.js"
+        ]
     },
     "installable": True,
-    "auto_install": False,
+    "application": False,
+    "license": "LGPL-3"
 }

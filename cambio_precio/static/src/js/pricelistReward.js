@@ -1,20 +1,22 @@
 /** @odoo-module **/
 
 import { patch } from '@web/core/utils/patch';
-import { Order } from '@point_of_sale/app/store/models';
-import { Orderline } from "@point_of_sale/app/store/models";
-import { PosStore } from "@point_of_sale/app/store/pos_store";
+import { _t } from '@web/core/l10n/translation';
+import { Order, Orderline } from '@point_of_sale/app/store/models';
+import { RewardButton } from '@pos_loyalty/app/control_buttons/reward_button/reward_button';
 
-const CAMBIO_PRECIO_DEBUG_LOYALTY = true;
-function _log(msg, data) {
-    if (CAMBIO_PRECIO_DEBUG_LOYALTY && typeof console !== "undefined" && console.log) {
-        if (data !== undefined) console.log("[cambio_precio]", msg, data);
-        else console.log("[cambio_precio]", msg);
+const DEBUG = false;
+
+function log(msg, data) {
+    if (DEBUG && typeof console !== 'undefined' && console.log) {
+        console.log('[cambio_precio_safe]', msg, data || '');
     }
 }
 
 function convertPythonDomainToJSON(pythonDomain) {
-    if (!pythonDomain || pythonDomain === "[]" || pythonDomain === "") return [];
+    if (!pythonDomain || pythonDomain === '[]' || pythonDomain === '') {
+        return [];
+    }
     let jsonDomain = pythonDomain.replace(/'/g, '"');
     jsonDomain = jsonDomain.replace(/\(/g, '[').replace(/\)/g, ']');
     jsonDomain = jsonDomain.replace(/\bTrue\b/g, 'true');
@@ -23,352 +25,333 @@ function convertPythonDomainToJSON(pythonDomain) {
     return jsonDomain;
 }
 
-function evaluateDomain(domain, record) {
-    if (!domain || domain === "[]" || domain === "") return true;
+function evaluateSimpleDomain(domain, record) {
+    if (!domain || domain === '[]' || domain === '') {
+        return true;
+    }
     let parsedDomain;
     try {
         parsedDomain = typeof domain === 'string' ? JSON.parse(convertPythonDomainToJSON(domain)) : domain;
     } catch (error) {
-        console.error("Error parseando dominio:", domain, error);
+        console.error('[cambio_precio_safe] Error parseando dominio:', domain, error);
         return false;
     }
-    if (!Array.isArray(parsedDomain) || parsedDomain.length === 0) return true;
-    for (let condition of parsedDomain) {
-        if (!Array.isArray(condition)) continue;
+    if (!Array.isArray(parsedDomain) || parsedDomain.length === 0) {
+        return true;
+    }
+    for (const condition of parsedDomain) {
+        if (!Array.isArray(condition) || condition.length < 3) {
+            continue;
+        }
         const [field, operator, value] = condition;
         let fieldValue = record[field];
-        if (Array.isArray(fieldValue) && fieldValue.length >= 1) fieldValue = fieldValue[0];
+        if (Array.isArray(fieldValue) && fieldValue.length >= 1 && !Array.isArray(value)) {
+            fieldValue = fieldValue[0];
+        }
         switch (operator) {
-            case '=': case '==': if (fieldValue != value) return false; break;
-            case '!=': if (fieldValue == value) return false; break;
-            case '>': if (!(fieldValue > value)) return false; break;
-            case '>=': if (!(fieldValue >= value)) return false; break;
-            case '<': if (!(fieldValue < value)) return false; break;
-            case '<=': if (!(fieldValue <= value)) return false; break;
-            case 'in': if (!Array.isArray(value) || !value.includes(fieldValue)) return false; break;
-            case 'not in': if (Array.isArray(value) && value.includes(fieldValue)) return false; break;
-            case 'like': case 'ilike':
-                if (!String(fieldValue || '').toLowerCase().includes(String(value || '').toLowerCase())) return false;
+            case '=':
+            case '==':
+                if (fieldValue != value) {
+                    return false;
+                }
                 break;
-            default: return false;
+            case '!=':
+                if (fieldValue == value) {
+                    return false;
+                }
+                break;
+            case '>':
+                if (!(fieldValue > value)) {
+                    return false;
+                }
+                break;
+            case '>=':
+                if (!(fieldValue >= value)) {
+                    return false;
+                }
+                break;
+            case '<':
+                if (!(fieldValue < value)) {
+                    return false;
+                }
+                break;
+            case '<=':
+                if (!(fieldValue <= value)) {
+                    return false;
+                }
+                break;
+            case 'in':
+                if (Array.isArray(fieldValue)) {
+                    if (!fieldValue.some((v) => value.includes(v))) {
+                        return false;
+                    }
+                } else if (!Array.isArray(value) || !value.includes(fieldValue)) {
+                    return false;
+                }
+                break;
+            case 'not in':
+                if (Array.isArray(fieldValue)) {
+                    if (fieldValue.some((v) => value.includes(v))) {
+                        return false;
+                    }
+                } else if (Array.isArray(value) && value.includes(fieldValue)) {
+                    return false;
+                }
+                break;
+            case 'like':
+            case 'ilike':
+                if (!String(fieldValue || '').toLowerCase().includes(String(value || '').toLowerCase())) {
+                    return false;
+                }
+                break;
+            default:
+                return false;
         }
     }
     return true;
 }
 
+function getRewardIdentifier(reward) {
+    return String(reward.id || reward.reward_id || reward.uuid || reward.program_id || reward.description || '');
+}
+
+function getSelectedCustomReward(order, rewardType) {
+    const values = Object.values(order._customRewardState || {});
+    return values.find((value) => value && value.reward_type === rewardType) || null;
+}
+
 patch(Orderline.prototype, {
-    get_full_product_name() {
-        const originalName = super.get_full_product_name && super.get_full_product_name.apply(this) || this.product.display_name;
-        if (this.reward_label && this.reward_type === "fixed_price") {
-            return `${originalName} - PRECIO FIJO`;
-        }
-        return originalName;
-    },
-    getDisplayName() {
-        return this.get_full_product_name();
-    },
-    _getBaseProductName() {
-        return super.get_full_product_name && super.get_full_product_name.apply(this) || this.product.display_name;
-    },
-    can_be_merged_with(orderline) {
-        const canMerge = super.can_be_merged_with(...arguments);
-        if (!canMerge) {
-            const thisBaseName = this._getBaseProductName();
-            const otherBaseName = orderline._getBaseProductName && orderline._getBaseProductName() ||
-                (orderline.get_full_product_name ?
-                    orderline.get_full_product_name().replace(/\s*-\s*PRECIO FIJO\s*$/, '')
-                    : orderline.product.display_name);
-            if (thisBaseName === otherBaseName) {
-                return (
-                    !this.skipChange &&
-                    orderline.getNote() === this.getNote() &&
-                    this.get_product().id === orderline.get_product().id &&
-                    this.get_unit() &&
-                    this.is_pos_groupable() &&
-                    this.get_discount() === 0 &&
-                    orderline.get_customer_note() === this.get_customer_note() &&
-                    !this.refunded_orderline_id &&
-                    !this.isPartOfCombo() &&
-                    !orderline.isPartOfCombo()
-                );
-            }
-        }
-        return canMerge;
-    },
-});
-
-patch(Order.prototype, {
-    _getRewardLineValues(args) {
-        if (args.reward && args.reward.reward_type === "pricelist_change") {
-            return [];
-        }
-        return super._getRewardLineValues(...arguments);
-    },
-
     export_as_JSON() {
         const json = super.export_as_JSON(...arguments);
-        if (this.couponPointChanges && Object.keys(this.couponPointChanges).length > 0) {
-            json.coupon_point_changes = this.couponPointChanges;
-            _log("export_as_JSON: coupon_point_changes incluido", { keys: Object.keys(this.couponPointChanges) });
+        if (this.reward_label) {
+            json.reward_label = this.reward_label;
+        }
+        if (this.reward_type) {
+            json.reward_type = this.reward_type;
+        }
+        if (this.reward_badge_color) {
+            json.reward_badge_color = this.reward_badge_color;
+        }
+        if (this._original_unit_price !== undefined) {
+            json._original_unit_price = this._original_unit_price;
         }
         return json;
     },
 
-    init_from_JSON() {
+    init_from_JSON(json) {
         super.init_from_JSON(...arguments);
-        this._restoringPricelist = false;
-        this._originalPrices = {};
+        this.reward_label = json.reward_label || null;
+        this.reward_type = json.reward_type || null;
+        this.reward_badge_color = json.reward_badge_color || null;
+        this._original_unit_price = json._original_unit_price;
     },
 
-    constructor() {
-        super.constructor(...arguments);
-        this._restoringPricelist = false;
-        this._originalPrices = {};
+    get_full_product_name() {
+        const originalName = super.get_full_product_name(...arguments);
+        if (this.reward_label && this.reward_type === 'fixed_price') {
+            return `${originalName} - PRECIO FIJO`;
+        }
+        return originalName;
     },
 
-    _clearRewardLabels() {
-        this.get_orderlines().forEach(line => {
-            if (line.reward_label && line.reward_type === "fixed_price") {
-                delete line.reward_label;
-                delete line.reward_type;
-                delete line.reward_badge_color;
-            }
-        });
-    },
-
-    _applyRewardLabel(line, reward) {
-        if (reward && reward.reward_type === "fixed_price") {
-            line.reward_label = `[Precio Fijo]`;
-            line.reward_type = "fixed_price";
-            line.reward_badge_color = 'success';
-        }
-    },
-
-    _productMatchesRuleDomains(product, rulesProductDomains) {
-        if (!rulesProductDomains || rulesProductDomains.length === 0) return true;
-        return rulesProductDomains.some(ruleDomain => evaluateDomain(ruleDomain.product_domain, product));
-    },
-
-    _hasCustomRewards(claimable) {
-        if (!claimable || !Array.isArray(claimable)) return false;
-        return claimable.some(r =>
-            r.reward && (r.reward.reward_type === "pricelist_change" || r.reward.reward_type === "fixed_price")
-        );
-    },
-
-    _updateRewards() {
-        if (!this._originalPrices) this._originalPrices = {};
-        if (!this._originalPricelistId) this._originalPricelistId = null;
-
-        let superResult;
-        try {
-            superResult = super._updateRewards && super._updateRewards(...arguments);
-        } catch (error) {
-            console.error("Error en super._updateRewards:", error);
-            return superResult;
-        }
-
-        // Guardar couponPointChanges calculados por Odoo estándar ANTES de nuestra
-        // lógica custom. set_pricelist() los borra; los restauramos al final para
-        // que _postPushOrderResolve los reciba correctos y llame a confirm_coupon_programs.
-        const savedCouponPointChanges = this.couponPointChanges && Object.keys(this.couponPointChanges).length > 0
-            ? JSON.parse(JSON.stringify(this.couponPointChanges))
-            : null;
-
-        if (savedCouponPointChanges) {
-            _log("_updateRewards: couponPointChanges guardados", {
-                entries: Object.entries(savedCouponPointChanges).map(([k, v]) => ({ id: k, points: v.points })),
-            });
-        }
-
-        if (!this.pos || !this.pos.get_order) return superResult;
-        const order = this.pos.get_order();
-        if (!order || !order.get_orderlines) return superResult;
-        if (!this.pos.rules || !this.pos.pricelists || !this.pos.taxes_by_id) return superResult;
-
-        let claimable;
-        try {
-            claimable = this.getClaimableRewards();
-        } catch (error) {
-            if (savedCouponPointChanges) this.couponPointChanges = savedCouponPointChanges;
-            return superResult;
-        }
-        if (!claimable || !Array.isArray(claimable)) return superResult;
-
-        if (!this._hasCustomRewards(claimable)) {
-            this._restoreOriginalPrices(order);
-            this._restoreOriginalPricelist();
-            if (savedCouponPointChanges) this.couponPointChanges = savedCouponPointChanges;
-            return superResult;
-        }
-
-        this._clearRewardLabels();
-        const orderlines = order.get_orderlines();
-
-        // ========== FIXED PRICE ==========
-        const fixedPriceReward = claimable.find(r => r.reward && r.reward.reward_type === "fixed_price");
-        if (fixedPriceReward && fixedPriceReward.reward) {
-            const reward = fixedPriceReward.reward;
-            const fixedPrice = reward.fixed_price;
-            const rulesProductDomains = reward.rules_product_domains || [];
-            if (fixedPrice !== undefined && fixedPrice !== null && fixedPrice !== false && fixedPrice > 0) {
-                orderlines.forEach(line => {
-                    if (line.is_reward_line) return;
-                    const productId = line.product.id;
-                    const lineUuid = line.uuid || line.cid;
-                    const productMatchesDomain = this._productMatchesRuleDomains(line.product, rulesProductDomains);
-                    if (productMatchesDomain) {
-                        if (!this._originalPrices[lineUuid]) {
-                            this._originalPrices[lineUuid] = { price: line.get_unit_price(), productId };
-                        }
-                        if (line.get_unit_price() !== fixedPrice) line.set_unit_price(fixedPrice);
-                        this._applyRewardLabel(line, reward);
-                    } else if (this._originalPrices[lineUuid]) {
-                        const orig = this._originalPrices[lineUuid];
-                        if (orig.productId === productId) {
-                            line.set_unit_price(orig.price);
-                            delete this._originalPrices[lineUuid];
-                        }
-                    }
-                });
-            }
-        } else {
-            this._restoreOriginalPrices(order);
-        }
-
-        // ========== PRICELIST CHANGE ==========
-        const pricelistReward = claimable.find(r => r.reward && r.reward.reward_type === "pricelist_change");
-        if (pricelistReward) {
-            if (!this._originalPricelistId) {
-                this._originalPricelistId = this.pricelist ? this.pricelist.id : 1;
-            }
-            const pricelistChangeRules = this.pos.rules.filter(rule => {
-                if (!rule.program_id || !rule.program_id.rewards) return false;
-                return rule.program_id.rewards.some(r => r.reward_type === 'pricelist_change');
-            });
-            if (!pricelistChangeRules.length) {
-                if (savedCouponPointChanges) this.couponPointChanges = savedCouponPointChanges;
-                return superResult;
-            }
-            let totalCantidad = 0, totalBase = 0, totalImpuestos = 0;
-            orderlines.forEach(line => {
-                if (line.is_reward_line) return;
-                const qty = line.get_quantity();
-                const unitPrice = line.get_unit_price();
-                const baseLine = qty * unitPrice;
-                totalBase += baseLine;
-                totalCantidad += qty;
-                (line.product.taxes_id || []).forEach(taxId => {
-                    const tax = this.pos.taxes_by_id[taxId];
-                    if (tax) totalImpuestos += baseLine * (tax.amount / 100);
-                });
-            });
-            const totalPrecio = totalBase + totalImpuestos;
-            const cumple = pricelistChangeRules.some(rule =>
-                totalPrecio >= rule.minimum_amount && totalCantidad >= rule.minimum_qty
-            );
-            if (cumple) {
-                const targetPricelistId = pricelistReward.reward.discount_max_amount;
-                const targetPricelist = this.pos.pricelists.find(p => p.id === targetPricelistId);
-                if (targetPricelist && (!this.pricelist || this.pricelist.id !== targetPricelistId)) {
-                    this.set_pricelist(targetPricelist);
-                    if (typeof this._resetTaxesAndPrices === 'function') this._resetTaxesAndPrices();
-                }
-            } else {
-                this._restoreOriginalPricelist();
-            }
-        } else {
-            this._restoreOriginalPricelist();
-        }
-
-        // Restaurar couponPointChanges para que _postPushOrderResolve los reciba
-        // correctos y pueda llamar a confirm_coupon_programs con los datos completos.
-        // Esto es lo que permite que se creen tarjetas nuevas y cupones de próxima compra.
-        if (savedCouponPointChanges) {
-            this.couponPointChanges = savedCouponPointChanges;
-            _log("_updateRewards: couponPointChanges restaurados");
-        }
-
-        return superResult;
-    },
-
-    _restoreOriginalPrices(order) {
-        if (!this._originalPrices || !Object.keys(this._originalPrices).length) return;
-        const orderlines = order ? order.get_orderlines() :
-            (this.pos && this.pos.get_order() ? this.pos.get_order().get_orderlines() : []);
-        orderlines.forEach(line => {
-            const lineUuid = line.uuid || line.cid;
-            const orig = this._originalPrices[lineUuid];
-            if (orig && orig.productId === line.product.id && line.get_unit_price() !== orig.price) {
-                line.set_unit_price(orig.price);
-            }
-        });
-        this._originalPrices = {};
-    },
-
-    _restoreOriginalPricelist() {
-        if (!this._originalPricelistId) return;
-        const original = this.pos.pricelists.find(p => p.id === this._originalPricelistId);
-        if (original && this.pricelist?.id !== original.id) {
-            this.set_pricelist(original);
-            if (typeof this._resetTaxesAndPrices === 'function') this._resetTaxesAndPrices();
-        }
-        this._originalPricelistId = null;
+    getDisplayName() {
+        return this.get_full_product_name();
     },
 });
 
-/**
- * CORRECCIÓN: push_single_order
- *
- * Solo garantizamos dos cosas:
- *
- * 1. Que coupon_point_changes llegue al payload del backend aunque otro módulo
- *    haya reemplazado export_as_JSON sin llamar a super.
- *
- * 2. Que la siguiente orden marque invalidCoupons = true para que fetchLoyaltyCard
- *    vaya al servidor a buscar el balance actualizado por confirm_coupon_programs,
- *    en lugar de usar el cache desactualizado.
- *
- * NO actualizamos couponCache aquí — eso lo hace _postPushOrderResolve de pos_loyalty
- * a través de confirm_coupon_programs, con los IDs definitivos del backend. Si lo
- * hiciéramos antes, los old_id de coupon_updates ya no coincidirían y la actualización
- * del cache en _postPushOrderResolve fallaría silenciosamente.
- */
-patch(PosStore.prototype, {
-    async push_single_order(order) {
-        const hasPoints = order.couponPointChanges && Object.keys(order.couponPointChanges).length > 0;
-        _log("push_single_order: enviando orden", {
-            hasCouponPointChanges: hasPoints,
-            keys: hasPoints ? Object.keys(order.couponPointChanges) : [],
-        });
+patch(Order.prototype, {
+    setup() {
+        super.setup(...arguments);
+        this._customRewardState = this._customRewardState || {};
+    },
 
-        // Wrapper para garantizar coupon_point_changes en el payload incluso si
-        // otro módulo sobreescribió export_as_JSON sin llamar a super.
-        const originalExport = order.export_as_JSON.bind(order);
-        order.export_as_JSON = function () {
-            const json = originalExport();
-            if (order.couponPointChanges && Object.keys(order.couponPointChanges).length > 0) {
-                json.coupon_point_changes = order.couponPointChanges;
-                _log("push_single_order: coupon_point_changes inyectado en payload");
+    export_as_JSON() {
+        const json = super.export_as_JSON(...arguments);
+        if (this._customRewardState && Object.keys(this._customRewardState).length) {
+            json._custom_reward_state = this._customRewardState;
+        }
+        return json;
+    },
+
+    init_from_JSON(json) {
+        super.init_from_JSON(...arguments);
+        this._customRewardState = json._custom_reward_state || {};
+    },
+
+    _clearFixedPriceLabels() {
+        for (const line of this.get_orderlines()) {
+            if (line.reward_type === 'fixed_price') {
+                line.reward_label = null;
+                line.reward_type = null;
+                line.reward_badge_color = null;
             }
-            return json;
-        };
+        }
+    },
 
-        let result;
-        try {
-            result = await super.push_single_order(...arguments);
-        } finally {
-            order.export_as_JSON = originalExport;
+    _restoreFixedPriceLines() {
+        for (const line of this.get_orderlines()) {
+            if (line._original_unit_price !== undefined) {
+                line.set_unit_price(line._original_unit_price);
+                delete line._original_unit_price;
+            }
+            if (line.reward_type === 'fixed_price') {
+                line.reward_label = null;
+                line.reward_type = null;
+                line.reward_badge_color = null;
+            }
+        }
+    },
+
+    _applyFixedPriceRewardConfig(reward) {
+        this._restoreFixedPriceLines();
+        this._clearFixedPriceLabels();
+
+        const fixedPrice = reward.fixed_price;
+        const rulesProductDomains = reward.rules_product_domains || [];
+        if (!(fixedPrice > 0)) {
+            return;
         }
 
-        // Marcar la siguiente orden para que fetchLoyaltyCard vaya al servidor
-        // en lugar de usar el cache — el balance real lo acaba de actualizar
-        // confirm_coupon_programs en _postPushOrderResolve.
-        if (result && hasPoints && this.selectedOrder) {
-            this.selectedOrder.invalidCoupons = true;
-            _log("push_single_order: invalidCoupons = true → próxima orden refetcheará desde backend");
+        for (const line of this.get_orderlines()) {
+            if (line.is_reward_line) {
+                continue;
+            }
+            const matches = !rulesProductDomains.length || rulesProductDomains.some((ruleDomain) => {
+                return evaluateSimpleDomain(ruleDomain.product_domain, line.product);
+            });
+            if (!matches) {
+                continue;
+            }
+            if (line._original_unit_price === undefined) {
+                line._original_unit_price = line.get_unit_price();
+            }
+            line.set_unit_price(fixedPrice);
+            line.reward_label = reward.reward_label || '[Precio Fijo]';
+            line.reward_type = 'fixed_price';
+            line.reward_badge_color = reward.reward_badge_color || 'success';
+        }
+    },
+
+    _reapplyCustomRewards() {
+        const fixedPriceReward = getSelectedCustomReward(this, 'fixed_price');
+        if (fixedPriceReward) {
+            this._applyFixedPriceRewardConfig(fixedPriceReward);
+        } else {
+            this._restoreFixedPriceLines();
         }
 
+        const pricelistReward = getSelectedCustomReward(this, 'pricelist_change');
+        if (pricelistReward && pricelistReward.pricelist_id) {
+            const pricelistId = Array.isArray(pricelistReward.pricelist_id)
+                ? pricelistReward.pricelist_id[0]
+                : pricelistReward.pricelist_id;
+            const pricelist = this.pos.pricelists.find((pl) => pl.id === pricelistId);
+            if (pricelist && this.pricelist?.id !== pricelist.id) {
+                this.set_pricelist(pricelist);
+                if (typeof this._resetTaxesAndPrices === 'function') {
+                    this._resetTaxesAndPrices();
+                }
+            }
+        }
+    },
+
+    add_product(product, options) {
+        const result = super.add_product(...arguments);
+        this._reapplyCustomRewards();
         return result;
+    },
+
+    removeOrderline(line) {
+        const result = super.removeOrderline(...arguments);
+        this._reapplyCustomRewards();
+        return result;
+    },
+
+    set_pricelist(pricelist) {
+        const result = super.set_pricelist(...arguments);
+        const selectedPricelistReward = getSelectedCustomReward(this, 'pricelist_change');
+        if (selectedPricelistReward) {
+            const rewardPricelistId = Array.isArray(selectedPricelistReward.pricelist_id)
+                ? selectedPricelistReward.pricelist_id[0]
+                : selectedPricelistReward.pricelist_id;
+            if (pricelist?.id !== rewardPricelistId) {
+                for (const [key, value] of Object.entries(this._customRewardState || {})) {
+                    if (value.reward_type === 'pricelist_change') {
+                        delete this._customRewardState[key];
+                    }
+                }
+            }
+        }
+        return result;
+    },
+});
+
+patch(RewardButton.prototype, {
+    async _applyReward(reward, couponId, potentialQty) {
+        if (reward.reward_type === 'pricelist_change' || reward.reward_type === 'fixed_price') {
+            return await this._applyCustomReward(reward, couponId, potentialQty);
+        }
+        return await super._applyReward(...arguments);
+    },
+
+    async _applyCustomReward(reward, couponId, potentialQty) {
+        const order = this.pos.get_order();
+        if (!order) {
+            return false;
+        }
+
+        order._customRewardState = order._customRewardState || {};
+        const rewardKey = getRewardIdentifier(reward);
+
+        if (reward.reward_type === 'pricelist_change') {
+            if (!reward.pricelist_id) {
+                this.notification.add(_t('La recompensa no tiene lista de precios configurada.'), { type: 'danger' });
+                return false;
+            }
+            const pricelistId = Array.isArray(reward.pricelist_id) ? reward.pricelist_id[0] : reward.pricelist_id;
+            const pricelist = this.pos.pricelists.find((pl) => pl.id === pricelistId);
+            if (!pricelist) {
+                this.notification.add(_t('La lista de precios de la recompensa no está cargada en el POS.'), { type: 'danger' });
+                return false;
+            }
+            // Solo una recompensa activa de cambio de lista por orden.
+            for (const [key, value] of Object.entries(order._customRewardState)) {
+                if (value.reward_type === 'pricelist_change' && key !== rewardKey) {
+                    delete order._customRewardState[key];
+                }
+            }
+            order._customRewardState[rewardKey] = {
+                reward_type: 'pricelist_change',
+                reward_id: reward.id,
+                pricelist_id: reward.pricelist_id,
+                label: reward.reward_label || reward.description || reward.name,
+                coupon_id: couponId || null,
+            };
+            order.set_pricelist(pricelist);
+            if (typeof order._resetTaxesAndPrices === 'function') {
+                order._resetTaxesAndPrices();
+            }
+            order._reapplyCustomRewards();
+            log('Aplicada recompensa pricelist_change', reward);
+            return true;
+        }
+
+        if (reward.reward_type === 'fixed_price') {
+            order._customRewardState[rewardKey] = {
+                reward_type: 'fixed_price',
+                reward_id: reward.id,
+                fixed_price: reward.fixed_price,
+                rules_product_domains: reward.rules_product_domains || [],
+                reward_label: reward.reward_label || '[Precio Fijo]',
+                reward_badge_color: reward.reward_badge_color || 'success',
+                coupon_id: couponId || null,
+                potentialQty: potentialQty || null,
+            };
+            order._applyFixedPriceRewardConfig(order._customRewardState[rewardKey]);
+            log('Aplicada recompensa fixed_price', reward);
+            return true;
+        }
+
+        return false;
     },
 });
