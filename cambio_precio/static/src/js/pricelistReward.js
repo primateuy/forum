@@ -168,8 +168,9 @@ patch(Order.prototype, {
             return superResult;
         }
 
-        // Guardar couponPointChanges calculados por Odoo estándar.
-        // Nuestra lógica custom (set_pricelist) puede borrarlos; los restauramos al final.
+        // Guardar couponPointChanges calculados por Odoo estándar ANTES de nuestra
+        // lógica custom. set_pricelist() los borra; los restauramos al final para
+        // que _postPushOrderResolve los reciba correctos y llame a confirm_coupon_programs.
         const savedCouponPointChanges = this.couponPointChanges && Object.keys(this.couponPointChanges).length > 0
             ? JSON.parse(JSON.stringify(this.couponPointChanges))
             : null;
@@ -263,7 +264,9 @@ patch(Order.prototype, {
                 });
             });
             const totalPrecio = totalBase + totalImpuestos;
-            const cumple = pricelistChangeRules.some(rule => totalPrecio >= rule.minimum_amount && totalCantidad >= rule.minimum_qty);
+            const cumple = pricelistChangeRules.some(rule =>
+                totalPrecio >= rule.minimum_amount && totalCantidad >= rule.minimum_qty
+            );
             if (cumple) {
                 const targetPricelistId = pricelistReward.reward.discount_max_amount;
                 const targetPricelist = this.pos.pricelists.find(p => p.id === targetPricelistId);
@@ -278,7 +281,9 @@ patch(Order.prototype, {
             this._restoreOriginalPricelist();
         }
 
-        // Restaurar couponPointChanges al final para que no se pierdan por el set_pricelist.
+        // Restaurar couponPointChanges para que _postPushOrderResolve los reciba
+        // correctos y pueda llamar a confirm_coupon_programs con los datos completos.
+        // Esto es lo que permite que se creen tarjetas nuevas y cupones de próxima compra.
         if (savedCouponPointChanges) {
             this.couponPointChanges = savedCouponPointChanges;
             _log("_updateRewards: couponPointChanges restaurados");
@@ -313,31 +318,28 @@ patch(Order.prototype, {
 });
 
 /**
- * CORRECCIÓN PRINCIPAL — Sincronización del couponCache tras completar una orden.
+ * CORRECCIÓN: push_single_order
  *
- * El problema: Odoo guarda los puntos en el couponCache con el balance ANTES de la orden
- * (así lo trae fetchLoyaltyCard). Al completar la orden, el backend actualiza loyalty.card,
- * pero el frontend nunca refresca el cache. La siguiente orden muestra el saldo viejo porque:
- *   1. fetchLoyaltyCard() encuentra la tarjeta en cache y la devuelve sin ir al servidor.
- *   2. getLoyaltyPoints() calcula: balance (viejo) + puntos ganados (nuevos) → total incorrecto.
+ * Solo garantizamos dos cosas:
  *
- * La solución: después de que push_single_order confirma éxito, actualizamos directamente
- * el .balance de la tarjeta en couponCache con el nuevo total (balance + puntos ganados).
- * Así la próxima orden arranca con el saldo correcto sin necesidad de ir al servidor.
+ * 1. Que coupon_point_changes llegue al payload del backend aunque otro módulo
+ *    haya reemplazado export_as_JSON sin llamar a super.
  *
- * También marcamos invalidCoupons = true en la próxima orden para forzar un refetch si
- * el balance actualizado en cache no coincide con lo que hay en el servidor (casos edge).
+ * 2. Que la siguiente orden marque invalidCoupons = true para que fetchLoyaltyCard
+ *    vaya al servidor a buscar el balance actualizado por confirm_coupon_programs,
+ *    en lugar de usar el cache desactualizado.
+ *
+ * NO actualizamos couponCache aquí — eso lo hace _postPushOrderResolve de pos_loyalty
+ * a través de confirm_coupon_programs, con los IDs definitivos del backend. Si lo
+ * hiciéramos antes, los old_id de coupon_updates ya no coincidirían y la actualización
+ * del cache en _postPushOrderResolve fallaría silenciosamente.
  */
 patch(PosStore.prototype, {
     async push_single_order(order) {
-        // Capturar los cambios de puntos ANTES de enviar (el array puede mutar después).
-        const pointChangesSnapshot = order.couponPointChanges && Object.keys(order.couponPointChanges).length > 0
-            ? JSON.parse(JSON.stringify(order.couponPointChanges))
-            : null;
-
+        const hasPoints = order.couponPointChanges && Object.keys(order.couponPointChanges).length > 0;
         _log("push_single_order: enviando orden", {
-            hasCouponPointChanges: !!pointChangesSnapshot,
-            keys: pointChangesSnapshot ? Object.keys(pointChangesSnapshot) : [],
+            hasCouponPointChanges: hasPoints,
+            keys: hasPoints ? Object.keys(order.couponPointChanges) : [],
         });
 
         // Wrapper para garantizar coupon_point_changes en el payload incluso si
@@ -347,9 +349,7 @@ patch(PosStore.prototype, {
             const json = originalExport();
             if (order.couponPointChanges && Object.keys(order.couponPointChanges).length > 0) {
                 json.coupon_point_changes = order.couponPointChanges;
-                _log("push_single_order export_as_JSON: coupon_point_changes inyectado", {
-                    keys: Object.keys(json.coupon_point_changes),
-                });
+                _log("push_single_order: coupon_point_changes inyectado en payload");
             }
             return json;
         };
@@ -361,38 +361,12 @@ patch(PosStore.prototype, {
             order.export_as_JSON = originalExport;
         }
 
-        // Solo actualizar el cache si la orden se envió con éxito y había cambios de puntos.
-        if (result && pointChangesSnapshot) {
-            _log("push_single_order: actualizando couponCache con nuevos balances");
-            for (const [couponIdStr, change] of Object.entries(pointChangesSnapshot)) {
-                if (!change || typeof change.points !== 'number' || change.points === 0) continue;
-
-                const couponId = isNaN(Number(couponIdStr)) ? couponIdStr : Number(couponIdStr);
-                const cachedCard = this.couponCache[couponId];
-
-                if (cachedCard) {
-                    // Actualizar el balance en la tarjeta existente del cache.
-                    // Esto es lo que getLoyaltyPoints() usa como "saldo en puntos" en la próxima orden.
-                    const oldBalance = cachedCard.balance;
-                    cachedCard.balance = oldBalance + change.points;
-                    _log(`couponCache actualizado: card ${couponId}`, {
-                        balanceAnterior: oldBalance,
-                        puntosGanados: change.points,
-                        nuevoBalance: cachedCard.balance,
-                    });
-                } else {
-                    // La tarjeta es nueva (ID negativo = local) o no está en cache.
-                    // Marcar la próxima orden para que haga un refetch desde el servidor.
-                    _log(`couponCache: card ${couponId} no encontrada, se marcará invalidCoupons en próxima orden`);
-                }
-            }
-
-            // Marcar la próxima orden para revalidar sus cupones desde el servidor.
-            // Esto cubre el caso de tarjetas nuevas y asegura consistencia backend/frontend.
-            if (this.selectedOrder) {
-                this.selectedOrder.invalidCoupons = true;
-                _log("push_single_order: invalidCoupons = true en la siguiente orden");
-            }
+        // Marcar la siguiente orden para que fetchLoyaltyCard vaya al servidor
+        // en lugar de usar el cache — el balance real lo acaba de actualizar
+        // confirm_coupon_programs en _postPushOrderResolve.
+        if (result && hasPoints && this.selectedOrder) {
+            this.selectedOrder.invalidCoupons = true;
+            _log("push_single_order: invalidCoupons = true → próxima orden refetcheará desde backend");
         }
 
         return result;
