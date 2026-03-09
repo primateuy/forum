@@ -421,9 +421,22 @@ class PosOrder(models.Model):
     @api.model
     def _process_order(self, order, draft, existing_order):
         """
-        Procesa la orden del POS. Cuando se aplica una recompensa custom (pricelist_change
-        o fixed_price), registramos la recompensa como línea en la orden para que aparezca
-        en el historial de promociones.
+        Procesa la orden del POS sin sobrescribir datos que ya vienen del frontend.
+
+        El frontend (pricelistReward.js) ya envía pricelist_id en el payload cuando
+        el cliente califica para la recompensa pricelist_change. Hacer write() aquí
+        sobre pricelist_id después de super() puede:
+        - Sobrescribir con una lista incorrecta si hay varios programas con
+          pricelist_change (se aplicaban todos en bucle y ganaba el último).
+        - Interferir con el módulo de lealtad (advanced_loyalty_management / estándar),
+          que aplica los puntos en la misma transacción; el write() puede alterar
+          el estado de la orden y provocar que los puntos no se persistan.
+
+        Por tanto, no aplicamos pricelist en backend: confiamos en el pricelist_id
+        que envía el frontend. Si en el futuro se necesita aplicar pricelist solo
+        cuando el payload no la trae, debe comprobarse order.get('data', {}).get('pricelist_id')
+        y aplicar solo en ese caso, y preferiblemente solo la recompensa realmente
+        reclamada en la orden (no todas las activas).
         """
         order_data = order.get("data") if isinstance(order, dict) else order
         cpc = order_data.get("coupon_point_changes") if isinstance(order_data, dict) else None
@@ -440,9 +453,12 @@ class PosOrder(models.Model):
     def create_from_ui(self, orders, draft=False):
         """
         Crea órdenes desde la UI y aplica coupon_point_changes a loyalty.card.
-        
-        Ahora también registra las recompensas custom (pricelist_change, fixed_price)
-        como líneas de recompensa para que aparezcan en el historial de promociones.
+
+        Dependemos de odoo_pos_no_invoice para que este método se ejecute primero en la
+        cadena (MRO) y así tengamos acceso al payload antes de que otros módulos lo consuman.
+        Extraemos coupon_point_changes ANTES de super() porque el core/sync puede modificar
+        o reemplazar la lista orders; aplicamos los puntos DESPUÉS de super() para que la
+        orden ya esté creada.
         """
         # Extraer coupon_point_changes de cada orden antes de que super() modifique orders.
         coupon_point_changes_list = []
@@ -455,7 +471,8 @@ class PosOrder(models.Model):
                 coupon_point_changes_list.append(None)
                 continue
             cpc = order_data.get('coupon_point_changes')
-            coupon_point_changes_list.append(cpc if (cpc and isinstance(cpc, dict)) else None)
+            partner_id = order_data.get('partner_id')
+            coupon_point_changes_list.append(cpc if (cpc and isinstance(cpc, dict) and partner_id) else None)
 
         result = super(PosOrder, self).create_from_ui(orders, draft)
 
@@ -476,73 +493,103 @@ class PosOrder(models.Model):
                 "[cambio_precio] create_from_ui: aplicando puntos en %s orden(es)",
                 num_cpc,
             )
-        for i, cpc in enumerate(coupon_point_changes_list):
+        for cpc in coupon_point_changes_list:
             if cpc:
                 _logger.info(
                     "[cambio_precio] create_from_ui: aplicando coupon_point_changes keys=%s",
                     list(cpc.keys()),
                 )
-                self._apply_coupon_point_changes(cpc)
+                self._apply_coupon_point_changes(cpc, partner_id)
 
         return result
 
     @api.model
-    def _apply_coupon_point_changes(self, coupon_point_changes):
+    def _apply_coupon_point_changes(self, coupon_point_changes, partner_id=None):
+        """Aplica cambios de puntos de cupón a las tarjetas de lealtad.
+        
+        VALIDACIÓN DEFENSIVA: Solo procesa cambios con program_id válido.
+        Si el programa no existe, no crea la tarjeta y registra el error.
         """
-        Suma los puntos indicados en coupon_point_changes a las tarjetas loyalty.card
-        correspondientes. coupon_point_changes es un dict { card_id: { points, program_id, ... } }
-        tal como lo envía el frontend (pos_loyalty / advanced_loyalty_management).
-        """
+        if not coupon_point_changes or not isinstance(coupon_point_changes, dict):
+            _logger.debug("[cambio_precio] coupon_point_changes vacío o inválido, saltando")
+            return
+            
         LoyaltyCard = self.env['loyalty.card'].sudo()
+        
         for card_id_str, change in coupon_point_changes.items():
             if not change or not isinstance(change, dict):
+                _logger.debug("[cambio_precio] cambio vacío para card %s, saltando", card_id_str)
                 continue
+                
             points = change.get('points')
             if points is None:
+                _logger.debug("[cambio_precio] sin 'points' en cambio para card %s", card_id_str)
                 continue
+
             try:
                 card_id = int(card_id_str)
             except (TypeError, ValueError):
-                _logger.warning("[cambio_precio] _apply_coupon_point_changes: id no válido %s", card_id_str)
+                _logger.warning("[cambio_precio] id de tarjeta no válido: %s (tipo: %s)", 
+                               card_id_str, type(card_id_str).__name__)
                 continue
-            card = LoyaltyCard.browse(card_id)
-            if not card.exists():
-                _logger.warning("[cambio_precio] _apply_coupon_point_changes: loyalty.card %s no existe", card_id)
-                continue
-            card.points = card.points + points
-            _logger.info("[cambio_precio] _apply_coupon_point_changes: card %s +%s puntos (nuevo total: %s)", card_id, points, card.points)
 
-    @api.model
-    def _register_custom_reward(self, pos_order, reward_type):
-        """
-        Registra las recompensas custom (pricelist_change y fixed_price) como líneas
-        de recompensa en la orden. Esto permite que aparezcan en el historial y en reports.
-        
-        Busca la recompensa activa del tipo especificado y crea una línea de recompensa.
-        """
-        if not pos_order:
-            return
-        
-        try:
-            LoyaltyReward = self.env['loyalty.reward'].sudo()
-            
-            # Buscar la primera recompensa activa del tipo especificado
-            reward = LoyaltyReward.search([
-                ('reward_type', '=', reward_type),
-                ('active', '=', True),
-            ], limit=1)
-            
-            if reward:
-                _logger.info("[cambio_precio] Registrando recompensa %s (%s) en orden %s", 
-                            reward_type, reward.id, pos_order.id)
-                
-                # Crear línea de recompensa en la orden
-                self.env['pos.order.reward_line'].sudo().create({
-                    'order_id': pos_order.id,
-                    'reward_id': reward.id,
-                })
+            # Verificar que existe program_id en el cambio
+            program_id = change.get('program_id')
+            if not program_id:
+                _logger.warning(
+                    "[cambio_precio] Cambio de puntos sin program_id para tarjeta %s. "
+                    "Saltando porque las tarjetas requieren un programa asociado.",
+                    card_id_str
+                )
+                continue
+
+            card = LoyaltyCard.browse(card_id)
+
+            if not card.exists():
+                # VALIDACIÓN: Asegurar que el programa existe antes de crear la tarjeta
+                program = self.env['loyalty.program'].sudo().browse(program_id)
+                if not program.exists():
+                    _logger.error(
+                        "[cambio_precio] Programa %s no existe. No se puede crear loyalty.card %s. "
+                        "Verifica que el programa_id está correctamente configurado en las recompensas.",
+                        program_id, card_id_str
+                    )
+                    continue
+
+                try:
+                    card = LoyaltyCard.create({
+                        'program_id': program_id,
+                        'partner_id': partner_id or False,
+                        'points': 0,
+                    })
+                    _logger.info(
+                        "[cambio_precio] loyalty.card creada: id=%s program=%s partner=%s",
+                        card.id, program_id, partner_id
+                    )
+                except Exception as e:
+                    _logger.error(
+                        "[cambio_precio] Error creando loyalty.card para programa %s: %s",
+                        program_id, str(e)
+                    )
+                    continue
             else:
-                _logger.warning("[cambio_precio] No se encontró recompensa activa de tipo %s", reward_type)
-                
-        except Exception as e:
-            _logger.warning("[cambio_precio] Error registrando recompensa %s: %s", reward_type, str(e))
+                # Validar que la tarjeta existente tiene program_id
+                if not card.program_id:
+                    _logger.warning(
+                        "[cambio_precio] Tarjeta %s existe pero sin program_id. No se pueden aplicar puntos.",
+                        card.id
+                    )
+                    continue
+
+            # Sumar puntos (tanto para tarjetas nuevas como existentes)
+            try:
+                card.points = card.points + points
+                _logger.info(
+                    "[cambio_precio] card %s +%s puntos (nuevo total: %s)",
+                    card.id, points, card.points
+                )
+            except Exception as e:
+                _logger.error(
+                    "[cambio_precio] Error actualizando puntos en tarjeta %s: %s",
+                    card.id, str(e)
+                )
