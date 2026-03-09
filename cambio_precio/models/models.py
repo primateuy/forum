@@ -471,7 +471,8 @@ class PosOrder(models.Model):
                 coupon_point_changes_list.append(None)
                 continue
             cpc = order_data.get('coupon_point_changes')
-            coupon_point_changes_list.append(cpc if (cpc and isinstance(cpc, dict)) else None)
+            partner_id = order_data.get('partner_id')
+            coupon_point_changes_list.append(cpc if (cpc and isinstance(cpc, dict) and partner_id) else None)
 
         result = super(PosOrder, self).create_from_ui(orders, draft)
 
@@ -498,32 +499,97 @@ class PosOrder(models.Model):
                     "[cambio_precio] create_from_ui: aplicando coupon_point_changes keys=%s",
                     list(cpc.keys()),
                 )
-                self._apply_coupon_point_changes(cpc)
+                self._apply_coupon_point_changes(cpc, partner_id)
 
         return result
 
     @api.model
-    def _apply_coupon_point_changes(self, coupon_point_changes):
+    def _apply_coupon_point_changes(self, coupon_point_changes, partner_id=None):
+        """Aplica cambios de puntos de cupón a las tarjetas de lealtad.
+        
+        VALIDACIÓN DEFENSIVA: Solo procesa cambios con program_id válido.
+        Si el programa no existe, no crea la tarjeta y registra el error.
         """
-        Suma los puntos indicados en coupon_point_changes a las tarjetas loyalty.card
-        correspondientes. coupon_point_changes es un dict { card_id: { points, program_id, ... } }
-        tal como lo envía el frontend (pos_loyalty / advanced_loyalty_management).
-        """
+        if not coupon_point_changes or not isinstance(coupon_point_changes, dict):
+            _logger.debug("[cambio_precio] coupon_point_changes vacío o inválido, saltando")
+            return
+            
         LoyaltyCard = self.env['loyalty.card'].sudo()
+        
         for card_id_str, change in coupon_point_changes.items():
             if not change or not isinstance(change, dict):
+                _logger.debug("[cambio_precio] cambio vacío para card %s, saltando", card_id_str)
                 continue
+                
             points = change.get('points')
             if points is None:
+                _logger.debug("[cambio_precio] sin 'points' en cambio para card %s", card_id_str)
                 continue
+
             try:
                 card_id = int(card_id_str)
             except (TypeError, ValueError):
-                _logger.warning("[cambio_precio] _apply_coupon_point_changes: id no válido %s", card_id_str)
+                _logger.warning("[cambio_precio] id de tarjeta no válido: %s (tipo: %s)", 
+                               card_id_str, type(card_id_str).__name__)
                 continue
+
+            # Verificar que existe program_id en el cambio
+            program_id = change.get('program_id')
+            if not program_id:
+                _logger.warning(
+                    "[cambio_precio] Cambio de puntos sin program_id para tarjeta %s. "
+                    "Saltando porque las tarjetas requieren un programa asociado.",
+                    card_id_str
+                )
+                continue
+
             card = LoyaltyCard.browse(card_id)
+
             if not card.exists():
-                _logger.warning("[cambio_precio] _apply_coupon_point_changes: loyalty.card %s no existe", card_id)
-                continue
-            card.points = card.points + points
-            _logger.info("[cambio_precio] _apply_coupon_point_changes: card %s +%s puntos (nuevo total: %s)", card_id, points, card.points)
+                # VALIDACIÓN: Asegurar que el programa existe antes de crear la tarjeta
+                program = self.env['loyalty.program'].sudo().browse(program_id)
+                if not program.exists():
+                    _logger.error(
+                        "[cambio_precio] Programa %s no existe. No se puede crear loyalty.card %s. "
+                        "Verifica que el programa_id está correctamente configurado en las recompensas.",
+                        program_id, card_id_str
+                    )
+                    continue
+
+                try:
+                    card = LoyaltyCard.create({
+                        'program_id': program_id,
+                        'partner_id': partner_id or False,
+                        'points': 0,
+                    })
+                    _logger.info(
+                        "[cambio_precio] loyalty.card creada: id=%s program=%s partner=%s",
+                        card.id, program_id, partner_id
+                    )
+                except Exception as e:
+                    _logger.error(
+                        "[cambio_precio] Error creando loyalty.card para programa %s: %s",
+                        program_id, str(e)
+                    )
+                    continue
+            else:
+                # Validar que la tarjeta existente tiene program_id
+                if not card.program_id:
+                    _logger.warning(
+                        "[cambio_precio] Tarjeta %s existe pero sin program_id. No se pueden aplicar puntos.",
+                        card.id
+                    )
+                    continue
+
+            # Sumar puntos (tanto para tarjetas nuevas como existentes)
+            try:
+                card.points = card.points + points
+                _logger.info(
+                    "[cambio_precio] card %s +%s puntos (nuevo total: %s)",
+                    card.id, points, card.points
+                )
+            except Exception as e:
+                _logger.error(
+                    "[cambio_precio] Error actualizando puntos en tarjeta %s: %s",
+                    card.id, str(e)
+                )
