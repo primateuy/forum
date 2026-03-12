@@ -439,7 +439,6 @@ class PosOrder(models.Model):
         """
 
 
-        _logger.info("PROCESANDO ORDEN...");
 
         order_data = order.get("data") if isinstance(order, dict) else order
         cpc = order_data.get("coupon_point_changes") if isinstance(order_data, dict) else None
@@ -449,7 +448,6 @@ class PosOrder(models.Model):
         # Aplicar puntos de lealtad al cupón/tarjeta cuando el payload trae coupon_point_changes.
         if not draft and cpc and isinstance(cpc, dict) and self.env.get('loyalty.card'):
 
-            _logger.info("ENTRANDO ACA EN PROCESAR ORDEN");
             self._apply_coupon_point_changes(cpc)
 
         return result
@@ -476,8 +474,8 @@ class PosOrder(models.Model):
             if not isinstance(order_data, dict):
                 coupon_point_changes_with_partner.append((None, None))
                 continue
-            cpc = order_data.get('coupon_point_changes')
-            partner_id = order_data.get('partner_id')
+            cpc = order_data.get('coupon_point_changes') if order_data.get('coupon_point_changes') else None
+            partner_id = order_data.get('partner_id') if order_data.get('partner_id') else None
             if cpc and isinstance(cpc, dict) and partner_id:
                 coupon_point_changes_with_partner.append((cpc, partner_id))
             else:
