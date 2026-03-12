@@ -5,8 +5,28 @@ import { Order } from '@point_of_sale/app/store/models';
 import { Orderline } from "@point_of_sale/app/store/models";
 import { PosStore } from "@point_of_sale/app/store/pos_store";
 
-// Activar para depurar persistencia de puntos de lealtad (consola del navegador).
-const CAMBIO_PRECIO_DEBUG_LOYALTY = true;
+
+let _updateRewardsDebounceTimer = null;
+
+function debouncedUpdateRewards(order, delay = 150) {
+    if (_updateRewardsDebounceTimer) {
+        clearTimeout(_updateRewardsDebounceTimer);
+    }
+    _updateRewardsDebounceTimer = setTimeout(() => {
+        _updateRewardsDebounceTimer = null;
+        if (!order || order.finalized) return;
+        if (typeof order._applyCustomRewardsOnly === 'function') {
+            try {
+                order._applyCustomRewardsOnly();
+            } catch (e) {
+                console.error("[cambio_precio] Error en _applyCustomRewardsOnly (debounced):", e);
+            }
+        }
+    }, delay);
+}
+
+
+const CAMBIO_PRECIO_DEBUG_LOYALTY = false;
 function _log(msg, data) {
     if (CAMBIO_PRECIO_DEBUG_LOYALTY && typeof console !== "undefined" && console.log) {
         if (data !== undefined) console.log("[cambio_precio]", msg, data);
@@ -20,24 +40,24 @@ function convertPythonDomainToJSON(pythonDomain) {
     }
 
     let jsonDomain = pythonDomain.replace(/'/g, '"');
-    
+
     jsonDomain = jsonDomain.replace(/\(/g, '[').replace(/\)/g, ']');
-    
+
     jsonDomain = jsonDomain.replace(/\bTrue\b/g, 'true');
     jsonDomain = jsonDomain.replace(/\bFalse\b/g, 'false');
     jsonDomain = jsonDomain.replace(/\bNone\b/g, 'null');
-    
+
     return jsonDomain;
 }
 
 function evaluateDomain(domain, record) {
     if (!domain || domain === "[]" || domain === "") {
-        return true; 
+        return true;
     }
 
     let parsedDomain;
     try {
-        
+
         if (typeof domain === 'string') {
             const jsonDomain = convertPythonDomainToJSON(domain);
             parsedDomain = JSON.parse(jsonDomain);
@@ -59,7 +79,7 @@ function evaluateDomain(domain, record) {
         const [field, operator, value] = condition;
 
         let fieldValue = record[field];
-        
+
         if (Array.isArray(fieldValue) && fieldValue.length >= 1) {
             fieldValue = fieldValue[0];
         }
@@ -105,17 +125,37 @@ function evaluateDomain(domain, record) {
 }
 
 patch(Orderline.prototype, {
-    
+
+    set_quantity(quantity, keep_price) {
+        const result = super.set_quantity(...arguments);
+
+        // Solo disparar si hay recompensas custom configuradas
+        if (this.order && !this.order.finalized) {
+            const programs = this.pos?.programs || [];
+            const hasCustomPrograms = programs.some(p =>
+                p.rewards && p.rewards.some(r =>
+                    r.reward_type === 'pricelist_change' ||
+                    r.reward_type === 'fixed_price'
+                )
+            );
+            if (hasCustomPrograms) {
+                debouncedUpdateRewards(this.order, 150);
+            }
+        }
+        return result;
+    },
+
+
     get_full_product_name() {
         const originalName = super.get_full_product_name && super.get_full_product_name.apply(this) || this.product.display_name;
-        
+
         if (this.reward_label && this.reward_type === "fixed_price") {
             return `${originalName} - PRECIO FIJO`;
         }
-        
+
         return originalName;
     },
-    
+
     getDisplayName() {
         return this.get_full_product_name();
     },
@@ -126,14 +166,14 @@ patch(Orderline.prototype, {
 
     can_be_merged_with(orderline) {
         const canMerge = super.can_be_merged_with(...arguments);
-        
+
         if (!canMerge) {
             const thisBaseName = this._getBaseProductName();
-            const otherBaseName = orderline._getBaseProductName && orderline._getBaseProductName() || 
-                                 (orderline.get_full_product_name ? 
-                                    orderline.get_full_product_name().replace(/\s*-\s*PRECIO FIJO\s*$/, '') 
-                                    : orderline.product.display_name);
-            
+            const otherBaseName = orderline._getBaseProductName && orderline._getBaseProductName() ||
+                (orderline.get_full_product_name ?
+                    orderline.get_full_product_name().replace(/\s*-\s*PRECIO FIJO\s*$/, '')
+                    : orderline.product.display_name);
+
             if (thisBaseName === otherBaseName) {
                 const price = parseFloat(
                     this.pos.utils?.round_di(this.price || 0, this.pos.dp["Product Price"]).toFixed(
@@ -141,10 +181,10 @@ patch(Orderline.prototype, {
                     ) || this.price
                 );
                 const order_line_price = orderline.get_product().get_price(
-                    orderline.order.pricelist, 
+                    orderline.order.pricelist,
                     this.get_quantity()
                 );
-                
+
                 return (
                     !this.skipChange &&
                     orderline.getNote() === this.getNote() &&
@@ -159,18 +199,134 @@ patch(Orderline.prototype, {
                 );
             }
         }
-        
+
         return canMerge;
     },
 
-    // CORRECCIÓN: Se eliminó el patch de set_quantity que disparaba _updateRewards
-    // con setTimeout. Esto causaba recálculos asíncronos que interferían con
-    // operaciones estándar del POS (borrar líneas, buscar clientes, validar pagos).
-    // El _updateRewards() de Odoo ya se dispara automáticamente cuando corresponde
-    // a través del mecanismo estándar de recompensas.
+
 });
 
 patch(Order.prototype, {
+
+
+    _applyCustomRewardsOnly() {
+        if (!this._originalPrices) this._originalPrices = {};
+
+        if (!this.pos || !this.pos.get_order) return;
+        const order = this.pos.get_order();
+        if (!order || !order.get_orderlines) return;
+        if (!this.pos.rules || !this.pos.pricelists || !this.pos.taxes_by_id) return;
+
+        let claimable;
+        try {
+            claimable = this.getClaimableRewards();
+        } catch (e) {
+            return;
+        }
+        if (!claimable || !Array.isArray(claimable)) return;
+
+        if (!this._hasCustomRewards(claimable)) {
+            this._restoreOriginalPrices(order);
+            this._restoreOriginalPricelist();
+            return;
+        }
+
+        const orderlines = order.get_orderlines();
+
+        // --- FIXED PRICE ---
+        const fixedPriceReward = claimable.find(
+            r => r.reward && r.reward.reward_type === "fixed_price"
+        );
+        if (fixedPriceReward && fixedPriceReward.reward) {
+            const reward = fixedPriceReward.reward;
+            const fixedPrice = reward.fixed_price;
+            const rulesProductDomains = reward.rules_product_domains || [];
+            if (fixedPrice !== undefined && fixedPrice !== null && fixedPrice !== false && fixedPrice > 0) {
+                orderlines.forEach(line => {
+                    if (line.is_reward_line) return;
+                    const productId = line.product.id;
+                    const product = line.product;
+                    const lineUuid = line.uuid || line.cid;
+                    const productMatchesDomain = this._productMatchesRuleDomains(product, rulesProductDomains);
+                    if (productMatchesDomain) {
+                        if (!this._originalPrices[lineUuid]) {
+                            this._originalPrices[lineUuid] = { price: line.get_unit_price(), productId };
+                        }
+                        if (line.get_unit_price() !== fixedPrice) line.set_unit_price(fixedPrice);
+                        this._applyRewardLabel(line, reward);
+                    } else if (this._originalPrices[lineUuid]) {
+                        const originalData = this._originalPrices[lineUuid];
+                        if (originalData && originalData.productId === productId) {
+                            line.set_unit_price(originalData.price);
+                            delete this._originalPrices[lineUuid];
+                        }
+                    }
+                });
+            }
+        } else {
+            this._restoreOriginalPrices(order);
+        }
+
+        // --- PRICELIST CHANGE ---
+        const pricelistReward = claimable.find(
+            r => r.reward && r.reward.reward_type === "pricelist_change"
+        );
+        if (pricelistReward) {
+            if (!this._originalPricelistId) {
+                const defaultPricelistId = this.pos?.config?.pricelist_id?.[0];
+                this._originalPricelistId = defaultPricelistId || (this.pricelist ? this.pricelist.id : 1);
+            }
+            const pricelistChangeRules = this.pos.rules.filter(rule => {
+                if (!rule.program_id || !rule.program_id.rewards) return false;
+                return rule.program_id.rewards.some(r => r.reward_type === 'pricelist_change');
+            });
+            if (pricelistChangeRules.length === 0) return;
+
+            let totalCantidad = 0, totalBase = 0, totalImpuestos = 0;
+            orderlines.forEach(line => {
+                if (line.is_reward_line) return;
+                const qty = line.get_quantity();
+                const unit = line.get_unit_price();
+                const base = qty * unit;
+                totalBase += base;
+                totalCantidad += qty;
+                (line.product.taxes_id || []).forEach(taxId => {
+                    const tax = this.pos.taxes_by_id[taxId];
+                    if (tax) totalImpuestos += base * (tax.amount / 100);
+                });
+            });
+            const totalPrecio = totalBase + totalImpuestos;
+            const cumple = pricelistChangeRules.some(
+                rule => totalPrecio >= rule.minimum_amount && totalCantidad >= rule.minimum_qty
+            );
+            if (cumple) {
+                const targetPricelistId = pricelistReward.reward.discount_max_amount;
+                const targetPricelist = this.pos.pricelists.find(p => p.id === targetPricelistId);
+                if (targetPricelist && (!this.pricelist || this.pricelist.id !== targetPricelistId)) {
+                    this.set_pricelist(targetPricelist);
+                    if (typeof this._resetTaxesAndPrices === 'function') this._resetTaxesAndPrices();
+                }
+            } else {
+                this._restoreOriginalPricelist();
+            }
+        } else {
+            this._restoreOriginalPricelist();
+        }
+    },
+
+    deductLoyaltyPoints(reward, coupon) {
+        if (reward && (
+            reward.reward_type === 'pricelist_change' ||
+            reward.reward_type === 'fixed_price'
+        )) {
+            return [];
+        }
+        try {
+            return super.deductLoyaltyPoints(...arguments);
+        } catch (e) {
+            console.warn("[cambio_precio] deductLoyaltyPoints error:", e);
+        }
+    },
 
     _getRewardLineValues(args) {
         if (args.reward && args.reward.reward_type === "pricelist_change") {
@@ -226,7 +382,7 @@ patch(Order.prototype, {
         if (reward && reward.reward_type === "fixed_price") {
             const label = "Precio Fijo";
             line.reward_label = `[${label}]`;
-            line.reward_type = "fixed_price";  
+            line.reward_type = "fixed_price";
             line.reward_badge_color = 'success';
         }
     },
@@ -249,226 +405,210 @@ patch(Order.prototype, {
     // se encargue de todo.
     _hasCustomRewards(claimable) {
         if (!claimable || !Array.isArray(claimable)) return false;
-        return claimable.some(r => 
+        return claimable.some(r =>
             r.reward && (
-                r.reward.reward_type === "pricelist_change" || 
+                r.reward.reward_type === "pricelist_change" ||
                 r.reward.reward_type === "fixed_price"
             )
         );
     },
 
-    _updateRewards() {
+    // _updateRewards() {
 
-        if (!this._originalPrices) {
-            this._originalPrices = {};
-        }
-        if (!this._originalPricelistId) {
-            this._originalPricelistId = null;
-        }
+    //     if (!this._originalPrices) {
+    //         this._originalPrices = {};
+    //     }
+    //     if (!this._originalPricelistId) {
+    //         this._originalPricelistId = null;
+    //     }
 
-        // CORRECCIÓN CRÍTICA: Primero dejamos que Odoo estándar procese sus
-        // recompensas (descuentos, cupones, programas de lealtad, etc.).
-        // Esto debe ejecutarse SIEMPRE, sin importar si hay recompensas custom.
-        let superResult;
-        try {
-            superResult = super._updateRewards && super._updateRewards(...arguments);
-        } catch (error) {
-            console.error("Error en super._updateRewards:", error);
-            return superResult;
-        }
+    //     let superResult;
+    //     try {
+    //         superResult = super._updateRewards && super._updateRewards(...arguments);
+    //     } catch (error) {
+    //         console.error("Error en super._updateRewards:", error);
+    //         return superResult;
+    //     }
 
-        // Preservar los puntos que acaba de calcular el estándar (super). Nuestra
-        // lógica (set_pricelist / _resetTaxesAndPrices) puede borrarlos; al guardar
-        // aquí y restaurar al final, el backend los recibe en export_as_JSON.
-        const savedCouponPointChanges = this.couponPointChanges && Object.keys(this.couponPointChanges).length > 0
-            ? JSON.parse(JSON.stringify(this.couponPointChanges))
-            : null;
-        if (savedCouponPointChanges) {
-            _log("_updateRewards: puntos guardados tras super", {
-                numEntries: Object.keys(savedCouponPointChanges).length,
-                entries: Object.entries(savedCouponPointChanges).map(([k, v]) => ({ id: k, points: v.points, program_id: v.program_id })),
-            });
-        }
+    //     const savedCouponPointChanges = this.couponPointChanges && Object.keys(this.couponPointChanges).length > 0
+    //         ? JSON.parse(JSON.stringify(this.couponPointChanges))
+    //         : null;
+    //     if (savedCouponPointChanges) {
+    //         _log("_updateRewards: puntos guardados tras super", {
+    //             numEntries: Object.keys(savedCouponPointChanges).length,
+    //             entries: Object.entries(savedCouponPointChanges).map(([k, v]) => ({ id: k, points: v.points, program_id: v.program_id })),
+    //         });
+    //     }
 
-        // Verificaciones de seguridad antes de continuar.
-        if (!this.pos || !this.pos.get_order) return superResult;
-        const order = this.pos.get_order();
-        if (!order || !order.get_orderlines) return superResult;
-        if (!this.pos.rules || !this.pos.pricelists || !this.pos.taxes_by_id) return superResult;
+    //     if (!this.pos || !this.pos.get_order) return superResult;
+    //     const order = this.pos.get_order();
+    //     if (!order || !order.get_orderlines) return superResult;
+    //     if (!this.pos.rules || !this.pos.pricelists || !this.pos.taxes_by_id) return superResult;
 
-        let claimable;
-        try {
-            claimable = this.getClaimableRewards();
-        } catch (error) {
-            if (savedCouponPointChanges) this.couponPointChanges = savedCouponPointChanges;
-            return superResult;
-        }
-        if (!claimable || !Array.isArray(claimable)) return superResult;
+    //     let claimable;
+    //     try {
+    //         claimable = this.getClaimableRewards();
+    //     } catch (error) {
+    //         if (savedCouponPointChanges) this.couponPointChanges = savedCouponPointChanges;
+    //         return superResult;
+    //     }
+    //     if (!claimable || !Array.isArray(claimable)) return superResult;
 
-        // Si no hay recompensas custom, no ejecutamos lógica adicional.
-        if (!this._hasCustomRewards(claimable)) {
-            this._restoreOriginalPrices(order);
-            this._restoreOriginalPricelist();
-            if (savedCouponPointChanges) this.couponPointChanges = savedCouponPointChanges;
-            return superResult;
-        }
+    //     if (!this._hasCustomRewards(claimable)) {
+    //         this._restoreOriginalPrices(order);
+    //         this._restoreOriginalPricelist();
+    //         if (savedCouponPointChanges) this.couponPointChanges = savedCouponPointChanges;
+    //         return superResult;
+    //     }
 
-        // A partir de aquí solo se ejecuta si hay recompensas custom activas.
-        this._clearRewardLabels();
+    //     this._clearRewardLabels();
 
-        const orderlines = order.get_orderlines();
+    //     const orderlines = order.get_orderlines();
 
-        // ========================================
-        // MANEJO DE FIXED PRICE REWARD
-        // ========================================
-        const fixedPriceReward = claimable.find(
-            r => r.reward && r.reward.reward_type === "fixed_price"
-        );
+    //     const fixedPriceReward = claimable.find(
+    //         r => r.reward && r.reward.reward_type === "fixed_price"
+    //     );
 
-        if (fixedPriceReward && fixedPriceReward.reward) {
-            const reward = fixedPriceReward.reward;
-            const fixedPrice = reward.fixed_price;
-            const rulesProductDomains = reward.rules_product_domains || [];
-            
-            if (fixedPrice !== undefined && fixedPrice !== null && fixedPrice !== false && fixedPrice > 0) {
-                orderlines.forEach(line => {
-                    // No tocar líneas de recompensa estándar de Odoo
-                    if (line.is_reward_line) return;
-                    
-                    const productId = line.product.id;
-                    const product = line.product;
-                    const lineUuid = line.uuid || line.cid;
-                    
-                    const productMatchesDomain = this._productMatchesRuleDomains(product, rulesProductDomains);
-                    
-                    if (productMatchesDomain) {
-                        if (!this._originalPrices[lineUuid]) {
-                            this._originalPrices[lineUuid] = {
-                                price: line.get_unit_price(),
-                                productId: productId
-                            };
-                        }
-                        
-                        if (line.get_unit_price() !== fixedPrice) {
-                            line.set_unit_price(fixedPrice);
-                        }
-                        
-                        this._applyRewardLabel(line, reward);
-                    } else if (!productMatchesDomain && this._originalPrices[lineUuid]) {
-                        const originalData = this._originalPrices[lineUuid];
-                        if (originalData && originalData.productId === productId) {
-                            line.set_unit_price(originalData.price);
-                            delete this._originalPrices[lineUuid];
-                        }
-                    }
-                });
-            }
-        } else {
-            this._restoreOriginalPrices(order);
-        }
+    //     if (fixedPriceReward && fixedPriceReward.reward) {
+    //         const reward = fixedPriceReward.reward;
+    //         const fixedPrice = reward.fixed_price;
+    //         const rulesProductDomains = reward.rules_product_domains || [];
 
-        // ========================================
-        // MANEJO DE PRICELIST CHANGE REWARD
-        // ========================================
-        const pricelistReward = claimable.find(
-            r => r.reward && r.reward.reward_type === "pricelist_change"
-        );
+    //         if (fixedPrice !== undefined && fixedPrice !== null && fixedPrice !== false && fixedPrice > 0) {
+    //             orderlines.forEach(line => {
+    //                 if (line.is_reward_line) return;
 
-        if (pricelistReward) {
-            if (!this._originalPricelistId) {
-                this._originalPricelistId = this.pricelist ? this.pricelist.id : 1;
-            }
+    //                 const productId = line.product.id;
+    //                 const product = line.product;
+    //                 const lineUuid = line.uuid || line.cid;
 
-            const pricelistChangeRules = this.pos.rules.filter(rule => {
-                if (!rule.program_id || !rule.program_id.rewards) return false;
-                return rule.program_id.rewards.some(
-                    reward => reward.reward_type === 'pricelist_change'
-                );
-            });
+    //                 const productMatchesDomain = this._productMatchesRuleDomains(product, rulesProductDomains);
 
-            if (pricelistChangeRules.length === 0) {
-                if (savedCouponPointChanges) this.couponPointChanges = savedCouponPointChanges;
-                return superResult;
-            }
+    //                 if (productMatchesDomain) {
+    //                     if (!this._originalPrices[lineUuid]) {
+    //                         this._originalPrices[lineUuid] = {
+    //                             price: line.get_unit_price(),
+    //                             productId: productId
+    //                         };
+    //                     }
 
-            // Calcular totales solo para las líneas que NO son reward lines
-            let totalCantidad = 0;
-            let totalBase = 0;
-            let totalImpuestos = 0;
+    //                     if (line.get_unit_price() !== fixedPrice) {
+    //                         line.set_unit_price(fixedPrice);
+    //                     }
 
-            orderlines.forEach(line => {
-                if (line.is_reward_line) return;
-                
-                const quantity = line.get_quantity();
-                const unitPrice = line.get_unit_price();
-                const baseLine = quantity * unitPrice;
+    //                     this._applyRewardLabel(line, reward);
+    //                 } else if (!productMatchesDomain && this._originalPrices[lineUuid]) {
+    //                     const originalData = this._originalPrices[lineUuid];
+    //                     if (originalData && originalData.productId === productId) {
+    //                         line.set_unit_price(originalData.price);
+    //                         delete this._originalPrices[lineUuid];
+    //                     }
+    //                 }
+    //             });
+    //         }
+    //     } else {
+    //         this._restoreOriginalPrices(order);
+    //     }
 
-                totalBase += baseLine;
-                totalCantidad += quantity;
+    //     const pricelistReward = claimable.find(
+    //         r => r.reward && r.reward.reward_type === "pricelist_change"
+    //     );
 
-                const productTaxes = line.product.taxes_id || [];
-                productTaxes.forEach(taxId => {
-                    const tax = this.pos.taxes_by_id[taxId];
-                    if (tax) {
-                        totalImpuestos += baseLine * (tax.amount / 100);
-                    }
-                });
-            });
+    //     if (pricelistReward) {
+    //         if (!this._originalPricelistId) {
+    //             const defaultPricelistId = this.pos?.config?.pricelist_id?.[0];
+    //             this._originalPricelistId = defaultPricelistId || (this.pricelist ? this.pricelist.id : 1);
+    //         }
 
-            const totalPrecio = totalBase + totalImpuestos;
+    //         const pricelistChangeRules = this.pos.rules.filter(rule => {
+    //             if (!rule.program_id || !rule.program_id.rewards) return false;
+    //             return rule.program_id.rewards.some(
+    //                 reward => reward.reward_type === 'pricelist_change'
+    //             );
+    //         });
 
-            let cumpleAlgunaRegla = false;
+    //         if (pricelistChangeRules.length === 0) {
+    //             if (savedCouponPointChanges) this.couponPointChanges = savedCouponPointChanges;
+    //             return superResult;
+    //         }
 
-            for (const rule of pricelistChangeRules) {
-                const cumpleEstaRegla = 
-                    totalPrecio >= rule.minimum_amount && 
-                    totalCantidad >= rule.minimum_qty;
+    //         let totalCantidad = 0;
+    //         let totalBase = 0;
+    //         let totalImpuestos = 0;
 
-                if (cumpleEstaRegla) {
-                    cumpleAlgunaRegla = true;
-                    break;
-                }
-            }
+    //         orderlines.forEach(line => {
+    //             if (line.is_reward_line) return;
 
-            if (cumpleAlgunaRegla) {
-                const targetPricelistId = pricelistReward.reward.discount_max_amount;
-                const targetPricelist = this.pos.pricelists.find(p => p.id === targetPricelistId);
-                
-                if (targetPricelist && (!this.pricelist || this.pricelist.id !== targetPricelistId)) {
-                    this.set_pricelist(targetPricelist);
-                    
-                    if (typeof this._resetTaxesAndPrices === 'function') {
-                        this._resetTaxesAndPrices();
-                    }
-                }
-            } else {
-                this._restoreOriginalPricelist();
-            }
-        } else {
-            this._restoreOriginalPricelist();
-        }
+    //             const quantity = line.get_quantity();
+    //             const unitPrice = line.get_unit_price();
+    //             const baseLine = quantity * unitPrice;
 
-        // Restaurar puntos de lealtad para que no se pierdan (p. ej. al cambiar pricelist).
-        if (savedCouponPointChanges) {
-            this.couponPointChanges = savedCouponPointChanges;
-            _log("_updateRewards: puntos restaurados al final");
-        }
+    //             totalBase += baseLine;
+    //             totalCantidad += quantity;
 
-        return superResult;
-    },
+    //             const productTaxes = line.product.taxes_id || [];
+    //             productTaxes.forEach(taxId => {
+    //                 const tax = this.pos.taxes_by_id[taxId];
+    //                 if (tax) {
+    //                     totalImpuestos += baseLine * (tax.amount / 100);
+    //                 }
+    //             });
+    //         });
+
+    //         const totalPrecio = totalBase + totalImpuestos;
+
+    //         let cumpleAlgunaRegla = false;
+
+    //         for (const rule of pricelistChangeRules) {
+    //             const cumpleEstaRegla =
+    //                 totalPrecio >= rule.minimum_amount &&
+    //                 totalCantidad >= rule.minimum_qty;
+
+    //             if (cumpleEstaRegla) {
+    //                 cumpleAlgunaRegla = true;
+    //                 break;
+    //             }
+    //         }
+
+    //         if (cumpleAlgunaRegla) {
+    //             const targetPricelistId = pricelistReward.reward.discount_max_amount;
+    //             const targetPricelist = this.pos.pricelists.find(p => p.id === targetPricelistId);
+
+    //             if (targetPricelist && (!this.pricelist || this.pricelist.id !== targetPricelistId)) {
+    //                 this.set_pricelist(targetPricelist);
+
+    //                 if (typeof this._resetTaxesAndPrices === 'function') {
+    //                     this._resetTaxesAndPrices();
+    //                 }
+    //             }
+    //         } else {
+    //             this._restoreOriginalPricelist();
+    //         }
+    //     } else {
+    //         this._restoreOriginalPricelist();
+    //     }
+
+    //     // Restaurar puntos de lealtad para que no se pierdan (p. ej. al cambiar pricelist).
+    //     if (savedCouponPointChanges) {
+    //         this.couponPointChanges = savedCouponPointChanges;
+    //         _log("_updateRewards: puntos restaurados al final");
+    //     }
+
+    //     return superResult;
+    // },
 
     // CORRECCIÓN: Método extraído para restaurar precios originales.
     // Se llama cuando ya no hay fixed_price reward activo.
     _restoreOriginalPrices(order) {
         if (!this._originalPrices || Object.keys(this._originalPrices).length === 0) return;
-        
-        const orderlines = order ? order.get_orderlines() : 
-                          (this.pos && this.pos.get_order() ? this.pos.get_order().get_orderlines() : []);
-        
+
+        const orderlines = order ? order.get_orderlines() :
+            (this.pos && this.pos.get_order() ? this.pos.get_order().get_orderlines() : []);
+
         orderlines.forEach(line => {
             const lineUuid = line.uuid || line.cid;
             const originalData = this._originalPrices[lineUuid];
-            
+
             if (originalData && originalData.productId === line.product.id) {
                 const currentPrice = line.get_unit_price();
                 if (currentPrice !== originalData.price) {
@@ -476,7 +616,7 @@ patch(Order.prototype, {
                 }
             }
         });
-        
+
         this._originalPrices = {};
     },
 
@@ -484,19 +624,19 @@ patch(Order.prototype, {
     // Se llama cuando ya no hay pricelist_change reward activo.
     _restoreOriginalPricelist() {
         if (!this._originalPricelistId) return;
-        
+
         const original = this.pos.pricelists.find(
             p => p.id === this._originalPricelistId
         );
-        
+
         if (original && this.pricelist?.id !== original.id) {
             this.set_pricelist(original);
-            
+
             if (typeof this._resetTaxesAndPrices === 'function') {
                 this._resetTaxesAndPrices();
             }
         }
-        
+
         this._originalPricelistId = null;
     }
 });
