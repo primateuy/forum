@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_forum_reorder_warning_wizard,forum.reorder.warning.wizard,model_forum_reorder_warning_wizard,stock.group_stock_user,1,1,1,1

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Agregar grupo Logística con campo Múltiplos de Distribución en pestaña Inventario -->
+    <record id="product_template_form_view_distribution_multiple" model="ir.ui.view">
+        <field name="name">product.template.form.distribution.multiple</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="stock.view_template_property_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='stock_property']" position="after">
+                <group string="Logística" name="forum_logistics">
+                    <field name="mutiplos_distribucion"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

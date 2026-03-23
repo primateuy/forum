@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Herencia de la vista tree de reglas de reabastecimiento -->
+    <record id="view_warehouse_orderpoint_tree_origin" model="ir.ui.view">
+        <field name="name">stock.warehouse.orderpoint.tree.origin</field>
+        <field name="model">stock.warehouse.orderpoint</field>
+        <field name="inherit_id" ref="stock.view_warehouse_orderpoint_tree_editable"/>
+        <field name="arch" type="xml">
+            <!-- Agregar campo de warning para decoración -->
+            <xpath expr="//field[@name='active']" position="after">
+                <field name="origin_stock_warning" column_invisible="True"/>
+                <field name="origin_warehouse_id" column_invisible="True"/>
+            </xpath>
+
+            <!-- Agregar columnas de origen después de qty_to_order -->
+            <xpath expr="//field[@name='location_id']" position="after">
+                <field name="origin_qty_on_hand" optional="hide" readonly="1"/>
+                <field name="origin_qty_available" optional="hide" readonly="1"/>
+                <field name="origin_qty_forecast" optional="hide" readonly="1"/>
+            </xpath>
+
+            <!-- Decoración warning en la fila cuando stock origen insuficiente -->
+            <xpath expr="//tree" position="attributes">
+                <attribute name="decoration-warning">origin_stock_warning == True</attribute>
+            </xpath>
+
+            <!-- Botón para abrir wizard de verificación / forzar reabastecimiento -->
+            <xpath expr="//button[@name='action_replenish']" position="before">
+                <button name="action_open_origin_warning_wizard"
+                        string="Verificar Stock Origen"
+                        type="object"
+                        class="o_replenish_buttons"
+                        icon="fa-exclamation-triangle"
+                        invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Herencia de la vista search para agregar filtros -->
+    <record id="stock_reorder_report_search_origin" model="ir.ui.view">
+        <field name="name">stock.warehouse.orderpoint.search.origin</field>
+        <field name="model">stock.warehouse.orderpoint</field>
+        <field name="inherit_id" ref="stock.stock_reorder_report_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='filter_to_reorder']" position="after">
+                <separator/>
+                <filter string="Reglas cumplibles (stock disponible en origen)"
+                        name="filter_fulfillable"
+                        domain="[('origin_stock_warning', '=', False), ('qty_to_order', '&gt;', 0)]"/>
+                <filter string="Reglas NO cumplibles (stock insuficiente en origen)"
+                        name="filter_unfulfillable"
+                        domain="[('origin_stock_warning', '=', True)]"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
