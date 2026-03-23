@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <record id="purchase_requisition_form_matrix" model="ir.ui.view">
+        <field name="name">purchase.requisition.form.inherit.matrix</field>
+        <field name="model">purchase.requisition</field>
+        <field name="inherit_id" ref="purchase_requisition.view_purchase_requisition_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/group" position="before">
+                <field name="grid" invisible="1"/>
+                <field name="grid_product_tmpl_id" invisible="1"/>
+                <field name="grid_update" invisible="1"/>
+            </xpath>
+
+            <xpath expr="//page[@name='products']/field[@name='line_ids']/tree/field[@name='product_id']" position="attributes">
+                <attribute name="column_invisible">1</attribute>
+            </xpath>
+            <xpath expr="//page[@name='products']/field[@name='line_ids']/tree/field[@name='product_id']" position="after">
+                <field name="currency_id" column_invisible="1"/>
+                <field name="product_template_id"
+                       string="Product"
+                       required="1"
+                       readonly="0"
+                       width="35%"
+                       domain="[('purchase_ok', '=', True), '|', ('company_id', '=', False), ('company_id', '=', parent.company_id)]"
+                       context="{'partner_id': parent.vendor_id, 'company_id': parent.company_id}"
+                       widget="prl_product_many2one"/>
+                <field name="product_template_attribute_value_ids" column_invisible="1"/>
+                <field name="product_no_variant_attribute_value_ids" column_invisible="1"/>
+                <field name="is_configurable_product" column_invisible="1"/>
+            </xpath>
+            <xpath expr="//page[@name='products']/field[@name='line_ids']/tree/field[@name='price_unit']" position="after">
+                <field name="price_subtotal" string="Subtotal" widget="monetary"/>
+            </xpath>
+
+            <xpath expr="//page[@name='products']/field[@name='line_ids']/form/group/field[@name='product_id']" position="replace">
+                <field name="product_id" invisible="1"/>
+                <field name="currency_id" invisible="1"/>
+                <field name="product_template_id"
+                       string="Product"
+                       readonly="0"
+                       domain="[('purchase_ok', '=', True), '|', ('company_id', '=', False), ('company_id', '=', parent.company_id)]"
+                       context="{'partner_id': parent.vendor_id, 'company_id': parent.company_id}"
+                       widget="prl_product_many2one"/>
+                <field name="product_template_attribute_value_ids" invisible="1"/>
+                <field name="product_no_variant_attribute_value_ids" invisible="1"/>
+                <field name="is_configurable_product" invisible="1"/>
+            </xpath>
+            <xpath expr="//page[@name='products']/field[@name='line_ids']/form/group/field[@name='company_id']" position="after">
+                <field name="price_unit"/>
+                <field name="price_subtotal" widget="monetary" readonly="1"/>
+            </xpath>
+
+            <!-- Reemplazar separator + description por layout de dos columnas como en purchase.order -->
+            <xpath expr="//page[@name='products']/field[@name='description']" position="replace">
+                <group>
+                    <group>
+                        <field colspan="2" name="description" nolabel="1"
+                               class="oe-bordered-editor"
+                               readonly="state not in ('draft', 'in_progress', 'open')"
+                               placeholder="Terms and Conditions ..."/>
+                    </group>
+                    <group class="oe_subtotal_footer">
+                        <field name="amount_untaxed" string="Total" widget="monetary" readonly="1"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
