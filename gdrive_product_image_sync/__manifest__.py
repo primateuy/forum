@@ -15,12 +15,6 @@
         'views/gdrive_sync_log_views.xml',
         'data/ir_cron_data.xml',
     ],
-    'external_dependencies': {
-        'python': [
-            'google.auth',
-            'googleapiclient',
-        ],
-    },
     'installable': True,
     'auto_install': False,
     'application': False,
