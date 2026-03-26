@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_gdrive_sync_log_user,gdrive.sync.log.user,model_gdrive_sync_log,base.group_user,1,0,0,0
+access_gdrive_sync_log_admin,gdrive.sync.log.admin,model_gdrive_sync_log,base.group_system,1,1,1,1
