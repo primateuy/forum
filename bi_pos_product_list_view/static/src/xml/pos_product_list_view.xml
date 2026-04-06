@@ -26,7 +26,7 @@
 				<Input tModel="[pos, 'searchProductWord']"
 					class="'p-2'"
 					isSmall="ui.isSmall"
-					placeholder="'Search products...'"
+					t-att-placeholder="productSearchPlaceholder"
 					icon="{type: 'fa', value: 'fa-search'}"
 					debounceMillis="100" />
 			</div>
@@ -39,28 +39,28 @@
 							<tr>
 								<t t-if="env.services.pos.config.enable_list_view">
 									<t t-if="env.services.pos.config.display_product_image">
-										<th >Image</th>	
+										<th t-esc="listHeaderImage"/>
 									</t>
 									<t t-if="env.services.pos.config.display_product_code">
-										<th class="code">Code</th>	
+										<th class="code" t-esc="listHeaderCode"/>
 									</t>
 									<t t-if="env.services.pos.config.display_product_name">
-										<th class="name" >Name</th>	
+										<th class="name" t-esc="listHeaderName"/>
 									</t>
 									<t t-if="env.services.pos.config.display_product_type">
-										<th class="type" >Type</th>	
+										<th class="type" t-esc="listHeaderType"/>
 									</t>
 									<t t-if="env.services.pos.config.display_product_UOM">
-										<th class="uom" >UoM</th>	
+										<th class="uom" t-esc="listHeaderUom"/>
 									</t>
 									<t t-if="env.services.pos.config.display_product_price">
-										<th class="price">Price</th>	
+										<th class="price" t-esc="listHeaderPrice"/>
 									</t>
 									<t t-if="env.services.pos.config.display_product_on_hand_qty">
-										<th class="text-center qty">On Hand Qty</th>	
+										<th class="text-center qty" t-esc="listHeaderOnHandQty"/>
 									</t>
 									<t t-if="env.services.pos.config.display_product_forecast_qty">
-										<th class="text-center fqty">Forecasted Qty</th>	
+										<th class="text-center fqty" t-esc="listHeaderForecastedQty"/>
 									</t>
 								</t>
 
@@ -99,15 +99,7 @@
 										</t>
 										<t t-if="env.services.pos.config.display_product_type">
 											<td class="product_type">
-												<t t-if="prd.type === 'consu'">
-													Consumable
-												</t>
-												<t t-if="prd.type === 'service'">
-													Service
-												</t>
-												<t t-if="prd.type === 'product'">
-													Storable Product
-												</t>
+												<t t-esc="getProductTypeLabel(prd.type)"/>
 											</td>
 										</t>
 										<t t-if="env.services.pos.config.display_product_UOM">

@@ -17,6 +17,13 @@ export class SalespersonButton extends Component {
         this.pos = usePos();
         this.popup = useService("popup");
     }
+
+    /**
+     * Etiqueta del botón de control en el PDV (traducible vía i18n).
+     */
+    get salespersonButtonLabel() {
+        return _t("Salesperson");
+    }
     async click() {
         const selectionList = this.pos.employees.map(user => ({
             id: user.id,

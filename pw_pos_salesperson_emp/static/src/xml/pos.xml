@@ -4,7 +4,7 @@
         <span class="control-button btn btn-light rounded-0 fw-bolder" t-on-click="() => this.click()">
             <i class="fa fa-user me-1"></i>
             <span> </span>
-            <span>Salesperson</span>
+            <span t-esc="salespersonButtonLabel"/>
         </span>
     </t>
     <t t-name="pw_pos_salesperson.ProductScreen" t-inherit="point_of_sale.ProductScreen" t-inherit-mode="extension">
@@ -33,7 +33,7 @@
                 <h4 class="modal-title"><t t-esc="props.title" /></h4>
             </div>
             <div style="display: inline-flex;padding: 20px;">
-                <div style="padding-top: 2px;font-weight: 600;padding-right: 20px;">Salesperson: </div>
+                <div style="padding-top: 2px;font-weight: 600;padding-right: 20px;" t-esc="salespersonFieldLabel"/>
                 <div>
                     <input list="employee_list" t-on-change="(ev) => this.onChangeSalesperson(ev.target.value)"/>
                     <datalist id="employee_list">

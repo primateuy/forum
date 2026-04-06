@@ -17,6 +17,57 @@ patch(ProductsWidget.prototype, {
         this.pos = usePos();
         onMounted(this.onMounted);
     },
+
+    /**
+     * Placeholder del buscador de productos en el PDV (traducible vía i18n).
+     */
+    get productSearchPlaceholder() {
+        return _t("Search products...");
+    },
+
+    /**
+     * Etiquetas de columnas de la vista lista de productos (traducibles vía i18n).
+     */
+    get listHeaderImage() {
+        return _t("Image");
+    },
+    get listHeaderCode() {
+        return _t("Code");
+    },
+    get listHeaderName() {
+        return _t("Name");
+    },
+    get listHeaderType() {
+        return _t("Type");
+    },
+    get listHeaderUom() {
+        return _t("UoM");
+    },
+    get listHeaderPrice() {
+        return _t("Price");
+    },
+    get listHeaderOnHandQty() {
+        return _t("On Hand Qty");
+    },
+    get listHeaderForecastedQty() {
+        return _t("Forecasted Qty");
+    },
+
+    /**
+     * Devuelve la etiqueta traducida del tipo de producto para la grilla lista.
+     */
+    getProductTypeLabel(type) {
+        if (type === "consu") {
+            return _t("Consumable");
+        }
+        if (type === "service") {
+            return _t("Service");
+        }
+        if (type === "product") {
+            return _t("Storable Product");
+        }
+        return "";
+    },
     onMounted() {
         if(this.pos.config.prod_view === 'list' && this.pos.config.enable_list_view){
             if(flag=true){

@@ -5,7 +5,10 @@ from odoo import api, fields, models, _
 class PosConfig(models.Model):
     _inherit = 'pos.config'
 
-    allow_salesperson = fields.Boolean('Allow Salesperson')
+    allow_salesperson = fields.Boolean(
+        string="Allow Salesperson",
+        help="Enable the salesperson button and per-line assignment in the POS.",
+    )
 
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'

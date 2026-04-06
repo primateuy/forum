@@ -18,6 +18,13 @@ export class SalespersonPopup extends AbstractAwaitablePopup {
         super.setup();
         this.state = useState({ selectedId: this.props.list.find((item) => item.isSelected) });
     }
+
+    /**
+     * Leyenda del campo de selección de vendedor en el popup (traducible vía i18n).
+     */
+    get salespersonFieldLabel() {
+        return _t("Salesperson:");
+    }
     async onChangeSalesperson(emp_name) {
         const selected_emp = this.props.list.find((item) => item.label === emp_name);
         if (selected_emp) {
