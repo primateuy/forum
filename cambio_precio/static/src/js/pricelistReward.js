@@ -303,7 +303,9 @@ patch(Order.prototype, {
                 const targetPricelistId = pricelistReward.reward.discount_max_amount;
                 const targetPricelist = this.pos.pricelists.find(p => p.id === targetPricelistId);
                 if (targetPricelist && (!this.pricelist || this.pricelist.id !== targetPricelistId)) {
+                    this._restoringPricelist = true;
                     this.set_pricelist(targetPricelist);
+                    this._restoringPricelist = false;
                     if (typeof this._resetTaxesAndPrices === 'function') this._resetTaxesAndPrices();
                 }
             } else {
@@ -325,6 +327,13 @@ patch(Order.prototype, {
             return super.deductLoyaltyPoints(...arguments);
         } catch (e) {
             console.warn("[cambio_precio] deductLoyaltyPoints error:", e);
+        }
+    },
+
+    set_pricelist(pricelist) {
+        super.set_pricelist(...arguments);
+        if (!this._restoringPricelist) {
+            debouncedUpdateRewards(this, 150);
         }
     },
 
@@ -630,7 +639,9 @@ patch(Order.prototype, {
         );
 
         if (original && this.pricelist?.id !== original.id) {
+            this._restoringPricelist = true;
             this.set_pricelist(original);
+            this._restoringPricelist = false;
 
             if (typeof this._resetTaxesAndPrices === 'function') {
                 this._resetTaxesAndPrices();
