@@ -7,12 +7,13 @@ Extiende las ordenes de compra abiertas para permitir carga masiva por matriz
 de variantes y mostrar subtotales/totales como en compras.
     """,
     'category': 'Inventory/Purchase',
-    'version': '17.0.0.0',
+    'version': '17.0.0.1',
     'depends': [
         'purchase_requisition',
         'purchase_product_matrix',
     ],
     'data': [
+        'views/purchase_requisition_type_views.xml',
         'views/purchase_requisition_views.xml',
     ],
     'assets': {

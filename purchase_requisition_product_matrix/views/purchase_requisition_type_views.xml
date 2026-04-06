@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <record id="purchase_requisition_type_form_matrix" model="ir.ui.view">
+        <field name="name">purchase.requisition.type.form.inherit.matrix</field>
+        <field name="model">purchase.requisition.type</field>
+        <field name="inherit_id" ref="purchase_requisition.view_purchase_requisition_type_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='quantity_copy']" position="after">
+                <field name="use_remaining_qty" invisible="quantity_copy != 'copy'"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

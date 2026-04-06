@@ -34,6 +34,20 @@ class StockWarehouseOrderpoint(models.Model):
         search='_search_origin_stock_warning',
     )
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        product_ids = {vals['product_id'] for vals in vals_list if vals.get('product_id')}
+        if product_ids:
+            multiples = {
+                p.id: p.product_tmpl_id.mutiplos_distribucion
+                for p in self.env['product.product'].browse(product_ids)
+            }
+            for vals in vals_list:
+                multiple = multiples.get(vals.get('product_id'), 0)
+                if multiple and multiple > 1:
+                    vals['qty_multiple'] = float(multiple)
+        return super().create(vals_list)
+
     @api.depends('route_id', 'route_id.supplier_wh_id', 'warehouse_id', 'warehouse_id.resupply_wh_ids')
     def _compute_origin_warehouse_id(self):
         for op in self:
@@ -72,15 +86,59 @@ class StockWarehouseOrderpoint(models.Model):
                 op.origin_stock_warning = False
 
     def _search_origin_stock_warning(self, operator, value):
-        """Permite filtrar por alerta de stock origen evaluando en tiempo real."""
-        all_ops = self.search([])
-        all_ops._compute_origin_quantities()
-        all_ops._compute_origin_stock_warning()
+        """Permite filtrar por alerta de stock origen evaluando en tiempo real.
+
+        Optimización: pre-filtra candidatos reales y agrupa por almacén origen
+        para batch-compute free_qty (una query SQL por almacén, no por orderpoint).
+        """
+        from collections import defaultdict
+
+        # Solo registros con almacén origen definido y cantidad a pedir
+        candidate_ops = self.search([
+            ('origin_warehouse_id', '!=', False),
+            ('qty_to_order', '>', 0),
+        ])
+
+        warning_ids = set()
+        if candidate_ops:
+            # Agrupar por almacén origen → batch compute por almacén
+            ops_by_wh = defaultdict(list)
+            for op in candidate_ops:
+                ops_by_wh[op.origin_warehouse_id.id].append(op)
+
+            for wh_id, ops in ops_by_wh.items():
+                wh = self.env['stock.warehouse'].browse(wh_id)
+                product_ids = self.env['product.product'].browse(
+                    list({op.product_id.id for op in ops})
+                )
+                # free_qty se batch-computa para todo el recordset en una sola query
+                free_qty_map = {
+                    p.id: p.free_qty
+                    for p in product_ids.with_context(
+                        warehouse=wh_id,
+                        location=wh.lot_stock_id.id,
+                    )
+                }
+                for op in ops:
+                    free_qty = free_qty_map.get(op.product_id.id, 0.0)
+                    if float_compare(
+                        free_qty, op.qty_to_order,
+                        precision_rounding=op.product_uom.rounding
+                    ) < 0:
+                        warning_ids.add(op.id)
+
         if operator == '=' and value:
-            ids = all_ops.filtered(lambda o: o.origin_stock_warning).ids
+            # True: solo los que tienen warning
+            return [('id', 'in', list(warning_ids))]
         else:
-            ids = all_ops.filtered(lambda o: not o.origin_stock_warning).ids
-        return [('id', 'in', ids)]
+            # False: candidatos sin warning + los que no tienen almacén origen / qty=0
+            non_warning_candidate_ids = [op.id for op in candidate_ops if op.id not in warning_ids]
+            non_candidate_ops = self.search([
+                '|',
+                ('origin_warehouse_id', '=', False),
+                ('qty_to_order', '<=', 0),
+            ])
+            return [('id', 'in', non_warning_candidate_ids + non_candidate_ops.ids)]
 
     def action_replenish(self, force_to_max=False):
         """Override para validar stock en origen antes de reabastecer."""

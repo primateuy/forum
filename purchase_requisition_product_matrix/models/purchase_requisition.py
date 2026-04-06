@@ -101,7 +101,7 @@ class PurchaseRequisition(models.Model):
         if new_lines:
             self.update({'line_ids': new_lines})
 
-        # Recalcular UoM para líneas nuevas (el onchange establece uom_po_id)
+        # Recalcular UoM y precio para líneas nuevas (el onchange establece uom_po_id y price_unit)
         if product_ids:
             for line in self.line_ids.filtered(lambda l: l.product_id.id in product_ids):
                 saved_qty = line.product_qty
@@ -208,6 +208,20 @@ class PurchaseRequisitionLine(models.Model):
                 line_found[line_key] = True
             else:
                 line.qty_ordered = 0
+
+    @api.onchange('product_id')
+    def _onchange_product_id(self):
+        super()._onchange_product_id()
+        if not self.product_id or not self.requisition_id.vendor_id or self.price_unit:
+            return
+        seller = self.product_id._select_seller(
+            partner_id=self.requisition_id.vendor_id,
+            quantity=self.product_qty,
+            date=fields.Date.today(),
+            uom_id=self.product_uom_id,
+        )
+        if seller:
+            self.price_unit = seller.price
 
     def _get_variant_extra_description(self):
         self.ensure_one()

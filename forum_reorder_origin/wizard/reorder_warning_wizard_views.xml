@@ -7,7 +7,7 @@
             <form string="Alerta de Stock en Origen">
                 <group>
                     <div class="alert alert-warning" role="alert">
-                        <i class="fa fa-warning"/> <strong>Stock insuficiente en origen</strong>
+                        <i class="fa fa-warning" title="Stock insuficiente en origen"/> <strong>Stock insuficiente en origen</strong>
                     </div>
                     <field name="message" readonly="1" nolabel="1" widget="text"/>
                 </group>

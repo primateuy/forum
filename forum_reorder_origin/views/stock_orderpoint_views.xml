@@ -47,7 +47,7 @@
                 <separator/>
                 <filter string="Reglas cumplibles (stock disponible en origen)"
                         name="filter_fulfillable"
-                        domain="[('origin_stock_warning', '=', False), ('qty_to_order', '&gt;', 0)]"/>
+                        domain="[('origin_stock_warning', '=', False), ('qty_to_order', '&gt;', 0), ('origin_warehouse_id', '!=', False)]"/>
                 <filter string="Reglas NO cumplibles (stock insuficiente en origen)"
                         name="filter_unfulfillable"
                         domain="[('origin_stock_warning', '=', True)]"/>
