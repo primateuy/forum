@@ -26,7 +26,7 @@
 				<Input tModel="[pos, 'searchProductWord']"
 					class="'p-2'"
 					isSmall="ui.isSmall"
-					t-att-placeholder="productSearchPlaceholder"
+					placeholder="productSearchPlaceholder"
 					icon="{type: 'fa', value: 'fa-search'}"
 					debounceMillis="100" />
 			</div>
