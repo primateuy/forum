@@ -9,10 +9,22 @@
             <xpath expr="//form" position="inside">
                 <app data-string="Google Drive Image Sync" string="Google Drive Image Sync" name="gdrive_product_image_sync">
                     <block title="Google Drive Settings">
-                        <setting string="Folder ID" help="The ID of the Google Drive folder containing product images.">
+                        <setting string="Carpeta de Fotos Nuevas" help="ID de la carpeta de Google Drive donde se encuentran las fotos nuevas a procesar.">
                             <div class="content-group">
                                 <div class="mt16">
                                     <field name="gdrive_folder_id" placeholder="e.g. 1AbC_dEfGhIjKlMnOpQrStUvWxYz"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting string="Mover imágenes después de sincronizar" help="Si está activo, las imágenes procesadas se moverán a la carpeta de destino. Desactivar para solo sincronizar sin mover archivos.">
+                            <field name="gdrive_move_after_sync"/>
+                        </setting>
+                        <setting string="Carpeta de Fotos Procesadas" help="ID de la carpeta de Google Drive a la que se moverán las fotos una vez procesadas.">
+                            <div class="content-group">
+                                <div class="mt16">
+                                    <field name="gdrive_processed_folder_id"
+                                           placeholder="e.g. 1AbC_dEfGhIjKlMnOpQrStUvWxYz"
+                                           invisible="not gdrive_move_after_sync"/>
                                 </div>
                             </div>
                         </setting>
@@ -27,6 +39,13 @@
                             <div class="content-group">
                                 <div class="mt16">
                                     <field name="gdrive_sync_interval"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting string="Batch Size" help="Cantidad de SKUs a procesar por lote. Valores menores reducen el uso de RAM.">
+                            <div class="content-group">
+                                <div class="mt16">
+                                    <field name="gdrive_batch_size"/>
                                 </div>
                             </div>
                         </setting>

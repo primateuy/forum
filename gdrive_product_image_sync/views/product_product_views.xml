@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="product_variant_form_view_inherit_gdrive" model="ir.ui.view">
+        <field name="name">product.product.form.inherit.gdrive.sync</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_normal_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='sales']" position="inside">
+                <group string="Google Drive">
+                    <field name="gdrive_synced" widget="boolean_toggle"/>
+                </group>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Imágenes de Variante" name="variant_images">
+                    <field name="variant_image_ids">
+                        <list>
+                            <field name="name"/>
+                            <field name="image_1920" widget="image" options="{'size': [64, 64]}"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

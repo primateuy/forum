@@ -193,12 +193,18 @@ class GDriveService(models.AbstractModel):
             return False
 
     @api.model
-    def _move_to_processed(self, file_id, folder_id):
-        """Move a file to the 'processed' subfolder of the given folder.
+    def _move_to_processed(self, file_id, folder_id, destination_folder_id=None):
+        """Move a file to the destination folder.
+
+        If destination_folder_id is provided, moves directly to that folder.
+        Otherwise falls back to creating/finding a 'processed' subfolder inside folder_id.
 
         Returns True on success, False on error.
         """
-        processed_folder_id = self._get_or_create_processed_folder(folder_id)
+        if destination_folder_id:
+            processed_folder_id = destination_folder_id
+        else:
+            processed_folder_id = self._get_or_create_processed_folder(folder_id)
         if not processed_folder_id:
             return False
 
