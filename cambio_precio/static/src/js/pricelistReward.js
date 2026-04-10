@@ -234,37 +234,42 @@ patch(Order.prototype, {
         const orderlines = order.get_orderlines();
 
         // --- FIXED PRICE ---
-        const fixedPriceReward = claimable.find(
-            r => r.reward && r.reward.reward_type === "fixed_price"
-        );
-        if (fixedPriceReward && fixedPriceReward.reward) {
-            const reward = fixedPriceReward.reward;
-            const fixedPrice = reward.fixed_price;
-            const rulesProductDomains = reward.rules_product_domains || [];
-            if (fixedPrice !== undefined && fixedPrice !== null && fixedPrice !== false && fixedPrice > 0) {
-                orderlines.forEach(line => {
-                    if (line.is_reward_line) return;
-                    const productId = line.product.id;
-                    const product = line.product;
-                    const lineUuid = line.uuid || line.cid;
-                    const productMatchesDomain = this._productMatchesRuleDomains(product, rulesProductDomains);
-                    if (productMatchesDomain) {
-                        if (!this._originalPrices[lineUuid]) {
-                            this._originalPrices[lineUuid] = { price: line.get_unit_price(), productId };
-                        }
-                        if (line.get_unit_price() !== fixedPrice) line.set_unit_price(fixedPrice);
-                        this._applyRewardLabel(line, reward);
-                    } else if (this._originalPrices[lineUuid]) {
-                        const originalData = this._originalPrices[lineUuid];
-                        if (originalData && originalData.productId === productId) {
-                            line.set_unit_price(originalData.price);
-                            delete this._originalPrices[lineUuid];
-                        }
+        const fixedPriceRewards = claimable
+            .filter(r => r.reward && r.reward.reward_type === "fixed_price")
+            .map(r => r.reward);
+        if (fixedPriceRewards.length > 0) {
+            orderlines.forEach(line => {
+                if (line.is_reward_line) return;
+
+                const lineUuid = line.uuid || line.cid;
+                const productId = line.product.id;
+                const matchingReward = this._getMatchingFixedPriceReward(line, fixedPriceRewards);
+
+                if (matchingReward) {
+                    const { reward, fixedPrice } = matchingReward;
+                    if (!this._originalPrices[lineUuid]) {
+                        this._originalPrices[lineUuid] = { price: line.get_unit_price(), productId };
                     }
-                });
-            }
+                    if (line.get_unit_price() !== fixedPrice) {
+                        line.set_unit_price(fixedPrice);
+                    }
+                    this._applyRewardLabel(line, reward);
+                } else if (this._originalPrices[lineUuid]) {
+                    const originalData = this._originalPrices[lineUuid];
+                    if (originalData && originalData.productId === productId) {
+                        if (line.get_unit_price() !== originalData.price) {
+                            line.set_unit_price(originalData.price);
+                        }
+                        delete this._originalPrices[lineUuid];
+                    }
+                    this._clearRewardLabel(line);
+                } else if (line.reward_type === "fixed_price") {
+                    this._clearRewardLabel(line);
+                }
+            });
         } else {
             this._restoreOriginalPrices(order);
+            this._clearRewardLabels();
         }
 
         // --- PRICELIST CHANGE ---
@@ -332,6 +337,9 @@ patch(Order.prototype, {
 
     set_pricelist(pricelist) {
         super.set_pricelist(...arguments);
+        // Re-evaluar recompensas custom cuando la pricelist cambia desde afuera
+        // (p.ej. cambio de cliente). _restoringPricelist impide recursión cuando
+        // _applyCustomRewardsOnly o _restoreOriginalPricelist llaman a set_pricelist.
         if (!this._restoringPricelist) {
             debouncedUpdateRewards(this, 150);
         }
@@ -380,11 +388,16 @@ patch(Order.prototype, {
         const orderlines = this.get_orderlines();
         orderlines.forEach(line => {
             if (line.reward_label && line.reward_type === "fixed_price") {
-                delete line.reward_label;
-                delete line.reward_type;
-                delete line.reward_badge_color;
+                this._clearRewardLabel(line);
             }
         });
+    },
+
+    _clearRewardLabel(line) {
+        delete line.reward_label;
+        delete line.reward_type;
+        delete line.reward_badge_color;
+        delete line.custom_fixed_price_reward_id;
     },
 
     _applyRewardLabel(line, reward) {
@@ -393,7 +406,46 @@ patch(Order.prototype, {
             line.reward_label = `[${label}]`;
             line.reward_type = "fixed_price";
             line.reward_badge_color = 'success';
+            line.custom_fixed_price_reward_id = reward.id;
         }
+    },
+
+    _getFixedPriceForLine(reward, line) {
+        if (!reward || !line || !line.product) return null;
+
+        const productId = String(line.product.id);
+        const fixedPriceMap = reward.fixed_price_map || {};
+        if (Object.prototype.hasOwnProperty.call(fixedPriceMap, productId)) {
+            const mappedPrice = Number(fixedPriceMap[productId]);
+            return mappedPrice > 0 ? mappedPrice : null;
+        }
+
+        const fixedPriceData = reward.fixed_price_data || [];
+        const fixedPriceLine = fixedPriceData.find(data => String(data.product_id) === productId);
+        if (fixedPriceLine) {
+            const dataPrice = Number(fixedPriceLine.fixed_price);
+            return dataPrice > 0 ? dataPrice : null;
+        }
+
+        const fixedPrice = Number(reward.fixed_price);
+        return fixedPrice > 0 ? fixedPrice : null;
+    },
+
+    _getMatchingFixedPriceReward(line, fixedPriceRewards) {
+        const product = line?.product;
+        if (!product) return null;
+
+        for (const reward of fixedPriceRewards) {
+            const rulesProductDomains = reward.rules_product_domains || [];
+            const productMatchesDomain = this._productMatchesRuleDomains(product, rulesProductDomains);
+            const fixedPrice = this._getFixedPriceForLine(reward, line);
+
+            if (productMatchesDomain && fixedPrice !== null) {
+                return { reward, fixedPrice };
+            }
+        }
+
+        return null;
     },
 
     _productMatchesRuleDomains(product, rulesProductDomains) {

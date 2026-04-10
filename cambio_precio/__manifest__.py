@@ -1,6 +1,6 @@
 {
     "name": "Cambio de Lista de Precios",
-    "version": "1.5",
+    "version": "1.6",
     "depends": ["loyalty","point_of_sale", "sale_management"],
     "category": "Point of Sale",
     "summary": "Módulo para cambiar la lista de precios en el Punto de Venta",
