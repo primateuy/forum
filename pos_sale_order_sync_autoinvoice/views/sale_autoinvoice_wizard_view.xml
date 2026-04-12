@@ -21,14 +21,7 @@
                         </group>
                     </group>
                     <group string="Órdenes excluidas" invisible="not has_exclusions">
-                        <field name="orders_excluded_ids" nolabel="1">
-                            <list>
-                                <field name="name"/>
-                                <field name="date_order"/>
-                                <field name="numero_lineas"/>
-                                <field name="amount_total"/>
-                            </list>
-                        </field>
+                        <field name="orders_excluded_ids" nolabel="1" widget="many2many_tags" readonly="1"/>
                     </group>
                     <field name="has_exclusions" invisible="1"/>
                 </sheet>
