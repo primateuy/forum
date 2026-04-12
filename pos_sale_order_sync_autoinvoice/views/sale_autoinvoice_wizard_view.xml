@@ -6,10 +6,9 @@
         <field name="arch" type="xml">
             <form string="Facturar por límite de líneas">
                 <sheet>
-                    <group>
-                        <field name="warning_message" widget="text" nolabel="1"
-                               style="font-size: 13px; padding: 8px;"/>
-                    </group>
+                    <div class="alert alert-info" role="alert" style="margin-bottom: 16px;">
+                        <field name="warning_message" nolabel="1" readonly="1"/>
+                    </div>
                     <group string="Detalle" invisible="not has_exclusions">
                         <group>
                             <field name="lines_to_invoice" string="Líneas a facturar"/>
