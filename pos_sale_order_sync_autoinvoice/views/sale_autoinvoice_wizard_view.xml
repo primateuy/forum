@@ -35,12 +35,15 @@
     </record>
 
     <!-- Acción de servidor desde la vista lista de órdenes de venta -->
-    <record id="action_sale_autoinvoice_by_limit" model="ir.actions.server">
-        <field name="name">Facturar por límite de líneas</field>
-        <field name="model_id" ref="sale.model_sale_order"/>
-        <field name="binding_model_id" ref="sale.model_sale_order"/>
-        <field name="binding_view_types">list</field>
-        <field name="state">code</field>
-        <field name="code">action = records.action_autoinvoice_by_limit()</field>
-    </record>
+    <data noupdate="0">
+        <record id="action_sale_autoinvoice_by_limit" model="ir.actions.server">
+            <field name="name">Facturar por límite de líneas</field>
+            <field name="model_id" ref="sale.model_sale_order"/>
+            <field name="binding_model_id" ref="sale.model_sale_order"/>
+            <field name="binding_view_types">list</field>
+            <field name="groups_id" eval="[(4, ref('pos_sale_order_sync_autoinvoice.group_facturacion_franquicias'))]"/>
+            <field name="state">code</field>
+            <field name="code">action = records.action_autoinvoice_by_limit()</field>
+        </record>
+    </data>
 </odoo>
