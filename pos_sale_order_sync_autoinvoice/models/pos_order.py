@@ -18,6 +18,9 @@ class PosOrder(models.Model):
         super().create_sale_order_from_pos()
 
         for pos_order in self:
+            if not pos_order.config_id.autofacturar_por_limite:
+                continue
+
             so = pos_order.sale_order_id
             if not so:
                 continue

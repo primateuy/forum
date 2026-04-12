@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<odoo>
+    <record id="pos_config_form_autoinvoice" model="ir.ui.view">
+        <field name="name">pos.config.form.autoinvoice</field>
+        <field name="model">pos.config</field>
+        <field name="inherit_id" ref="pos_sale_order_sync.pos_config_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='tipo_pedido_venta_id']" position="after">
+                <field name="autofacturar_por_limite"
+                       invisible="not crear_order_venta"
+                       widget="boolean_toggle"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
