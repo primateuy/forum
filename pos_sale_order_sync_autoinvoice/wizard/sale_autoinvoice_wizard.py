@@ -142,6 +142,7 @@ class SaleAutoinvoiceWizard(models.TransientModel):
             active_ids=sale_orders.ids,
             active_model="sale.order",
             active_id=sale_orders[0].id,
+            autoinvoice_bypass_line_limit=True,
         ).create({
             "advance_payment_method": "delivered",
         })
