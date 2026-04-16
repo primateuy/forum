@@ -312,6 +312,7 @@ patch(Order.prototype, {
                     this.set_pricelist(targetPricelist);
                     this._restoringPricelist = false;
                     if (typeof this._resetTaxesAndPrices === 'function') this._resetTaxesAndPrices();
+                    this._scheduleCustomRewardsReevaluation();
                 }
             } else {
                 this._restoreOriginalPricelist();
@@ -382,8 +383,11 @@ patch(Order.prototype, {
         this._originalPrices = {};
     },
 
-    // CORRECCIÓN: _clearRewardLabels ahora solo limpia labels de NUESTRAS
-    // recompensas custom (fixed_price), no toca las recompensas estándar de Odoo.
+    _scheduleCustomRewardsReevaluation() {
+        if (this.finalized) return;
+        debouncedUpdateRewards(this, 50);
+    },
+
     _clearRewardLabels() {
         const orderlines = this.get_orderlines();
         orderlines.forEach(line => {
@@ -698,6 +702,7 @@ patch(Order.prototype, {
             if (typeof this._resetTaxesAndPrices === 'function') {
                 this._resetTaxesAndPrices();
             }
+            this._scheduleCustomRewardsReevaluation();
         }
 
         this._originalPricelistId = null;
