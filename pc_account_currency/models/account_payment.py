@@ -10,7 +10,7 @@ class AccountPayment(models.Model):
         journal_ids = AccountAccount.search([('type', '=', 'sale')], limit=1)
         return journal_ids
 
-    account_journal_id = fields.Many2one('account.journal', string='Journal Payment Account', default=lambda self: self._get_fist_journal())
+    account_journal_id = fields.Many2one('account.journal', string='Journal Payment Account')
     journal_ids_domain = fields.Binary(string="tag domain", help="Dynamic domain used for the account", compute="_compute_journal_ids_domain")
 
     @api.onchange('partner_type')
@@ -59,4 +59,11 @@ class AccountPayment(models.Model):
                 for line in self.move_id.line_ids.filtered(lambda l: l.account_id.account_type in ('asset_receivable', 'liability_payable')):
                     line.account_id = account_id
         else:
-            raise UserError("Debe configurar el Diario de Pago a Cuenta.")
+            AccountAccount = self.env['account.journal']
+            journal_ids = False
+            if self.payment_id.partner_type == 'customer':
+                journal_ids = AccountAccount.search([('type', '=', 'sale')], limit=1)
+            elif self.payment_id.partner_type == 'supplier':
+                journal_ids = AccountAccount.search([('type', '=', 'purchase')], limit=1)
+            self.payment_id.account_journal_id = journal_ids
+
