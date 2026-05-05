@@ -12,7 +12,26 @@ patch(PaymentScreen.prototype, {
         super.setup();
         this.pos = usePos();
         if (this.pos.config.auto_check_invoice) {
-            this.currentOrder.set_to_invoice(true);
+            // Para refunds (cambios de mercadería) replicar la lógica del core
+            // (point_of_sale/.../payment_screen.js onMounted): solo facturar si
+            // la orden original venía facturada. Forzar to_invoice en un cambio
+            // a $0 sin línea de pago dispara el flujo de generación de factura
+            // server-side, que termina con el POS "cargando" porque no hay
+            // pos.payment para reconciliar.
+            const order = this.currentOrder;
+            const isRefund = order?.isRefund ?? order?.is_refund_order?.();
+            if (isRefund) {
+                const firstLine = order.get_orderlines?.()?.[0] || order.lines?.[0];
+                const refundedOrder =
+                    firstLine?.refunded_orderline_id?.order_id;
+                const originalToInvoice =
+                    refundedOrder?.is_to_invoice?.() ?? refundedOrder?.to_invoice;
+                if (originalToInvoice) {
+                    order.set_to_invoice(true);
+                }
+            } else {
+                order.set_to_invoice(true);
+            }
         }
     },
     async _finalizeValidation() {
