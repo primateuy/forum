@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Restaura los defaults de Odoo upstream para las ACLs base.access_ir_model_user
+    y base.access_ir_model_fields_user.
+
+    Contexto (sesión 2026-05-12, forum):
+    En las BDs `o17_forum_validacion` y `o17_support_forum` alguien destildó
+    manualmente desde la UI (Ajustes -> Tecnico -> Permisos de acceso) el flag
+    `perm_read` del grupo Internal User sobre ir.model e ir.model.fields. Eso
+    rompe a cualquier usuario no admin en flujos que tocan metadata, en
+    particular el load_pos_data del POS.
+
+    Estos ACLs son de Odoo upstream y por default vienen con read=True para
+    Internal User. Reasertarlos via XML hace que un -u del modulo restaure
+    el estado correcto, incluso si alguien los vuelve a destildar via UI.
+
+    `noupdate="0"` fuerza la sobreescritura en cada -u (no solo en install).
+-->
+<odoo>
+    <data noupdate="0">
+        <record id="base.access_ir_model_user" model="ir.model.access">
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+        <record id="base.access_ir_model_fields_user" model="ir.model.access">
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+    </data>
+</odoo>
