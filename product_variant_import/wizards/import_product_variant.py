@@ -404,7 +404,8 @@ class ImportVariant(models.TransientModel):
 
                         if file_reader[0][24] or file_reader[0][25] or \
                                 file_reader[0][26]:
-                            model = self.env['ir.model']._get_id(
+                            # sudo: lectura de ir.model para usuarios sin permiso admin.
+                            model = self.env['ir.model'].sudo()._get_id(
                                 'product.template')
                             self.env['ir.model.fields'].create({
                                 'model_id': model,

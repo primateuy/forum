@@ -46,7 +46,8 @@ class IrModelsFieldsCustom(models.Model):
 
     def get_model(self):
         name = self._context.get('active_model')
-        model_id = self.env['ir.model'].search([('model', '=', name)])
+        # sudo: lectura de ir.model para usuarios sin permiso admin.
+        model_id = self.env['ir.model'].sudo().search([('model', '=', name)])
         return model_id
 
     name = fields.Char('Field Name', required=True, default='x_')
@@ -148,11 +149,12 @@ class IrModelsFieldsCustom(models.Model):
 
     def create_global_custome_field(self):
         custom_field_string = None
+        # sudo: lectura de ir.model para usuarios sin permiso admin.
         if self._context.get('active_model') == 'product.template':
-            ir_model_pool = self.env['ir.model']
+            ir_model_pool = self.env['ir.model'].sudo()
             model_id = ir_model_pool.search([('model', '=', 'product.template')])
         if self._context.get('active_model') == 'product.product':
-            ir_model_pool = self.env['ir.model']
+            ir_model_pool = self.env['ir.model'].sudo()
             model_id = ir_model_pool.search([('model', '=', 'product.product')])
         field = self.env['ir.model.fields'].sudo().create({'name': self.name,
                                                            'field_description': self.field_description,

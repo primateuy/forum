@@ -19,6 +19,9 @@
         'security/ir.model.access.csv',
 
         'data/user_admin.xml',
+        # Restaura los defaults de upstream para perm_read de Internal User
+        # sobre ir.model e ir.model.fields. Ver el XML para contexto.
+        'data/ir_model_access_defaults.xml',
 
         'views/ir_ui_menu_view.xml',
         'views/res_groups_view.xml',

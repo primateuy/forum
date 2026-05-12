@@ -8,7 +8,8 @@ class IrGlobalCustomTabs(models.Model):
 
     def get_model(self):
         name = self._context.get('active_model')
-        model_id = self.env['ir.model'].search([('model', '=', name)])
+        # sudo: lectura de ir.model para usuarios sin permiso admin.
+        model_id = self.env['ir.model'].sudo().search([('model', '=', name)])
         return model_id
 
     name = fields.Char('Name', required=True)

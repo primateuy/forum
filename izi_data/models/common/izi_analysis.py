@@ -322,7 +322,8 @@ class IZIAnalysis(models.Model):
                 # Create Action Server
                 server_action = self.env['ir.actions.server'].create({
                     'name': 'Get Analysis Data %s' % (analysis.name),
-                    'model_id': self.env['ir.model'].search([('model', '=', 'izi.analysis')], limit=1).id,
+                    # sudo: lectura de ir.model para usuarios sin permiso admin.
+                    'model_id': self.env['ir.model'].sudo().search([('model', '=', 'izi.analysis')], limit=1).id,
                     'state': 'code',
                     'code': vals.get('analysis_data_script'),
                 })
@@ -361,7 +362,8 @@ class IZIAnalysis(models.Model):
                 new_code = self.server_action_id.code
                 new_action = self.env['ir.actions.server'].create({
                     'name': 'Get Analysis Data %s' % (analysis.name),
-                    'model_id': self.env['ir.model'].search([('model', '=', 'izi.analysis')], limit=1).id,
+                    # sudo: lectura de ir.model para usuarios sin permiso admin.
+                    'model_id': self.env['ir.model'].sudo().search([('model', '=', 'izi.analysis')], limit=1).id,
                     'state': 'code',
                     'code': new_code,
                 })
@@ -1857,7 +1859,8 @@ class IZIAnalysis(models.Model):
                             pass
                         value = self.convert_to_utc(value)
                     elif self.model_id and field.field_name == field_name:
-                        model_field = self.env['ir.model.fields'].search([('model_id', '=', self.model_id.id), ('name', '=', field_name), ('ttype', '=', 'selection')], limit=1)
+                        # sudo: lectura de ir.model.fields para usuarios sin permiso admin.
+                        model_field = self.env['ir.model.fields'].sudo().search([('model_id', '=', self.model_id.id), ('name', '=', field_name), ('ttype', '=', 'selection')], limit=1)
                         if model_field:
                             selection = self.env[self.model_id.model]._fields[field_name].selection
                             selection_inverse_dict = {v: k for k,v in selection}

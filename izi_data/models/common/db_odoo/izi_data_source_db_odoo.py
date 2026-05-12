@@ -87,7 +87,8 @@ class IZIDataSourceDBOdoo(models.Model):
             table_filters = self.table_filter.split(',')
             table_filters = [tf.strip().replace('_', '.') for tf in table_filters]
             domain.append(('model', 'in', table_filters))
-        models = self.env['ir.model'].search(domain)
+        # sudo: lectura de ir.model para usuarios sin permiso admin.
+        models = self.env['ir.model'].sudo().search(domain)
         for model in models:
             table_name = model.model.replace('.', '_')
             table_desc = model.name

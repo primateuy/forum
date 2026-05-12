@@ -53,9 +53,11 @@ class IrUiView(models.Model):
         result = super(IrUiView, self)._postprocess_tag_field(
             node, name_manager, node_info)
 
-        model = self.env['ir.model']._get(name_manager.model._name)
+        # Lectura con sudo: el usuario PDV no tiene permisos sobre ir.model,
+        # y la decisión de ocultar/readonly se basa luego en self.env.user.groups_id.
+        model = self.env['ir.model'].sudo()._get(name_manager.model._name)
         field_name = node.get('name')
-        field_security = self.env['generic.security.restriction.field'].search(
+        field_security = self.env['generic.security.restriction.field'].sudo().search(
             [('model_id', '=', model.id), ('field_name', '=', field_name)])
 
         if field_security:
@@ -98,11 +100,12 @@ class IrUiView(models.Model):
             super(IrUiView, self)._postprocess_tag_button(
                 node, name_manager, node_info)
 
-        fields_security = self.env['ir.model']._get(
+        # Lectura con sudo: el usuario PDV no tiene permisos sobre ir.model.
+        fields_security = self.env['ir.model'].sudo()._get(
             name_manager.model._name
         ).mapped('field_security_ids')
 
-        fields_hide_stat_button = fields_security.search(
+        fields_hide_stat_button = fields_security.sudo().search(
             [
                 ('field_name', 'in',
                  [i.get('name') for i in node.iter(tag='field')]),

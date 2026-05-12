@@ -74,6 +74,8 @@ class ResConfigSettings(models.TransientModel):
         })
 
     def _send_mail(self, config):
-        pos_config = self.env['res.config.settings'].browse(config)
+        # sudo: usuarios no admin no tienen permiso sobre res.config.settings,
+        # y este método puede ser disparado fuera del cron.
+        pos_config = self.env['res.config.settings'].sudo().browse(config)
         for order in pos_config.pos_config_id.mapped('session_ids').mapped('order_ids').filtered(lambda x: x.state == 'invoiced' and not x.is_send):
             order.send_mail_invoice()

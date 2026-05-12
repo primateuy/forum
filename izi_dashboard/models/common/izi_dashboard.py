@@ -52,7 +52,8 @@ class IZIDashboardFilter(models.Model):
     def _on_change_model_field_id(self):
         self.ensure_one()
         if self.model_field_id.ttype == 'many2one':
-            self.model_relation_field_id = self.env['ir.model'].search(
+            # sudo: lectura de ir.model transparente para usuarios sin permiso admin.
+            self.model_relation_field_id = self.env['ir.model'].sudo().search(
                 [['model', '=', self.model_field_id.relation]])
         self.model_field_type = self.model_field_id.ttype
         self.model_order_field_id = False
@@ -111,7 +112,8 @@ class IZIDashboardFilter(models.Model):
                 })
             return vals
         if params.get('sourceType') == 'model' and model:
-            model_field = self.env['ir.model.fields'].search([('model_id', '=', model), ('name', '=', field)], limit=1)
+            # sudo: lectura de ir.model.fields para usuarios sin permiso admin.
+            model_field = self.env['ir.model.fields'].sudo().search([('model_id', '=', model), ('name', '=', field)], limit=1)
             res_domain = []
             if model_field.ttype == 'many2one':
                 filter_record_ids = []

@@ -341,8 +341,9 @@ class gen_sale(models.TransientModel):
         custom_vals = {}
         for i in main_list:
             count+= 1
-            model_id1 = self.env['ir.model'].search([('model','=','product.template')])    
-            model_id2 = self.env['ir.model'].search([('model','=','product.product')])            
+            # sudo: lectura de ir.model para usuarios sin permiso admin.
+            model_id1 = self.env['ir.model'].sudo().search([('model','=','product.template')])
+            model_id2 = self.env['ir.model'].sudo().search([('model','=','product.product')])
 
             if count > 25:
                 if type(i) == bytes:
