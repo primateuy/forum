@@ -208,6 +208,23 @@ patch(Orderline.prototype, {
 
 patch(Order.prototype, {
 
+    // Garantiza que los precios fijos estén aplicados ANTES de que Odoo calcule
+    // los puntos de lealtad. Esto resuelve el caso en que set_unit_price() no
+    // dispara _updateRewards(), por lo que sin este patch los puntos se calculan
+    // sobre el precio original en lugar del precio fijo.
+    async _updatePrograms() {
+        if (typeof this._applyCustomRewardsOnly === 'function' && !this._applyingForPoints) {
+            this._applyingForPoints = true;
+            try {
+                this._applyCustomRewardsOnly();
+            } catch (e) {
+                // silenciar; no debe bloquear el cálculo de puntos nativo
+            } finally {
+                this._applyingForPoints = false;
+            }
+        }
+        return await super._updatePrograms(...arguments);
+    },
 
     _applyCustomRewardsOnly() {
         if (!this._originalPrices) this._originalPrices = {};
