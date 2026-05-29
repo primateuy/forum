@@ -4,6 +4,17 @@ from odoo.exceptions import ValidationError
 import logging
 _logger = logging.getLogger(__name__)
 
+
+class LoyaltyCard(models.Model):
+    _inherit = 'loyalty.card'
+
+    earned_partner_id = fields.Many2one(
+        'res.partner',
+        string='Ganado por',
+        readonly=True,
+        help='Cliente que generó este cupón. Solo informativo — no restringe quién puede usarlo.',
+    )
+
 class PosSession(models.Model):
     _inherit = 'pos.session'
 
@@ -445,72 +456,53 @@ class PosOrder(models.Model):
 
         result = super(PosOrder, self)._process_order(order, draft, existing_order)
 
-        # Aplicar puntos de lealtad al cupón/tarjeta cuando el payload trae coupon_point_changes.
-        if not draft and cpc and isinstance(cpc, dict) and self.env.get('loyalty.card'):
+        if not draft and result:
+            try:
+                self.env['loyalty.card']
+            except KeyError:
+                return result
 
-            self._apply_coupon_point_changes(cpc)
+            pos_order = self.env['pos.order'].browse(result)
+
+            if cpc and isinstance(cpc, dict):
+                partner_id = pos_order.partner_id.id if pos_order.partner_id else None
+                _logger.info(
+                    "[cambio_precio] _process_order: aplicando coupon_point_changes keys=%s partner=%s",
+                    list(cpc.keys()), partner_id,
+                )
+                self._apply_coupon_point_changes(cpc, partner_id)
+
+            # Deducir puntos de cupones next_order_coupons usados como recompensa.
+            # El POS no los incluye en coupon_point_changes — se detectan por las líneas.
+            deductions = {}
+            for line in pos_order.lines:
+                if not line.coupon_id or not line.points_cost:
+                    continue
+                program = line.coupon_id.program_id
+                if not (
+                    program.program_type == 'next_order_coupons'
+                    or getattr(program, 'forum_anonymous_coupons', False)
+                ):
+                    continue
+                deductions[line.coupon_id.id] = (
+                    deductions.get(line.coupon_id.id, 0) + line.points_cost
+                )
+
+            for coupon_id, cost in deductions.items():
+                coupon = self.env['loyalty.card'].sudo().browse(coupon_id)
+                new_points = max(0.0, coupon.points - cost)
+                _logger.info(
+                    "[cambio_precio] next_order_coupons usado: tarjeta id=%s code=%s "
+                    "-%s puntos (antes: %s, ahora: %s)",
+                    coupon.id, coupon.code, cost, coupon.points, new_points,
+                )
+                coupon.write({'points': new_points})
 
         return result
 
     @api.model
     def create_from_ui(self, orders, draft=False):
-        """
-        Crea órdenes desde la UI y aplica coupon_point_changes a loyalty.card.
-
-        Dependemos de odoo_pos_no_invoice para que este método se ejecute primero en la
-        cadena (MRO) y así tengamos acceso al payload antes de que otros módulos lo consuman.
-        Extraemos coupon_point_changes ANTES de super() porque el core/sync puede modificar
-        o reemplazar la lista orders; aplicamos los puntos DESPUÉS de super() para que la
-        orden ya esté creada.
-        
-       
-        """
-        coupon_point_changes_with_partner = []
-        for order_payload in (orders or []):
-            if not isinstance(order_payload, dict):
-                coupon_point_changes_with_partner.append((None, None))
-                continue
-            order_data = order_payload.get('data') or order_payload
-            if not isinstance(order_data, dict):
-                coupon_point_changes_with_partner.append((None, None))
-                continue
-            cpc = order_data.get('coupon_point_changes') if order_data.get('coupon_point_changes') else None
-            partner_id = order_data.get('partner_id') if order_data.get('partner_id') else None
-            if cpc and isinstance(cpc, dict) and partner_id:
-                coupon_point_changes_with_partner.append((cpc, partner_id))
-            else:
-                coupon_point_changes_with_partner.append((None, None))
-
-        result = super(PosOrder, self).create_from_ui(orders, draft)
-
-        if draft:
-            return result
-        
-        try:
-            self.env['loyalty.card']
-        except KeyError:
-            _logger.debug(
-                "[cambio_precio] create_from_ui: modelo loyalty.card no disponible, no se aplican puntos"
-            )
-            return result
-
-        num_cpc = sum(1 for cpc, _ in coupon_point_changes_with_partner if cpc)
-        if num_cpc:
-            _logger.info(
-                "[cambio_precio] create_from_ui: aplicando puntos en %s orden(es)",
-                num_cpc,
-            )
-
-
-        for cpc, order_partner_id in coupon_point_changes_with_partner:
-            if cpc:
-                _logger.info(
-                    "[cambio_precio] create_from_ui: aplicando coupon_point_changes keys=%s partner=%s",
-                    list(cpc.keys()), order_partner_id
-                )
-                self._apply_coupon_point_changes(cpc, order_partner_id)
-
-        return result
+        return super(PosOrder, self).create_from_ui(orders, draft)
 
     @api.model
     def _apply_coupon_point_changes(self, coupon_point_changes, partner_id=None):
@@ -526,7 +518,12 @@ class PosOrder(models.Model):
             if not change or not isinstance(change, dict):
                 _logger.debug("[cambio_precio] cambio vacío para card %s, saltando", card_id_str)
                 continue
-                
+
+            _logger.info(
+                "[cambio_precio] procesando entry card_id=%s points=%s program_id=%s",
+                card_id_str, change.get('points'), change.get('program_id'),
+            )
+
             points = change.get('points')
             if points is None:
                 _logger.debug("[cambio_precio] sin 'points' en cambio para card %s", card_id_str)
@@ -540,30 +537,98 @@ class PosOrder(models.Model):
                 continue
 
             program_id = change.get('program_id')
-            if not program_id:
-                _logger.warning(
-                    "[cambio_precio] Cambio de puntos sin program_id para tarjeta %s. "
-                    "Saltando porque las tarjetas requieren un programa asociado.",
-                    card_id_str
-                )
-                continue
-
             card = LoyaltyCard.sudo().browse(card_id)
 
             if not card.exists():
+                if not program_id:
+                    _logger.warning(
+                        "[cambio_precio] Cambio de puntos sin program_id para tarjeta nueva %s. "
+                        "Saltando — no se puede crear loyalty.card sin programa.",
+                        card_id_str
+                    )
+                    continue
+
                 program = self.env['loyalty.program'].sudo().browse(program_id)
                 if not program.exists():
                     _logger.error(
-                        "[cambio_precio] Programa %s no existe. No se puede crear loyalty.card %s. "
-                        "Verifica que el programa_id está correctamente configurado en las recompensas.",
+                        "[cambio_precio] Programa %s no existe. No se puede crear loyalty.card %s.",
                         program_id, card_id_str
+                    )
+                    continue
+
+                is_next_order = (
+                    program.program_type == 'next_order_coupons'
+                    or getattr(program, 'forum_anonymous_coupons', False)
+                )
+
+                if is_next_order:
+                    barcode = change.get('barcode')
+
+                    if points > 0:
+                        # GANANDO: crear tarjeta nueva con código único.
+                        if barcode:
+                            existing = LoyaltyCard.sudo().search([('code', '=', barcode)], limit=1)
+                            if existing:
+                                _logger.info(
+                                    "[cambio_precio] next_order_coupons: código '%s' ya existe (id=%s), saltando.",
+                                    barcode, existing.id
+                                )
+                                continue
+                        code = barcode or self.env['loyalty.card']._generate_code()
+                        try:
+                            with self.env.cr.savepoint():
+                                new_card = LoyaltyCard.sudo().create({
+                                    'program_id': program_id,
+                                    'partner_id': False,
+                                    'earned_partner_id': partner_id or False,
+                                    'code': code,
+                                    'points': points,
+                                    'expiration_date': change.get('date_to') or False,
+                                })
+                                _logger.info(
+                                    "[cambio_precio] next_order_coupons: nueva tarjeta id=%s code=%s points=%s",
+                                    new_card.id, code, points,
+                                )
+                        except Exception as e:
+                            _logger.error(
+                                "[cambio_precio] Error creando tarjeta next_order_coupons programa %s: %s",
+                                program_id, str(e), exc_info=True,
+                            )
+                        continue  # Puntos seteados en create, no pasar al bloque de update
+
+                    # USANDO (points <= 0): el POS mandó ID temporal negativo.
+                    # Buscar la tarjeta real por barcode para descontarle el punto.
+                    if not barcode:
+                        _logger.warning(
+                            "[cambio_precio] next_order_coupons usada con id temporal %s y sin barcode. "
+                            "No se puede descontar el punto.",
+                            card_id_str
+                        )
+                        continue
+                    card = LoyaltyCard.sudo().search([('code', '=', barcode)], limit=1)
+                    if not card:
+                        _logger.warning(
+                            "[cambio_precio] next_order_coupons: no se encontró tarjeta con código '%s'.",
+                            barcode
+                        )
+                        continue
+                    _logger.info(
+                        "[cambio_precio] next_order_coupons usada: tarjeta real id=%s code=%s points_delta=%s",
+                        card.id, barcode, points
+                    )
+                    # card está seteada, cae al bloque de update para restar el punto
+
+                if not program.is_nominative:
+                    _logger.info(
+                        "[cambio_precio] Programa %s '%s' (type=%s, is_nominative=False) no es "
+                        "next_order_coupons. Saltando.",
+                        program_id, program.name, program.program_type,
                     )
                     continue
 
                 if not partner_id:
                     _logger.warning(
-                        "[cambio_precio] No se puede crear loyalty.card %s sin partner_id. "
-                        "Las tarjetas requieren cliente asociado.",
+                        "[cambio_precio] No se puede crear loyalty.card %s sin partner_id.",
                         card_id_str
                     )
                     continue
@@ -572,7 +637,7 @@ class PosOrder(models.Model):
                     ('program_id', '=', program_id),
                     ('partner_id', '=', partner_id),
                 ], limit=1)
-                
+
                 if existing_card:
                     _logger.info(
                         "[cambio_precio] Tarjeta duplicada detectada: program=%s partner=%s. "
@@ -606,16 +671,18 @@ class PosOrder(models.Model):
                     )
                     continue
 
+            if points == 0:
+                continue
             try:
                 with self.env.cr.savepoint():
-                    card_for_update = LoyaltyCard.sudo().browse(card.id)
-                    current_points = card_for_update.points or 0
+                    current_points = card.points or 0
                     new_points = current_points + points
-                    
-                    card_for_update.write({'points': new_points})
+                    card.write({'points': new_points})
                     _logger.info(
-                        "[cambio_precio] card %s +%s puntos (nuevo total: %s)",
-                        card.id, points, new_points
+                        "[cambio_precio] card %s (program=%s) %s%s puntos (antes: %s, ahora: %s)",
+                        card.id, card.program_id.id,
+                        "+" if points >= 0 else "", points,
+                        current_points, new_points,
                     )
             except Exception as e:
                 _logger.error(
