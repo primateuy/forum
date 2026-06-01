@@ -113,6 +113,33 @@ class AccountMoveLine(models.Model):
                 rec.tipo_cambio = rate_record.inverse_company_rate
 
     # -------------------------------------------------------------------------
+    # Fecha del tipo de cambio en asientos manuales
+    # -------------------------------------------------------------------------
+    def _get_rate_date(self):
+        """
+        Determina la fecha usada para convertir importes en divisa a la moneda
+        de la empresa (campo `currency_rate`).
+
+        El core de Odoo prioriza `invoice_date` sobre `date`:
+            invoice_date or date or hoy
+
+        En esta instancia el módulo `l10n_uy_einvoice_base` define
+        `invoice_date` con `default=fields.Date.context_today`, por lo que TODO
+        asiento -incluidos los manuales (`move_type='entry'`)- queda con
+        `invoice_date = hoy`. Eso hacía que un asiento manual con fecha contable
+        31/10 convirtiera las líneas en divisa usando la cotización de HOY en
+        lugar de la del 31/10, descuadrando el asiento al publicar.
+
+        Para asientos que NO son facturas, la fecha de conversión debe ser
+        siempre la fecha contable del asiento (`move_id.date`), ignorando
+        `invoice_date`. En facturas se mantiene el comportamiento del core.
+        """
+        self.ensure_one()
+        if self.move_id and not self.move_id.is_invoice(include_receipts=True):
+            return self.move_id.date or fields.Date.context_today(self)
+        return super()._get_rate_date()
+
+    # -------------------------------------------------------------------------
     # Sincronización balance ← amount_currency para asientos manuales
     # -------------------------------------------------------------------------
     @contextmanager
@@ -161,11 +188,29 @@ class AccountMoveLine(models.Model):
             before_vals = before_manual.get(line)
             is_new = before_vals is None
 
-            # Recalcular si la línea es nueva, o si cambió amount_currency o
-            # currency_rate (por ejemplo al cambiar la fecha del asiento)
-            if (is_new
-                    or before_vals['amount_currency'] != after_vals['amount_currency']
-                    or before_vals['currency_rate'] != after_vals['currency_rate']):
+            def changed(fname):
+                # En líneas nuevas todo se considera "cambiado".
+                return is_new or before_vals[fname] != after_vals[fname]
+
+            # Derivar el balance (debe/haber en USD) desde amount_currency y la
+            # cotización SOLO cuando el usuario NO fijó el balance manualmente.
+            #
+            # Caso de uso DLA: el usuario carga el importe en divisa (p. ej.
+            # 4061,20 UYU) y además escribe el debe/haber en USD (p. ej. 100),
+            # decidiendo el tipo de cambio del asiento. Antes este override
+            # pisaba ese 100 con la conversión a la cotización oficial
+            # (4061,20 / 39,741 = 102,192) y descuadraba el asiento. Ahora se
+            # respeta el balance ingresado por el usuario.
+            #
+            # Solo se deriva el balance cuando cambió amount_currency o la
+            # cotización (p. ej. al cambiar la fecha) y el usuario no tocó el
+            # balance, o es una línea nueva sin balance. Mismo criterio que el
+            # _sync_invoice del core para facturas.
+            if (
+                (changed('amount_currency') or changed('currency_rate'))
+                and not self.env.is_protected(self._fields['balance'], line)
+                and (not changed('balance') or (is_new and not after_vals['balance']))
+            ):
                 new_balance = line.company_id.currency_id.round(
                     after_vals['amount_currency'] / after_vals['currency_rate']
                 )
