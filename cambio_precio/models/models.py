@@ -470,7 +470,7 @@ class PosOrder(models.Model):
                     "[cambio_precio] _process_order: aplicando coupon_point_changes keys=%s partner=%s",
                     list(cpc.keys()), partner_id,
                 )
-                self._apply_coupon_point_changes(cpc, partner_id)
+                self._apply_coupon_point_changes(cpc, partner_id, order_id=result)
 
             # Deducir puntos de cupones next_order_coupons usados como recompensa.
             # El POS no los incluye en coupon_point_changes — se detectan por las líneas.
@@ -505,7 +505,7 @@ class PosOrder(models.Model):
         return super(PosOrder, self).create_from_ui(orders, draft)
 
     @api.model
-    def _apply_coupon_point_changes(self, coupon_point_changes, partner_id=None):
+    def _apply_coupon_point_changes(self, coupon_point_changes, partner_id=None, order_id=None):
         """Aplica cambios de puntos de cupón a las tarjetas de lealtad.
         """
         if not coupon_point_changes or not isinstance(coupon_point_changes, dict):
@@ -581,6 +581,7 @@ class PosOrder(models.Model):
                                     'program_id': program_id,
                                     'partner_id': False,
                                     'earned_partner_id': partner_id or False,
+                                    'source_pos_order_id': order_id,
                                     'code': code,
                                     'points': points,
                                     'expiration_date': change.get('date_to') or False,
