@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data noupdate="0">
+        <!-- Grupo de visibilidad de la acción "Facturar por límite de líneas".
+             NO debe implicar base.group_system: es un grupo de acceso a la
+             acción, no un perfil de administrador. Los miembros se asignan
+             desde Ajustes > Usuarios. -->
         <record id="group_facturacion_franquicias" model="res.groups">
             <field name="name">Facturación Franquicias</field>
             <field name="category_id" ref="base.module_category_accounting_accounting"/>
-            <field name="implied_ids" eval="[(4, ref('base.group_system'))]"/>
-            <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+            <field name="users" eval="[(4, ref('base.user_admin'))]"/>
         </record>
     </data>
 </odoo>
