@@ -33,6 +33,7 @@ class SaleAutoinvoiceWizard(models.TransientModel):
     lines_to_invoice = fields.Integer("Líneas a facturar", readonly=True)
     lines_skipped = fields.Integer("Líneas salteadas", readonly=True)
     orders_skipped_count = fields.Integer("Cantidad de órdenes salteadas", readonly=True)
+    tipos_count = fields.Integer("Tipos de pedido involucrados", readonly=True)
     max_lineas = fields.Integer("Límite de líneas", readonly=True)
     warning_message = fields.Text("Resumen", readonly=True)
     detail_message = fields.Text("Detalle por factura", readonly=True)
@@ -75,36 +76,62 @@ class SaleAutoinvoiceWizard(models.TransientModel):
     # === Armado de tandas =================================================
 
     @api.model
-    def _pack_orders(self, sale_orders, max_lineas, final=True):
-        """Reparte las órdenes en tandas que respetan el tope de líneas.
+    def _pack_orders(self, sale_orders, final=True):
+        """Reparte las órdenes en tandas, una factura por tanda.
 
-        Primero separa por clave de agrupación de factura (compañía, cliente de
-        facturación, moneda y posición fiscal), porque una factura no puede
-        mezclar clientes. Dentro de cada grupo arma tandas por orden de fecha:
-        cada tanda acumula órdenes hasta donde entren sin pasar el tope, y
-        cuando la siguiente no entra se abre una tanda nueva. Nunca se parte
-        una orden entre dos facturas.
+        Separa por tipo de pedido y por clave de agrupación de factura
+        (compañía, cliente de facturación, moneda y posición fiscal). El tipo de
+        pedido va en la clave por dos razones: el tope de líneas sale del punto
+        de emisión de SU diario, así que cada tipo puede tener un tope distinto;
+        y mezclar tipos en una factura la dejaría con el diario y el punto de
+        emisión de uno solo de ellos.
 
-        Las órdenes que por sí solas superan el tope, o que no tienen líneas
-        facturables, se saltean: se informan pero no frenan el resto.
+        Dentro de cada grupo arma tandas por orden de fecha: cada tanda acumula
+        órdenes hasta donde entren sin pasar el tope, y cuando la siguiente no
+        entra se abre una tanda nueva. Nunca se parte una orden entre dos
+        facturas.
 
-        :return: (tandas, salteadas, lineas_por_orden) donde `tandas` es una
-                 lista de recordsets — una factura por tanda.
+        Se saltean, informando el motivo y sin frenar el resto: las órdenes que
+        por sí solas superan el tope, las que no tienen líneas facturables y las
+        de un tipo de pedido sin tope configurado.
+
+        :return: (tandas, salteadas, lineas_por_orden, motivos) donde cada tanda
+                 es un dict {'orders': recordset, 'tope': int, 'tipo': record}.
         """
         SaleOrder = self.env["sale.order"]
+        TipoPedido = self.env["sale.order.type"]
         lineas_por_orden = {}
+        motivos = {}
         skipped = SaleOrder
         grupos = {}
 
+        topes = {tipo.id: self._get_max_lineas(tipo) for tipo in sale_orders.mapped("type_id")}
+
         for order in sale_orders.sorted(key=lambda so: (so.date_order, so.id)):
+            tipo = order.type_id
+            tope = topes.get(tipo.id)
             n = self._count_invoiceable_lines(order, final=final)
             lineas_por_orden[order.id] = n
+
+            if not tope:
+                skipped |= order
+                motivos[order.id] = _(
+                    "el tipo de pedido '%s' no tiene límite configurado en su punto de emisión"
+                ) % (tipo.display_name or "-")
+                continue
             # Sin líneas facturables `_create_invoices` reventaría toda la
             # transacción, así que la sacamos igual que a las sobredimensionadas.
-            if n <= 0 or n > max_lineas:
+            if n <= 0:
                 skipped |= order
+                motivos[order.id] = _("sin líneas facturables")
                 continue
+            if n > tope:
+                skipped |= order
+                motivos[order.id] = _("supera el tope de %s líneas") % tope
+                continue
+
             clave = (
+                tipo.id,
                 order.company_id.id,
                 order.partner_invoice_id.id,
                 order.currency_id.id,
@@ -114,20 +141,22 @@ class SaleAutoinvoiceWizard(models.TransientModel):
 
         tandas = []
         for clave in sorted(grupos):
+            tipo = TipoPedido.browse(clave[0])
+            tope = topes[clave[0]]
             tanda = SaleOrder
             acumulado = 0
             for order in grupos[clave]:
                 n = lineas_por_orden[order.id]
-                if tanda and acumulado + n > max_lineas:
-                    tandas.append(tanda)
+                if tanda and acumulado + n > tope:
+                    tandas.append({"orders": tanda, "tope": tope, "tipo": tipo})
                     tanda = SaleOrder
                     acumulado = 0
                 tanda |= order
                 acumulado += n
             if tanda:
-                tandas.append(tanda)
+                tandas.append({"orders": tanda, "tope": tope, "tipo": tipo})
 
-        return tandas, skipped, lineas_por_orden
+        return tandas, skipped, lineas_por_orden, motivos
 
     # === Preview ==========================================================
 
@@ -143,49 +172,41 @@ class SaleAutoinvoiceWizard(models.TransientModel):
         if not sale_orders:
             raise UserError(_("No hay órdenes de venta 'por facturar' en la selección."))
 
-        # Verificar que todas tengan el mismo tipo de pedido
-        tipos = sale_orders.mapped("type_id")
-        if len(tipos) > 1:
-            raise UserError(_(
-                "Las órdenes seleccionadas tienen distintos tipos de pedido. "
-                "Seleccioná solo órdenes del mismo tipo."
-            ))
-
-        tipo = tipos[0] if tipos else False
-        max_lineas = self._get_max_lineas(tipo)
-
-        if not max_lineas:
-            raise UserError(_(
-                "No se encontró un límite de líneas configurado en el punto de emisión "
-                "del diario del tipo de pedido '%s'."
-            ) % (tipo.name if tipo else ""))
-
-        tandas, skipped, lineas_por_orden = self._pack_orders(sale_orders, max_lineas)
+        tandas, skipped, lineas_por_orden, motivos = self._pack_orders(sale_orders)
 
         if not tandas:
             raise UserError(_(
-                "Ninguna de las órdenes seleccionadas se puede facturar: todas superan "
-                "el límite de %s líneas del punto de emisión o no tienen líneas "
-                "facturables."
-            ) % max_lineas)
+                "Ninguna de las órdenes seleccionadas se puede facturar. Motivos:\n%s"
+            ) % "\n".join(
+                "- %s: %s" % (o.name, motivos.get(o.id, "-")) for o in skipped
+            ))
 
         to_invoice = self.env["sale.order"]
         for tanda in tandas:
-            to_invoice |= tanda
+            to_invoice |= tanda["orders"]
 
         lines_to_invoice = sum(lineas_por_orden[o.id] for o in to_invoice)
         lines_skipped = sum(lineas_por_orden[o.id] for o in skipped)
+        topes_distintos = {t["tope"] for t in tandas}
+        tipos = to_invoice.mapped("type_id")
 
         warning_message = _(
             "Se van a emitir %(facturas)s factura(s) en borrador con %(ordenes)s "
-            "órdenes y %(lineas)s líneas en total, respetando el tope de "
-            "%(tope)s líneas por factura."
+            "órdenes y %(lineas)s líneas en total, sobre %(tipos)s tipo(s) de pedido."
         ) % {
             "facturas": len(tandas),
             "ordenes": len(to_invoice),
             "lineas": lines_to_invoice,
-            "tope": max_lineas,
+            "tipos": len(tipos),
         }
+        if len(topes_distintos) == 1:
+            warning_message += " " + _(
+                "Se respeta el tope de %s líneas por factura."
+            ) % list(topes_distintos)[0]
+        else:
+            warning_message += " " + _(
+                "Cada factura respeta el tope del punto de emisión de su tipo de pedido."
+            )
         if skipped:
             warning_message += "\n" + _(
                 "Quedan salteadas %(ordenes)s orden(es) con %(lineas)s líneas que no "
@@ -194,24 +215,27 @@ class SaleAutoinvoiceWizard(models.TransientModel):
 
         detalle = []
         for i, tanda in enumerate(tandas, start=1):
-            lineas_tanda = sum(lineas_por_orden[o.id] for o in tanda)
+            orders = tanda["orders"]
+            lineas_tanda = sum(lineas_por_orden[o.id] for o in orders)
             detalle.append(_(
-                "Factura %(n)s: %(ordenes)s orden(es), %(lineas)s líneas — %(nombres)s"
+                "Factura %(n)s — %(tipo)s (tope %(tope)s): %(ordenes)s orden(es), "
+                "%(lineas)s líneas — %(nombres)s"
             ) % {
                 "n": i,
-                "ordenes": len(tanda),
+                "tipo": tanda["tipo"].display_name or "-",
+                "tope": tanda["tope"],
+                "ordenes": len(orders),
                 "lineas": lineas_tanda,
-                "nombres": ", ".join(tanda.mapped("name")),
+                "nombres": ", ".join(orders.mapped("name")),
             })
         for order in skipped:
-            n = lineas_por_orden[order.id]
-            motivo = (
-                _("supera el tope de %s líneas") % max_lineas
-                if n > max_lineas else _("sin líneas facturables")
-            )
             detalle.append(_(
                 "Salteada %(nombre)s: %(lineas)s líneas — %(motivo)s"
-            ) % {"nombre": order.name, "lineas": n, "motivo": motivo})
+            ) % {
+                "nombre": order.name,
+                "lineas": lineas_por_orden[order.id],
+                "motivo": motivos.get(order.id, "-"),
+            })
 
         res.update({
             "sale_order_ids": [(6, 0, sale_orders.ids)],
@@ -222,7 +246,9 @@ class SaleAutoinvoiceWizard(models.TransientModel):
             "lines_to_invoice": lines_to_invoice,
             "lines_skipped": lines_skipped,
             "orders_skipped_count": len(skipped),
-            "max_lineas": max_lineas,
+            "tipos_count": len(tipos),
+            # Solo tiene sentido mostrarlo si todas las facturas comparten tope.
+            "max_lineas": list(topes_distintos)[0] if len(topes_distintos) == 1 else 0,
             "warning_message": warning_message,
             "detail_message": "\n".join(detalle),
             "has_skipped": bool(skipped),
@@ -243,30 +269,24 @@ class SaleAutoinvoiceWizard(models.TransientModel):
         if not sale_orders:
             raise UserError(_("No hay órdenes para facturar."))
 
-        max_lineas = self.max_lineas or self._get_max_lineas(sale_orders.mapped("type_id")[:1])
-        if not max_lineas:
-            raise UserError(_("No se encontró el límite de líneas del punto de emisión."))
-
         # Se recalculan las tandas al confirmar para trabajar sobre el estado
         # actual de las órdenes, no sobre el que tenían al abrir el wizard.
-        tandas, skipped, lineas_por_orden = self._pack_orders(sale_orders, max_lineas)
+        tandas, skipped, lineas_por_orden, motivos = self._pack_orders(sale_orders)
         if not tandas:
-            raise UserError(_(
-                "No quedaron órdenes que entren en el límite de %s líneas."
-            ) % max_lineas)
+            raise UserError(_("No quedaron órdenes que entren en el tope de líneas."))
 
         invoices = self.env["account.move"]
         for tanda in tandas:
-            # La tanda ya viene de un único grupo de facturación, así que
-            # `grouped=False` produce exactamente una factura por tanda.
-            invoices |= tanda._create_invoices(final=True, grouped=False)
+            # La tanda ya viene de un único tipo de pedido y un único grupo de
+            # facturación, así que `grouped=False` produce una sola factura.
+            invoices |= tanda["orders"]._create_invoices(final=True, grouped=False)
 
         _logger.info(
-            "[autoinvoice] tope=%s | facturas en borrador=%s (%s) | SO facturadas=%s | "
+            "[autoinvoice] facturas en borrador=%s (%s) | tandas=%s | SO facturadas=%s | "
             "SO salteadas=%s",
-            max_lineas,
             len(invoices),
             ", ".join(invoices.mapped("name")),
+            ["%s/tope %s/%s SO" % (t["tipo"].display_name, t["tope"], len(t["orders"])) for t in tandas],
             ", ".join(sale_orders.mapped("name")),
             ", ".join(skipped.mapped("name")) or "-",
         )

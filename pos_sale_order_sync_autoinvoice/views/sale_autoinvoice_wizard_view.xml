@@ -16,7 +16,9 @@
                             <field name="lines_to_invoice" string="Líneas a facturar"/>
                         </group>
                         <group>
-                            <field name="max_lineas" string="Límite del punto de emisión"/>
+                            <field name="tipos_count" string="Tipos de pedido"/>
+                            <field name="max_lineas" string="Límite del punto de emisión"
+                                   invisible="max_lineas == 0"/>
                             <field name="orders_skipped_count" string="Órdenes salteadas"/>
                             <field name="lines_skipped" string="Líneas salteadas"
                                    invisible="not has_skipped"/>
@@ -27,9 +29,10 @@
                     </group>
                     <group string="Órdenes salteadas" invisible="not has_skipped">
                         <div class="alert alert-warning" role="alert" colspan="2">
-                            Estas órdenes no entran en ninguna factura porque por sí solas
-                            superan el tope de líneas del punto de emisión, o no tienen
-                            líneas facturables. Quedan sin facturar.
+                            Estas órdenes no entran en ninguna factura: por sí solas superan
+                            el tope de líneas, no tienen líneas facturables, o su tipo de
+                            pedido no tiene un tope configurado. Quedan sin facturar; el
+                            motivo de cada una está en el detalle de arriba.
                         </div>
                         <field name="orders_skipped_ids" nolabel="1"
                                widget="many2many_tags" readonly="1" colspan="2"/>
