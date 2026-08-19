@@ -9,24 +9,39 @@
                     <div class="alert alert-info" role="alert" style="margin-bottom: 16px;">
                         <field name="warning_message" nolabel="1" readonly="1"/>
                     </div>
-                    <group string="Detalle" invisible="not has_exclusions">
+                    <group>
                         <group>
+                            <field name="invoice_count" string="Facturas a emitir"/>
+                            <field name="orders_to_invoice_count" string="Órdenes a facturar"/>
                             <field name="lines_to_invoice" string="Líneas a facturar"/>
-                            <field name="lines_excluded" string="Líneas excluidas"/>
                         </group>
                         <group>
-                            <field name="max_lineas" string="Límite del punto de emisión"/>
-                            <field name="orders_excluded_count" string="Órdenes excluidas"/>
+                            <field name="tipos_count" string="Tipos de pedido"/>
+                            <field name="max_lineas" string="Límite del punto de emisión"
+                                   invisible="max_lineas == 0"/>
+                            <field name="orders_skipped_count" string="Órdenes salteadas"/>
+                            <field name="lines_skipped" string="Líneas salteadas"
+                                   invisible="not has_skipped"/>
                         </group>
                     </group>
-                    <group string="Órdenes excluidas" invisible="not has_exclusions">
-                        <field name="orders_excluded_ids" nolabel="1" widget="many2many_tags" readonly="1"/>
+                    <group string="Detalle por factura">
+                        <field name="detail_message" nolabel="1" readonly="1"/>
                     </group>
-                    <field name="has_exclusions" invisible="1"/>
+                    <group string="Órdenes salteadas" invisible="not has_skipped">
+                        <div class="alert alert-warning" role="alert" colspan="2">
+                            Estas órdenes no entran en ninguna factura: por sí solas superan
+                            el tope de líneas, no tienen líneas facturables, o su tipo de
+                            pedido no tiene un tope configurado. Quedan sin facturar; el
+                            motivo de cada una está en el detalle de arriba.
+                        </div>
+                        <field name="orders_skipped_ids" nolabel="1"
+                               widget="many2many_tags" readonly="1" colspan="2"/>
+                    </group>
+                    <field name="has_skipped" invisible="1"/>
                 </sheet>
                 <footer>
                     <button name="action_create_invoice" type="object"
-                            string="Generar Factura" class="btn-primary"/>
+                            string="Generar Facturas" class="btn-primary"/>
                     <button string="Cancelar" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>

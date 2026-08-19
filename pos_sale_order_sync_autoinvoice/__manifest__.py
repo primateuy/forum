@@ -3,6 +3,7 @@
     "version": "17.0.1.0.0",
     "category": "Point of Sale",
     "author": "PrimateUY",
+    "license": "LGPL-3",
     "summary": "Facturación manual por límite de líneas del punto de emisión",
     "description": """
         Agrega una acción en la vista lista de órdenes de venta que permite
