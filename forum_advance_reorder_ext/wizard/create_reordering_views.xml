@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="form_create_reordering_forum_categories" model="ir.ui.view">
+        <field name="name">create.reordering.wizard.forum.categories</field>
+        <field name="model">create.reordering</field>
+        <field name="inherit_id" ref="setu_advance_reordering.form_create_reordering"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='product_ids']" position="before">
+                <field name="product_category_ids" widget="many2many_tags"
+                       options="{'no_create': 1, 'no_create_edit': 1}"/>
+                <button name="action_add_products_from_categories" type="object"
+                        string="Agregar productos de las categorías"
+                        class="btn-secondary"
+                        icon="fa-plus"
+                        invisible="not product_category_ids"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

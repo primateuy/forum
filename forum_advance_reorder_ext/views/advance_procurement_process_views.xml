@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="form_advance_procurement_process_forum_groups" model="ir.ui.view">
+        <field name="name">advance.procurement.process.form.forum.groups</field>
+        <field name="model">advance.procurement.process</field>
+        <field name="inherit_id" ref="setu_advance_reordering.form_advance_procurement_process"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='procurement_configuration']/field[@name='config_ids']" position="before">
+                <group>
+                    <group>
+                        <field name="warehouse_group_ids" widget="many2many_tags"
+                               readonly="state != 'draft'"
+                               options="{'no_create': 1, 'no_create_edit': 1}"/>
+                    </group>
+                    <group>
+                        <button name="action_add_warehouses_from_groups" type="object"
+                                string="Agregar almacenes de los grupos"
+                                class="btn-secondary"
+                                icon="fa-plus"
+                                invisible="state != 'draft' or not warehouse_group_ids"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

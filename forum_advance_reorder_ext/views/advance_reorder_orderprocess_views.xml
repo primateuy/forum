@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="form_advance_reorder_orderprocess_forum_categories" model="ir.ui.view">
+        <field name="name">advance.reorder.orderprocess.form.forum.categories</field>
+        <field name="model">advance.reorder.orderprocess</field>
+        <field name="inherit_id" ref="setu_advance_reordering.form_advance_reorder_orderprocess"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='reorder_product']/field[@name='computed_product_ids']" position="before">
+                <group>
+                    <group>
+                        <field name="product_category_ids" widget="many2many_tags"
+                               readonly="state != 'draft'"
+                               options="{'no_create': 1, 'no_create_edit': 1}"/>
+                    </group>
+                    <group>
+                        <button name="action_add_products_from_categories" type="object"
+                                string="Agregar productos de las categorías"
+                                class="btn-secondary"
+                                icon="fa-plus"
+                                invisible="state != 'draft' or not product_category_ids"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>
