@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_forum_reorder_distribution_wizard" model="ir.ui.view">
+        <field name="name">forum.reorder.distribution.wizard.form</field>
+        <field name="model">forum.reorder.distribution.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Distribuir Stock Insuficiente">
+                <div class="alert alert-info" role="alert">
+                    Los grupos de abajo piden más de lo que hay en su almacén origen. Elegí un
+                    criterio para repartir el stock disponible entre las reglas de cada grupo.
+                    El resultado se escribe en "Por Ordenar" y queda editable a mano: podés
+                    ajustar cualquier fila después, sin que nada lo recalcule.
+                </div>
+                <group>
+                    <group>
+                        <field name="distribution_strategy"/>
+                        <field name="strategy_warehouse_ids" widget="many2many_tags"
+                               invisible="distribution_strategy != 'por_prioridad_almacen'"
+                               required="distribution_strategy == 'por_prioridad_almacen'"
+                               options="{'no_create': 1, 'no_create_edit': 1}"/>
+                    </group>
+                </group>
+                <field name="group_ids" nolabel="1" readonly="1">
+                    <tree string="Grupos con faltante" create="false" delete="false">
+                        <field name="product_id"/>
+                        <field name="origin_warehouse_id"/>
+                        <field name="orderpoint_count"/>
+                        <field name="demand_qty" sum="Demanda total"/>
+                        <field name="available_qty"/>
+                        <field name="shortfall_qty" sum="Faltante total"/>
+                    </tree>
+                </field>
+                <field name="orderpoint_ids" invisible="1"/>
+                <footer>
+                    <button name="action_apply" string="Aplicar criterio" type="object"
+                            class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_forum_reorder_distribution" model="ir.actions.act_window">
+        <field name="name">Distribuir stock insuficiente</field>
+        <field name="res_model">forum.reorder.distribution.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="stock.model_stock_warehouse_orderpoint"/>
+        <field name="binding_view_types">list</field>
+    </record>
+</odoo>

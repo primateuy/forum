@@ -10,19 +10,34 @@
             <!-- Agregar campo de warning para decoración -->
             <xpath expr="//field[@name='active']" position="after">
                 <field name="origin_stock_warning" column_invisible="True"/>
-                <field name="origin_warehouse_id" column_invisible="True"/>
+                <field name="origin_warehouse_id" optional="hide"/>
+            </xpath>
+
+            <!-- Navegación al producto: la lista está en solo lectura por el edit="0" de
+                 setu_advance_reordering, así que la flecha de enlace interno de product_id
+                 no aparece. -->
+            <xpath expr="//field[@name='product_id']" position="after">
+                <button name="action_open_product" type="object"
+                        icon="fa-external-link" title="Abrir ficha del producto"
+                        invisible="not id"/>
             </xpath>
 
             <!-- Agregar columnas de origen después de qty_to_order -->
             <xpath expr="//field[@name='location_id']" position="after">
-                <field name="origin_qty_on_hand" optional="hide" readonly="1"/>
-                <field name="origin_qty_available" optional="hide" readonly="1"/>
+                <field name="origin_qty_on_hand" optional="show" readonly="1"/>
+                <field name="origin_qty_available" optional="show" readonly="1"/>
                 <field name="origin_qty_forecast" optional="hide" readonly="1"/>
+                <field name="origin_qty_shortfall" optional="show" readonly="1"
+                       sum="Faltante total en origen"/>
             </xpath>
 
             <!-- Decoración warning en la fila cuando stock origen insuficiente -->
             <xpath expr="//tree" position="attributes">
                 <attribute name="decoration-warning">origin_stock_warning == True</attribute>
+                <!-- Sin origen resuelto no es lo mismo que "sin problema": la regla no
+                     participa del cálculo de faltante, así que se muestra en gris para no
+                     confundirla con una cumplible de verdad. -->
+                <attribute name="decoration-muted">not origin_warehouse_id and qty_to_order &gt; 0</attribute>
             </xpath>
 
             <!-- Botón para abrir wizard de verificación / forzar reabastecimiento -->
@@ -32,9 +47,27 @@
                         type="object"
                         class="o_replenish_buttons"
                         icon="fa-exclamation-triangle"
-                        invisible="1"/>
+                        invisible="not origin_stock_warning"/>
+                <button name="%(action_forum_reorder_distribution)d"
+                        string="Distribuir Stock Insuficiente"
+                        type="action"
+                        class="o_replenish_buttons"
+                        icon="fa-random"
+                        invisible="not origin_stock_warning"/>
             </xpath>
         </field>
+    </record>
+
+    <!-- El faltante es un campo almacenado que se escribe explicitamente (ver change_log:
+         con 125.831 reglas candidatas, un stored compute con depends es inviable). Esta
+         accion es la unica forma de poblarlo a mano; sin ella la columna queda en cero. -->
+    <record id="action_recompute_origin_shortfall" model="ir.actions.server">
+        <field name="name">Recalcular Faltante en Origen</field>
+        <field name="model_id" ref="stock.model_stock_warehouse_orderpoint"/>
+        <field name="binding_model_id" ref="stock.model_stock_warehouse_orderpoint"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">action = model.action_recompute_origin_shortfall()</field>
     </record>
 
     <!-- Herencia de la vista search para agregar filtros -->
@@ -43,6 +76,10 @@
         <field name="model">stock.warehouse.orderpoint</field>
         <field name="inherit_id" ref="stock.stock_reorder_report_search"/>
         <field name="arch" type="xml">
+            <xpath expr="//group" position="inside">
+                <filter string="Almacén Origen" name="group_origin_warehouse"
+                        context="{'group_by': 'origin_warehouse_id'}"/>
+            </xpath>
             <xpath expr="//filter[@name='filter_to_reorder']" position="after">
                 <separator/>
                 <filter string="Reglas cumplibles (stock disponible en origen)"
@@ -51,6 +88,12 @@
                 <filter string="Reglas NO cumplibles (stock insuficiente en origen)"
                         name="filter_unfulfillable"
                         domain="[('origin_stock_warning', '=', True)]"/>
+                <filter string="Origen sin resolver"
+                        name="filter_origin_unresolved"
+                        domain="[('origin_warehouse_id', '=', False), ('qty_to_order', '&gt;', 0)]"
+                        help="Reglas con cantidad a pedir cuyo almacén origen no se pudo
+                              determinar. No entran al cálculo de faltante, así que no se
+                              marcan como no cumplibles aunque no haya stock."/>
             </xpath>
         </field>
     </record>
