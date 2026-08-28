@@ -1,6 +1,6 @@
 {
     'name': 'FORUM - Optimización Reglas de Abastecimiento',
-    'version': '17.0.1.0.0',
+    'version': '17.0.2.1.0',
     'category': 'Inventory/Inventory',
     'summary': 'Agrega información de origen, sincroniza múltiplos y valida stock en reglas de reabastecimiento',
     'description': """
@@ -8,13 +8,21 @@
         - Sincronización del múltiplo de distribución desde el producto a las reglas
         - Validación de stock disponible en origen al ejecutar reabastecimiento
         - Filtros de reglas cumplibles / no cumplibles
+        - La validación agrupa por (producto, almacén origen): las reglas que compiten por el
+          mismo stock se evalúan en conjunto, no una por una
+        - Columna de faltante en origen, totalizable en la lista
+        - Wizard para repartir el stock insuficiente entre las reglas del mismo origen,
+          reusando el motor de distribución de primate_reposicion_avanzada
     """,
     'author': 'Primate',
     'website': 'https://primateuy.odoo.com',
-    'depends': ['stock', 'product', 'automatic_crossdocking'],
+    # primate_reposicion_avanzada se usa solo por el mixin de distribución
+    # (primate.distribution.strategy.mixin): no hay acoplamiento con el resto del módulo.
+    'depends': ['stock', 'product', 'automatic_crossdocking', 'primate_reposicion_avanzada'],
     'data': [
         'security/ir.model.access.csv',
         'wizard/reorder_warning_wizard_views.xml',
+        'wizard/reorder_distribution_wizard_views.xml',
         'views/stock_orderpoint_views.xml',
         'views/product_template_views.xml',
     ],

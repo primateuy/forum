@@ -1,0 +1,324 @@
+FORUM - Optimización Reglas de Abastecimiento
+=============================================
+
+Registro de cambios sobre modelos y vistas de terceros, para revisar en cada actualización.
+
+Versiones de referencia (22/08/2026):
+  - Odoo 17.0 Community (addons/stock)
+  - primate_reposicion_avanzada  17.0.1.1.0  (shared/primateuy/WMS)
+  - automatic_crossdocking       17.0.0.1    (shared/primateuy/WMS)
+  - setu_advance_reordering      17.0.0.2    (dependencia indirecta: extiende
+                                              stock.warehouse.orderpoint con ads_qty)
+
+
+17.0.2.0.0 — corrección de agrupación, faltante totalizable y wizard de distribución
+------------------------------------------------------------------------------------
+
+## Corrección del bug: la validación no sumaba la demanda de las reglas hermanas
+
+Reportado por Diego: "si tengo 10 reglas de 10 unidades que salen todas del mismo origen y
+tengo en origen 90, deberían aparecer las 10 reglas".
+
+_compute_origin_stock_warning y _search_origin_stock_warning comparaban el qty_to_order de
+cada regla por separado contra origin_qty_available. Con 10 reglas de 10 y 90 disponibles,
+cada una pasaba la prueba individual (90 >= 10) y ninguna se marcaba, aunque entre las 10
+pedían 100. Las dos funciones tenían la lógica duplicada y el mismo error.
+
+Ahora las tres consumidoras (el campo, el filtro y _check_origin_stock) llaman al mismo
+agrupador, así que "qué reglas aparecen como no cumplibles", "qué reglas bloquean el
+reabastecimiento" y "qué reglas entran juntas al reparto" son siempre el mismo criterio:
+
+  _origin_candidate_domain()        reglas con origen definido y qty_to_order > 0
+  _origin_group_demands()           demanda y disponible por (producto, almacén origen)
+  _group_candidates_by_origin()     ídem, más el recordset de reglas de cada grupo
+  _origin_unfulfillable_ids()       ids de las reglas de los grupos con faltante
+
+Verificado sobre un grupo real de la base: 33 reglas del mismo producto y origen, 1315
+disponibles, pidiendo 40 cada una. Cada regla sola entra (40 <= 1315) pero el grupo no
+(1320 > 1315): las 33 quedan marcadas, y el filtro devuelve las mismas 33.
+
+## Performance: por qué se usa read_group y no un loop
+
+Primera implementación agrupaba recorriendo los registros y uniendo recordsets dentro del
+loop (`por_almacen[wh] |= op`). Con 125.831 reglas candidatas eso es cuadrático: el update
+del módulo quedó colgado más de 10 minutos con la tabla tomada.
+
+Ahora la demanda de todos los grupos sale de un read_group en una sola consulta, el free_qty
+se pide una vez por almacén para todos sus productos, y los recordsets de reglas se
+instancian SOLO para los grupos con faltante (only_shortfall=True). Además, el compute del
+campo se acota a los grupos de los registros en pantalla (restrict_to=self), trayendo los
+hermanos de esos grupos pero no las 126k reglas: sin eso, cada página de la lista disparaba
+un barrido completo.
+
+Si se vuelve a tocar este agrupador, no volver a instanciar recordsets por registro.
+
+## Faltante en origen totalizable
+
+origin_qty_shortfall (nuevo). Muestra la parte que le toca a cada regla del faltante de su
+grupo, a prorrata de lo que pide. Así la suma de la columna da el faltante real del grupo.
+
+Por qué no se totalizan las columnas de stock que ya existían: la vista base de Odoo 17 NO
+usa sum="..." en product_min_qty / product_max_qty / qty_to_order — el total aparece porque
+son campos ALMACENADOS y Odoo agrega los numéricos vía read_group. origin_qty_on_hand,
+origin_qty_available y origin_qty_forecast son computados sin almacenar, así que read_group
+no los puede agregar.
+
+Y sumarlos daría un número incorrecto, no solo impreciso: con las 33 reglas del ejemplo, la
+suma de origin_qty_available da 43.395 (el mismo stock de 1315 contado 33 veces), mientras el
+faltante real es 5. Por eso se totaliza el faltante y no el disponible.
+
+origin_qty_shortfall es un campo almacenado SIN compute: con 125.831 reglas candidatas, un
+stored compute con depends obliga a Odoo a calcularlo para todas al instalar. Se escribe
+explícitamente con _write_origin_qty_shortfall(), desde la acción "Recalcular Faltante" o al
+aplicar una distribución.
+
+LIMITACIÓN CONOCIDA: el valor refleja el último cálculo. No hay dependencia que Odoo pueda
+seguir para free_qty con contexto de almacén, así que si el stock del origen se mueve, o si
+se edita el qty_to_order de una sola regla del grupo, los valores de las hermanas quedan
+viejos hasta correr la acción de recálculo.
+
+## Wizard de distribución
+
+forum.reorder.distribution.wizard (+ .group), hereda primate.distribution.strategy.mixin y
+reusa las 5 estrategias vía compute_partial_distribution() — sin acoplarse al resto de
+primate_reposicion_avanzada.
+
+Agrupa las reglas seleccionadas por (producto, almacén origen), omite los grupos que ya
+entran en el disponible, y escribe el resultado en qty_to_order.
+
+Sobre la escritura de qty_to_order: en Odoo 17 el campo es
+`compute='_compute_qty_to_order', store=True, readonly=False`, así que admite write() directo
+sin necesidad de inverse. El wizard NO agrega constrains ni onchange: una vez escrito, el
+campo vuelve a comportarse como el estándar, de libre edición, sin memoria de qué estrategia
+lo generó. Verificado que se puede sobreescribir a mano después de aplicar.
+
+ATENCIÓN: qty_to_order tiene
+@api.depends('qty_multiple', 'product_min_qty', 'product_max_qty', 'visibility_days',
+             'product_id', 'location_id', 'product_id.seller_ids.delay')
+Si alguien edita el mínimo, el máximo o el múltiplo de una regla DESPUÉS de correr el wizard,
+Odoo recalcula y pisa la distribución sin avisar. Un movimiento de stock no la afecta, porque
+qty_forecast no está en las dependencias.
+
+## Vista
+
+- Columna origin_qty_shortfall con sum="Faltante total en origen".
+- Botón "Distribuir Stock Insuficiente" (type="action", con el patrón %(xmlid)d que usa el
+  propio core en el botón Snooze).
+- Se le quitó el invisible="1" al botón "Verificar Stock Origen", que estaba oculto y hacía
+  inalcanzable el wizard de alerta que el módulo ya tenía.
+- Agrupar por almacén origen en la vista de búsqueda, para poder acotar a un solo origen.
+
+## Dependencia nueva
+
+primate_reposicion_avanzada, únicamente por el mixin de cálculo. Es la razón por la que este
+módulo client-exclusive pasa a depender de la librería compartida.
+
+## Verificación
+
+22 checks en verde sobre o17_forum (22/08/2026): agrupación, demanda del grupo, faltante,
+las 33 reglas marcadas, coherencia entre campo y filtro, totalización del faltante contra el
+número engañoso, las 3 estrategias sin pasarse del disponible ni de la demanda de cada
+regla, edición manual posterior, y el aviso cuando no hay nada que repartir.
+
+
+17.0.2.0.1 — hallazgos de la sesión de prueba del 22/08/2026
+------------------------------------------------------------
+
+## Columnas de origen en 0,00: NO se reprodujo
+
+Reportado sobre el producto 2065096052000006 (178 unidades en su origen real, columnas en
+0,00 y clasificado como cumplible). Investigado contra la base:
+
+  - route_id está VACÍO en las 29 reglas de ese producto, así que la resolución del origen
+    entra por el fallback resupply_wh_ids[0] y devuelve CENTRO LOGISTICO (id 1) — que es
+    exactamente el almacén donde están las 178 unidades (POLO/Existencias).
+  - Leído por el mismo camino que la UI (read() sobre la página del filtro "cumplibles"):
+    0 de 80 filas dan cero, y el producto reportado da 178 en las tres columnas.
+  - La clasificación como cumplible es correcta: el grupo pide 145 (29 reglas x 5) contra
+    178 disponibles.
+
+Descartado además, contra el dato real:
+  - reglas cuyo origen es de otra compañía: 0
+  - orígenes sin lot_stock_id: 0
+  - almacenes con más de un resupply_wh_id (que haría ambiguo el [0]): 0
+  - reglas sin origen resuelto: 5 de 126.264
+
+Causa más probable del síntoma: se probó contra un estado a medio actualizar. Durante esa
+sesión hubo un `-u forum_reorder_origin` que quedó colgado por el problema de performance
+descrito arriba y tuvo que matarse con la tabla tomada, más una ventana con el servidor
+corriendo código anterior al del módulo ya actualizado.
+
+NO se modificó _compute_origin_warehouse_id: con los datos actuales resuelve bien y no hay
+evidencia de un mecanismo distinto al que ya usa. La ambigüedad teórica de resupply_wh_ids[0]
+sigue existiendo para el día en que un almacén tenga más de un origen configurado; hoy
+ninguno lo tiene.
+
+## Origen sin resolver, ahora distinguible
+
+Antes caían silenciosamente entre las cumplibles: origin_stock_warning es False tanto para
+"no hay problema de stock" como para "no pude determinar el origen", porque
+_origin_candidate_domain() exige origin_warehouse_id != False para participar del cálculo.
+
+Ahora se distinguen sin agregar ningún campo (origin_warehouse_id ya es almacenado):
+  - decoration-muted en el árbol: se ven en gris.
+  - filtro "Origen sin resolver" en la vista de búsqueda.
+El filtro "Reglas cumplibles" ya las excluía por su dominio, así que ahí no había error.
+
+## Botones condicionados
+
+"Verificar Stock Origen" y "Distribuir Stock Insuficiente" aparecían en TODAS las filas.
+Ahora los dos llevan invisible="not origin_stock_warning".
+
+## No se puede abrir la ficha del producto: no es de este módulo
+
+El <tree> combinado de reabastecimiento tiene edit="0", y lo pone
+setu_advance_reordering/views/stock_warehouse_orderpoint.xml:114
+(<attribute name="edit">0</attribute>). Con la lista en solo lectura, la celda de product_id
+—que en la vista base es readonly— nunca entra en modo edición, y por lo tanto no aparece la
+flecha de enlace interno con la que se abría la ficha.
+
+Las cuatro vistas tree del modelo tienen priority 16 y se aplican por id: stock (1291),
+purchase_stock (1471), setu_advance_reordering (2674), forum_reorder_origin (3558). La de
+este módulo es la última pero no toca el atributo edit.
+
+Decidido (Diego, 22/08/2026): NO se toca el edit="0" del vendor. Se agrega en su lugar un
+botón de fila con ícono, action_open_product(), que abre la ficha del producto. Recupera la
+navegación sin re-habilitar la edición en línea de mínimos, máximos, múltiplos y por ordenar,
+que setu deshabilitó a propósito.
+
+
+17.0.2.0.2 — dos errores propios detectados con capturas de la vista real
+-------------------------------------------------------------------------
+
+## 1. Las columnas de origen estaban ocultas, y se confundían con las de Odoo base
+
+Reportado como "sigue diciendo cero en stock a la mano y pronosticado cuando en el primer
+renglón es 178". Las columnas que se estaban mirando eran las del núcleo de Odoo:
+
+  "A la mano"  = qty_on_hand   -> stock del almacén DESTINO
+  "Pronóstico" = qty_forecast  -> pronóstico del almacén DESTINO
+
+Para esas filas valen 0 y es correcto: el destino (GAUCHO) no tiene stock, y por eso hay una
+regla de reabastecimiento. Las columnas de este módulo son otras:
+
+  "[Origen] A la mano"    = origin_qty_on_hand   -> 178
+  "[Origen] Disponible"   = origin_qty_available -> 178
+  "[Origen] Pronosticado" = origin_qty_forecast  -> 178
+
+Estaban con optional="hide", así que no se veían. Error de diseño: se dejó visible solo el
+faltante y se ocultaron justo las que muestran el número que importa. Ahora
+origin_qty_on_hand y origin_qty_available van con optional="show"; el pronosticado queda
+opcional para no sumar una cuarta columna.
+
+## 2. El faltante nunca se podía poblar: la acción no estaba enganchada a nada
+
+action_recompute_origin_shortfall existía en el modelo pero no estaba expuesta en ninguna
+vista, botón ni menú. Resultado: origin_qty_shortfall estaba en 0 en las 126.264 reglas y la
+columna era decorativa.
+
+Se agregó un ir.actions.server, "Recalcular Faltante en Origen", con binding_model_id sobre
+stock.warehouse.orderpoint y binding_view_types=list: aparece en el menú Acciones de la lista.
+
+Medido sobre la base real: pobla 63.396 reglas en unos 18 segundos, con un faltante total de
+246.174,2 unidades.
+
+## Aclaración sobre el 0 bajo el filtro "cumplibles"
+
+Bajo ese filtro el faltante ES 0 por definición: son justamente los grupos cuya demanda entra
+en el stock del origen. El valor solo es distinto de cero bajo "Reglas NO cumplibles". Ver 0
+ahí no es un error.
+
+
+17.0.2.0.3 — el faltante no agregaba al agrupar
+-----------------------------------------------
+
+Reportado: al agrupar, los mínimos, máximos y "por ordenar" totalizan, pero el resto de las
+columnas numéricas quedan en blanco.
+
+## El faltante: era un bug, corregido
+
+origin_qty_shortfall es almacenado y tiene group_operator='sum', así que debería agregar.
+No lo hacía porque quedaba en NULL:
+
+  - _write_origin_qty_shortfall ponía en cero solo las reglas cuyo valor actual era distinto
+    de cero (`.filtered('origin_qty_shortfall')`). Un NULL se lee como 0.0 desde el ORM, o
+    sea falsy, así que quedaba fuera del filtro y NUNCA se escribía.
+  - Y como el método pedía los grupos con only_shortfall=True, las reglas de grupos
+    cumplibles no se alcanzaban en absoluto.
+
+read_group ignora los NULL: un grupo donde todas las filas están en NULL devuelve False, que
+el cliente web muestra como celda vacía. De ahí el blanco.
+
+Ahora se escribe CERO explícito en todas las candidatas sin faltante, sin filtrar por el
+valor actual, y se agregó default=0.0 al campo. Verificado: grupos cumplibles devuelven 0.0
+(no False) y los no cumplibles su faltante real.
+
+Quedan en NULL las ~59.900 reglas que no son candidatas (qty_to_order = 0 o sin origen). No
+molesta: SUM ignora los NULL y esas reglas no aparecen bajo los filtros de origen.
+
+## Las demás columnas: no se puede desde una extensión
+
+  campo                   store   compute
+  product_min_qty         True    False    <- agrega
+  product_max_qty         True    False    <- agrega
+  qty_to_order            True    True     <- agrega (stored compute)
+  origin_qty_shortfall    True    False    <- agrega
+  qty_on_hand             False   True     <- NO agrega (Odoo base)
+  qty_forecast            False   True     <- NO agrega (Odoo base)
+  origin_qty_on_hand      False   True     <- NO agrega
+  origin_qty_available    False   True     <- NO agrega
+  origin_qty_forecast     False   True     <- NO agrega
+
+read_group agrega columnas SQL. Un campo computado sin almacenar no tiene columna, así que no
+hay nada que sumar. Aplica igual a "A la mano" y "Pronóstico", que son de Odoo base: no es
+algo que este módulo haya dejado de hacer.
+
+Y para las tres columnas de origen, sumarlas sería INCORRECTO además de imposible: el stock
+del origen es un único valor por (producto, almacén origen), así que sumarlo por fila cuenta
+el mismo stock repetidas veces. Con las 33 reglas del ejemplo de la 17.0.2.0.0 daba 43.395
+cuando el faltante real era 5. Por eso existe la columna de faltante: es la única de las
+cuatro que suma con sentido.
+
+
+17.0.2.1.0 — todo en unidades enteras
+-------------------------------------
+
+Reportado: el faltante mostraba decimales, y la distribución escribía 0,28 en "Por Ordenar"
+de un producto que se maneja por unidad.
+
+## El faltante: reparto por resto mayor
+
+Salía decimal porque el faltante del grupo se prorratea entre sus reglas: 5 unidades entre 33
+reglas dan 0,1515 cada una.
+
+Redondear cada fila por separado no sirve: 0,15 redondea a 0 en las 33 y la columna
+totalizaría 0 en vez de 5, perdiendo justo la propiedad que se buscaba con esta columna.
+
+Se usa reparto por resto mayor (_prorratear_faltante): se trunca la parte proporcional de
+cada regla al paso de su unidad de medida y las unidades sobrantes se asignan de a una a las
+filas con mayor resto, desempatando por id para que sea reproducible. Resultado: cada fila
+entera Y la suma exactamente igual al faltante del grupo.
+
+Verificado sobre la base: 0 filas con decimales, 400 de 400 grupos con suma exacta, y un
+grupo de 30 reglas con faltante 25 reparte veinticinco 1 y cinco 0.
+
+## La distribución: el paso venía del default del mixin, no de la UoM
+
+compute_partial_distribution recibe el múltiplo del producto; cuando es 1 (o sea, sin
+múltiplo de distribución) usa el parámetro precision_rounding, cuyo default es 0,01. De ahí
+los 0,28.
+
+El dato correcto estaba disponible: la UoM "Units" de este producto tiene rounding = 1,0. Los
+dos consumidores del mixin ahora lo pasan explícitamente:
+
+  forum.reorder.distribution.wizard.action_apply     paso = product_uom.rounding
+  advance.procurement.process._primate_distribuir    paso = product.uom_id.rounding
+
+Verificado con las tres estrategias sobre un grupo de 28 reglas con 8 disponibles: reparto en
+enteros y sin pasarse del disponible.
+
+## Limpieza de datos
+
+Las 28 reglas que habían quedado con qty_to_order decimal (0,28 / 0,29) se devolvieron al
+valor calculado por Odoo forzando el recálculo del campo. El faltante se recalculó después:
+63.055 reglas, 246.177 unidades en total, todas enteras.
