@@ -4,10 +4,41 @@
         <!-- Grupo de visibilidad de la acción "Facturar por límite de líneas".
              NO debe implicar base.group_system: es un grupo de acceso a la
              acción, no un perfil de administrador. Los miembros se asignan
-             desde Ajustes > Usuarios. -->
+             desde Ajustes > Usuarios.
+
+             CATEGORÍA PROPIA a propósito. Antes colgaba de
+             base.module_category_accounting_accounting, pero Odoo fuerza esa
+             categoría a desplegable de opción única mediante un caso especial
+             hardcodeado en get_groups_by_application()
+             (odoo/addons/base/models/res_users.py). Eso hacía que este permiso
+             compitiera con "Facturación" y con "Administrador de facturación",
+             que NO lo implican: elegir cualquiera de ellos borraba este grupo
+             en silencio. Es un permiso de acción de POS, no un nivel contable.
+
+             Tampoco sirve dejarlo sin category_id: los grupos sin categoría se
+             agrupan en un bloque que la vista de usuario envuelve con
+             groups="base.group_no_one", así que solo se ven en modo
+             desarrollador — y quien administra usuarios en FORUM no lo usa.
+
+             Con categoría propia y un solo grupo dentro, el orden es total y se
+             dibuja como un desplegable de dos opciones (vacío / el grupo),
+             visible en modo normal y sin colisionar con Contabilidad.
+
+             El parent_id define bajo qué encabezado se agrupa el bloque: sin
+             padre, get_groups_by_application() le asigna (100, 'Other') y el
+             permiso termina en el bloque OTHER. Colgándolo de
+             base.module_category_accounting queda dentro del bloque ACCOUNTING,
+             junto a "Contabilidad" y "Banco", pero como desplegable aparte. -->
+        <record id="module_category_franquicias" model="ir.module.category">
+            <field name="name">Franquicias</field>
+            <field name="description">Permisos del circuito de facturación entre matriz y franquicias.</field>
+            <field name="parent_id" ref="base.module_category_accounting"/>
+            <field name="sequence">25</field>
+        </record>
+
         <record id="group_facturacion_franquicias" model="res.groups">
             <field name="name">Facturación Franquicias</field>
-            <field name="category_id" ref="base.module_category_accounting_accounting"/>
+            <field name="category_id" ref="module_category_franquicias"/>
             <field name="users" eval="[(4, ref('base.user_admin'))]"/>
         </record>
     </data>
