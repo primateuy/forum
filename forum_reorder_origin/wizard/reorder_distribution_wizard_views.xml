@@ -5,14 +5,30 @@
         <field name="model">forum.reorder.distribution.wizard</field>
         <field name="arch" type="xml">
             <form string="Distribuir Stock Insuficiente">
-                <div class="alert alert-info" role="alert">
+                <div class="alert alert-info" role="alert" invisible="has_previous">
                     Los grupos de abajo piden más de lo que hay en su almacén origen. Elegí un
                     criterio para repartir el stock disponible entre las reglas de cada grupo.
                     El resultado se escribe en "Por Ordenar" y queda editable a mano: podés
                     ajustar cualquier fila después, sin que nada lo recalcule.
+                    <br/>
+                    <b>La elección no es definitiva:</b> podés volver a entrar acá y aplicar
+                    otro criterio tantas veces como quieras, hasta que presiones "Ordenar" y
+                    el reabastecimiento se efectivice.
+                </div>
+                <div class="alert alert-warning" role="alert" invisible="not has_previous">
+                    Estos grupos <b>ya tienen un criterio aplicado</b>. Si elegís otro y
+                    aplicás, el reparto se recalcula desde la demanda original de cada regla
+                    —no sobre el reparto anterior— así que el resultado es el mismo que si
+                    hubieras elegido ese criterio de entrada.
+                    <br/>
+                    Para volver al punto de partida sin repartir, usá
+                    <b>Restaurar Demanda Original</b> en el menú de acciones de la lista de
+                    reglas.
                 </div>
                 <group>
                     <group>
+                        <field name="has_previous" invisible="1"/>
+                        <field name="previous_strategy" invisible="not has_previous"/>
                         <field name="distribution_strategy"/>
                         <field name="strategy_warehouse_ids" widget="many2many_tags"
                                invisible="distribution_strategy != 'por_prioridad_almacen'"
@@ -28,12 +44,16 @@
                         <field name="demand_qty" sum="Demanda total"/>
                         <field name="available_qty"/>
                         <field name="shortfall_qty" sum="Faltante total"/>
+                        <field name="assigned_qty" sum="Asignado total"/>
+                        <field name="applied_strategy" optional="show"/>
                     </tree>
                 </field>
                 <field name="orderpoint_ids" invisible="1"/>
                 <footer>
                     <button name="action_apply" string="Aplicar criterio" type="object"
-                            class="btn-primary"/>
+                            class="btn-primary" invisible="has_previous"/>
+                    <button name="action_apply" string="Cambiar el criterio aplicado"
+                            type="object" class="btn-primary" invisible="not has_previous"/>
                     <button string="Cancelar" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>

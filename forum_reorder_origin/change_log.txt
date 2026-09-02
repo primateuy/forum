@@ -322,3 +322,82 @@ enteros y sin pasarse del disponible.
 Las 28 reglas que habían quedado con qty_to_order decimal (0,28 / 0,29) se devolvieron al
 valor calculado por Odoo forzando el recálculo del campo. El faltante se recalculó después:
 63.055 reglas, 246.177 unidades en total, todas enteras.
+
+17.0.2.2.0 — el criterio de distribución se puede cambiar
+---------------------------------------------------------
+
+Reportado por el funcional el 31/08/2026: "no te permite editar la decisión tomada, es como
+que no hay derecho a equivocarse, seleccionaste una opción y ya esa variante te queda con ese
+criterio". No era una decisión de diseño, era un efecto secundario.
+
+## La cadena del bug
+
+action_apply del wizard escribía el reparto directo en qty_to_order. Con eso la demanda del
+grupo pasaba a ser igual al disponible, el faltante daba cero, origin_stock_warning daba
+False, y el botón "Distribuir Stock Insuficiente" —que es invisible="not
+origin_stock_warning"— desaparecía de la fila. Abrirlo desde el menú contextual tampoco
+servía: default_get cortaba con "No hay grupos con faltante en la selección".
+
+Aplicar el criterio borraba la evidencia de que había faltante, y con eso la puerta de
+entrada para cambiarlo. La causa de fondo: la demanda previa al reparto no se guardaba en
+ningún lado.
+
+## La solución
+
+Cuatro campos nuevos en stock.warehouse.orderpoint:
+
+  forum_demand_original      Foto del qty_to_order previo al PRIMER reparto del ciclo.
+                             En cero = no hay distribución aplicada.
+  forum_demand_effective     Stored compute: la original si hay reparto vigente, el
+                             qty_to_order actual si no. Es la que se agrupa.
+  forum_distribution_strategy  Criterio aplicado, para mostrarlo y precargarlo.
+  forum_distribution_date    Cuándo se aplicó.
+
+La foto se toma UNA sola vez por ciclo (forum_snapshot_demand). Es lo que hace que el
+segundo criterio reparta sobre la necesidad real y no sobre las sobras del primero.
+
+## La distinción que hay que respetar al tocar esto
+
+_origin_group_demands y _group_candidates_by_origin ahora reciben demand_field, y los dos
+consumidores lo usan distinto A PROPÓSITO:
+
+  - la alerta, el filtro de no cumplibles, el faltante y el wizard agrupan por la demanda
+    EFECTIVA. Así un reparto ya aplicado no oculta que el stock no alcanzaba, y el botón
+    sigue en la fila.
+  - _check_origin_stock agrupa por qty_to_order, la demanda REAL de hoy. Es la validación
+    que bloquea action_replenish. Si mirara la efectiva, una vez repartido el stock la regla
+    quedaría bloqueada para siempre: la demanda original nunca entra en el disponible, es
+    justamente la definición del faltante.
+
+Invertir eso rompe el módulo de las dos formas posibles: o vuelve el bug de Lucho, o no se
+puede ordenar nunca más.
+
+## Cierre del ciclo
+
+action_replenish y action_replenish_auto limpian la foto después del super(): ahí la decisión
+se efectivizó. Se usa self.exists() porque el action_replenish del core borra las reglas
+manuales que quedan en cero.
+
+action_restore_original_demand deshace un reparto sin tener que recordar qué pedía cada
+regla. Va como acción de servidor en el menú de la lista, no como botón de fila: lo normal es
+restaurar el grupo entero.
+
+## Verificado el 02/09/2026 sobre o17_forum
+
+  - Los dos dominios de candidatas (efectiva vs qty_to_order) devuelven el MISMO conjunto
+    cuando no hay ningún reparto aplicado: 204.897 reglas cada uno, 0 desalineadas. El
+    cambio de dominio no movió a nadie de lugar.
+  - 18 checks funcionales del ciclo completo: alerta encendida antes y DESPUÉS del reparto,
+    wizard que reabre y precarga el criterio, foto intacta, ordenar no bloqueado, restaurar,
+    y filtros cumplibles/no cumplibles disjuntos.
+  - Escenario 20/10/6 sobre 20 disponibles: los 4 criterios dan 4 repartos distintos
+    ([12,5,3] / [20,0,0] / [7,7,6] / [10,10,0]), todos sumando exactamente 20. Aplicados EN
+    CADENA sin restaurar entre uno y otro dan idéntico a aplicarlos de entrada. Es la
+    invariante que prueba que el reparto siempre parte de la demanda original.
+
+## Pendiente conocido
+
+qty_to_order es un stored compute con readonly=False. Si Odoo lo recalcula (cambia
+product_min_qty, el pronóstico, etc.) el reparto se pierde, igual que antes de este cambio.
+La diferencia es que ahora la foto lo hace recuperable con "Restaurar Demanda Original". No
+se agregó ninguna guarda contra el recálculo: sería pelearse con el campo del core.
