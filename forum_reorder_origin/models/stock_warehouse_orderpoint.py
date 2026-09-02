@@ -264,12 +264,14 @@ class StockWarehouseOrderpoint(models.Model):
             ('product_id', 'in', [k[0] for k in grupos]),
             ('origin_warehouse_id', 'in', [k[1] for k in grupos]),
         ]
-        candidatos = self.search(domain)
+        # search_read en vez de search + loop sobre el recordset: acá se recorren todas las
+        # candidatas (204.897 en la base de FORUM) y solo hacen falta tres enteros por fila.
+        # Instanciar los registros para leer dos many2one cuesta un orden de magnitud más.
         por_clave = {}
-        for op in candidatos:
-            clave = (op.product_id.id, op.origin_warehouse_id.id)
+        for fila in self.search_read(domain, ['product_id', 'origin_warehouse_id']):
+            clave = (fila['product_id'][0], fila['origin_warehouse_id'][0])
             if clave in grupos:
-                por_clave.setdefault(clave, []).append(op.id)
+                por_clave.setdefault(clave, []).append(fila['id'])
 
         resultado = {}
         for clave, datos in grupos.items():
@@ -365,19 +367,23 @@ class StockWarehouseOrderpoint(models.Model):
         """
         grupos = self._group_candidates_by_origin(restrict_to=restrict_to,
                                                   only_shortfall=True)
-        por_valor = {}
-        alcanzadas = self.env['stock.warehouse.orderpoint']
+        # Se acumulan IDS, no recordsets. Un `recordset |= registro` dentro del loop copia la
+        # tupla entera de ids en cada vuelta: con 204.897 candidatas el recálculo pasaba de
+        # 18 segundos a más de diez minutos sin terminar. Es el mismo error cuadrático que ya
+        # se había corregido en el agrupador (ver 17.0.2.0.0); acá había vuelto por otra
+        # puerta. Los recordsets se instancian una sola vez, al escribir.
+        ids_por_valor = {}
         for datos in grupos.values():
-            alcanzadas |= datos['orderpoints']
             if not datos['shortfall'] or not datos['demand']:
                 continue
             for op, valor in self._prorratear_faltante(
                     datos['orderpoints'], datos['shortfall'], datos['demand']).items():
-                por_valor.setdefault(valor, self.env['stock.warehouse.orderpoint'])
-                por_valor[valor] |= op
+                ids_por_valor.setdefault(valor, []).append(op.id)
 
-        for valor, ops in por_valor.items():
-            ops.write({'origin_qty_shortfall': valor})
+        ids_con_faltante = set()
+        for valor, ids in ids_por_valor.items():
+            ids_con_faltante.update(ids)
+            self.browse(ids).write({'origin_qty_shortfall': valor})
 
         # El resto de las candidatas se pone en CERO, no se deja sin escribir. Dos razones:
         #   - borrar valores viejos de un recálculo anterior;
@@ -391,12 +397,10 @@ class StockWarehouseOrderpoint(models.Model):
         campo = self.DEMAND_FIELD
         candidatas = self.search(self._origin_candidate_domain()) if restrict_to is None \
             else restrict_to.filtered(lambda o: o.origin_warehouse_id and o[campo] > 0)
-        con_faltante = self.env['stock.warehouse.orderpoint'].union(*por_valor.values()) \
-            if por_valor else self.env['stock.warehouse.orderpoint']
-        en_cero = candidatas - con_faltante
-        if en_cero:
-            en_cero.write({'origin_qty_shortfall': 0.0})
-        return candidatas | con_faltante
+        ids_en_cero = [i for i in candidatas.ids if i not in ids_con_faltante]
+        if ids_en_cero:
+            self.browse(ids_en_cero).write({'origin_qty_shortfall': 0.0})
+        return self.browse(set(candidatas.ids) | ids_con_faltante)
 
     @api.model
     def action_recompute_origin_shortfall(self):
