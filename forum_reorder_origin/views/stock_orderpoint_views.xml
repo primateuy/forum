@@ -29,6 +29,9 @@
                 <field name="origin_qty_forecast" optional="hide" readonly="1"/>
                 <field name="origin_qty_shortfall" optional="show" readonly="1"
                        sum="Faltante total en origen"/>
+                <field name="forum_demand_original" optional="hide" readonly="1"/>
+                <field name="forum_distribution_strategy" optional="show" readonly="1"/>
+                <field name="forum_distribution_date" optional="hide" readonly="1"/>
             </xpath>
 
             <!-- Decoración warning en la fila cuando stock origen insuficiente -->
@@ -70,6 +73,17 @@
         <field name="code">action = model.action_recompute_origin_shortfall()</field>
     </record>
 
+    <!-- Deshacer un reparto ya aplicado. Va como accion de servidor y no como boton de
+         fila porque lo normal es restaurar el grupo entero, no una regla sola. -->
+    <record id="action_restore_original_demand" model="ir.actions.server">
+        <field name="name">Restaurar Demanda Original</field>
+        <field name="model_id" ref="stock.model_stock_warehouse_orderpoint"/>
+        <field name="binding_model_id" ref="stock.model_stock_warehouse_orderpoint"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_restore_original_demand()</field>
+    </record>
+
     <!-- Herencia de la vista search para agregar filtros -->
     <record id="stock_reorder_report_search_origin" model="ir.ui.view">
         <field name="name">stock.warehouse.orderpoint.search.origin</field>
@@ -88,6 +102,12 @@
                 <filter string="Reglas NO cumplibles (stock insuficiente en origen)"
                         name="filter_unfulfillable"
                         domain="[('origin_stock_warning', '=', True)]"/>
+                <filter string="Con un criterio de reparto aplicado"
+                        name="filter_distribution_applied"
+                        domain="[('forum_demand_original', '&gt;', 0)]"
+                        help="Reglas cuya cantidad a pedir viene de una distribucion de stock
+                              insuficiente. Se puede volver a repartir con otro criterio, o
+                              restaurar la demanda original, hasta que se ordenen."/>
                 <filter string="Origen sin resolver"
                         name="filter_origin_unresolved"
                         domain="[('origin_warehouse_id', '=', False), ('qty_to_order', '&gt;', 0)]"

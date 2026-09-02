@@ -1,0 +1,1358 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+#	* setu_advance_reordering
+#	* setu_intercompany_transaction
+#	* forum_reorder_origin
+#	* primate_reposicion_avanzada
+#
+# Mantenido por Primate en el modulo forum_reorder_i18n. Ver el __manifest__.py de ese
+# modulo para el glosario de terminos y el procedimiento de actualizacion.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 17.0\n"
+"Report-Msgid-Bugs-To: \n"
+"Last-Translator: Primate <https://primate.uy>\n"
+"Language-Team: \n"
+"Language: es_UY\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. modules: setu_advance_reordering, setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_planner__active
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__active
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__active
+msgid "Active"
+msgstr "Activo"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+msgid "Advance Configurations"
+msgstr "Configuración Avanzada"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess__non_forecast_ids
+msgid "Advance Reorder Non Product Forecast"
+msgstr "Pronóstico de reordenamiento sin producto"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_ict_option__always
+msgid "Always replenish stock"
+msgstr "Reponer stock siempre"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_iwt_option__always
+msgid "Always replenish stock (From other warehouses only)"
+msgstr "Reponer stock siempre (solo desde otros almacenes)"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__sale_order__sale_iwt_option__always
+msgid "Always replenish stock(Use Stock From Other Warehouses)"
+msgstr "Reponer stock siempre (usar stock de otros almacenes)"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__sale_order__sale_iwt_option__as_per_company
+msgid "As Per Company"
+msgstr "Según la configuración de la compañía"
+
+#. modules: setu_advance_reordering, setu_intercompany_transaction
+#: model:ir.actions.act_window,name:setu_intercompany_transaction.setu_ict_auto_workflow_action
+#: model:ir.ui.menu,name:setu_advance_reordering.setu_ict_auto_workflow_menu
+#: model:ir.ui.menu,name:setu_intercompany_transaction.setu_ict_auto_workflow_menu
+msgid "Auto Workflow - ICT"
+msgstr "Flujo automático - ICT"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__validate_ict
+msgid "Auto validate Interwarehouse tansfer record?"
+msgstr "¿Validar automáticamente la transferencia inter-almacén?"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__auto_workflow_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__auto_workflow_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__auto_workflow_id
+msgid "Auto workflow"
+msgstr "Flujo Automático"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product__file_data
+msgid "CSV File"
+msgstr "Archivo CSV"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__product_uom_category_id
+msgid "Category"
+msgstr "Categoría"
+
+#. modules: setu_advance_reordering, setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_advance_reordering.form_sale_forecast_auto_import_wizard
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.form_wizard_import_ict_lines
+msgid "Columns name must be the same as described in the sample files"
+msgstr "Los nombres de las columnas tienen que ser los mismos que en los archivos de ejemplo"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_form
+msgid "Common Configurations"
+msgstr "Configuración General"
+
+#. module: setu_advance_reordering
+#: model:ir.actions.act_window,name:setu_advance_reordering.actions_create_reordering
+#: model:ir.ui.menu,name:setu_advance_reordering.menu_create_reordering
+msgid "Create / Update Reordering Rule"
+msgstr "Crear / Actualizar regla de reordenamiento"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_res_company__create_ict_option
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__create_ict_option
+msgid "Create Inter Company Transfer"
+msgstr "Crear Transferencia Inter-Compañía"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_res_company__create_iwt_option
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__create_iwt_option
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__sale_iwt_option
+msgid "Create Inter Warhouse Transfer"
+msgstr "Crear Transferencia Inter-Almacén"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__create_ict_invoices
+msgid "Create intercompany invoices?"
+msgstr "¿Crear facturas inter-compañía?"
+
+#. modules: forum_reorder_origin, setu_advance_reordering,
+#. setu_intercompany_transaction
+#: model:ir.model.fields,field_description:forum_reorder_origin.field_forum_reorder_distribution_wizard__create_uid
+#: model:ir.model.fields,field_description:forum_reorder_origin.field_forum_reorder_distribution_wizard_group__create_uid
+#: model:ir.model.fields,field_description:forum_reorder_origin.field_forum_reorder_warning_wizard__create_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process__create_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_config__create_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_line__create_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_summary__create_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_non_product_forecast__create_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess__create_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_config__create_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_line__create_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_summary__create_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_planner__create_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_process_auto_workflow__create_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reordering_settings__create_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_create_reordering__create_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_forecast_product_sale__create_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_product_iwt_history__create_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_product_purchase_history__create_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_product_sales_history__create_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_fiscalperiod__create_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_fiscalyear__create_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_stock_movement_report__create_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_summary_classification__create_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_sale_forecast_auto_import_wizard__create_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_specific_location_mapping__create_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_stock_warehouse_group__create_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__create_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__create_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__create_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__create_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__create_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product__create_uid
+msgid "Created by"
+msgstr "Creado por"
+
+#. modules: forum_reorder_origin, setu_advance_reordering,
+#. setu_intercompany_transaction
+#: model:ir.model.fields,field_description:forum_reorder_origin.field_forum_reorder_distribution_wizard__create_date
+#: model:ir.model.fields,field_description:forum_reorder_origin.field_forum_reorder_distribution_wizard_group__create_date
+#: model:ir.model.fields,field_description:forum_reorder_origin.field_forum_reorder_warning_wizard__create_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process__create_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_config__create_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_line__create_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_summary__create_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_non_product_forecast__create_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess__create_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_config__create_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_line__create_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_summary__create_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_planner__create_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_process_auto_workflow__create_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reordering_settings__create_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_create_reordering__create_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_forecast_product_sale__create_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_product_iwt_history__create_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_product_purchase_history__create_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_product_sales_history__create_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_fiscalperiod__create_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_fiscalyear__create_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_stock_movement_report__create_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_summary_classification__create_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_sale_forecast_auto_import_wizard__create_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_specific_location_mapping__create_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_stock_warehouse_group__create_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__create_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__create_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__create_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__create_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__create_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product__create_date
+msgid "Created on"
+msgstr "Creado el"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__customer_invoice_journal_id
+msgid "Customer Invoice Journal"
+msgstr "Diario de Facturas de Cliente"
+
+#. modules: setu_advance_reordering, setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_product_iwt_history__date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__ict_date
+#: model_terms:ir.ui.view,arch_db:setu_advance_reordering.product_iwt_history_search
+#: model_terms:ir.ui.view,arch_db:setu_advance_reordering.product_purchase_history_search
+#: model_terms:ir.ui.view,arch_db:setu_advance_reordering.product_sales_history_search
+msgid "Date"
+msgstr "Fecha"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,help:setu_advance_reordering.field_advance_reorder_orderprocess_summary__uom_id
+msgid "Default unit of measure used for all stock operations."
+msgstr "Unidad de medida por defecto para todas las operaciones de stock."
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,help:setu_advance_reordering.field_advance_reorder_orderprocess__generate_demand_with
+#: model:ir.model.fields,help:setu_advance_reordering.field_advance_reorder_planner__generate_demand_with
+msgid "Demand generate based on past sales or forecasted sales"
+msgstr "La demanda se genera a partir de las ventas pasadas o del pronóstico de ventas"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,help:setu_advance_reordering.field_advance_procurement_process__generate_demand_with
+msgid "Demand generate based on past sales or future sales"
+msgstr "La demanda se genera a partir de las ventas pasadas o de las ventas futuras"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__location_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__location_id
+msgid "Destination location"
+msgstr "Ubicación de Destino"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__transfer_with_single_picking
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__transfer_with_single_picking
+msgid "Direct transfer to destination without transit location?"
+msgstr "¿Traslado directo al destino, sin ubicación de tránsito?"
+
+#. modules: forum_reorder_origin, setu_advance_reordering,
+#. setu_intercompany_transaction
+#: model:ir.model.fields,field_description:forum_reorder_origin.field_forum_reorder_distribution_wizard__display_name
+#: model:ir.model.fields,field_description:forum_reorder_origin.field_forum_reorder_distribution_wizard_group__display_name
+#: model:ir.model.fields,field_description:forum_reorder_origin.field_forum_reorder_warning_wizard__display_name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process__display_name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_config__display_name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_line__display_name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_summary__display_name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_non_product_forecast__display_name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess__display_name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_config__display_name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_line__display_name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_summary__display_name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_planner__display_name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_process_auto_workflow__display_name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reordering_settings__display_name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_create_reordering__display_name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_forecast_product_sale__display_name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_product_iwt_history__display_name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_product_purchase_history__display_name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_product_sales_history__display_name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_fiscalperiod__display_name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_fiscalyear__display_name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_stock_movement_report__display_name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_summary_classification__display_name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_sale_forecast_auto_import_wizard__display_name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_specific_location_mapping__display_name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_stock_warehouse_group__display_name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__display_name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__display_name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__display_name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__display_name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__display_name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product__display_name
+msgid "Display Name"
+msgstr "Nombre a Mostrar"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_res_company__distributed_iwt
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__distributed_iwt
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__distributed_replenish
+msgid "Distributed IWT?"
+msgstr "¿IWT distribuida?"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__stock_replenishment_priority__do_nothing
+msgid "Do Nothing"
+msgstr "No hacer nada"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reordering_settings__extra_lead_percentage
+msgid "Extra Percentage For Max Lead Days"
+msgstr "Porcentaje adicional sobre el plazo máximo"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_line__fsn_classification
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_line__fsn_classification
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_summary_classification__fsn_classification
+msgid "FSN"
+msgstr "Clasificación FSN"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_line__combine_classification
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_line__combine_classification
+msgid "FSN-XYZ"
+msgstr "FSN-XYZ"
+
+#. modules: setu_advance_reordering, setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_sale_forecast_auto_import_wizard__file_name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product__file_name
+msgid "File Name"
+msgstr "Nombre del Archivo"
+
+#. module: setu_advance_reordering
+#: model:ir.actions.act_window,name:setu_advance_reordering.action_setu_forecast_vs_actual_sales
+#: model:ir.ui.menu,name:setu_advance_reordering.menu_forecast_vs_actual_sales_report
+#: model_terms:ir.actions.act_window,help:setu_advance_reordering.action_setu_forecast_vs_actual_sales
+msgid "Forecast vs Actual Sales"
+msgstr "Pronóstico vs. ventas reales"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__fulfiller_company_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__fulfiller_company_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_form
+msgid "Fulfiller"
+msgstr "Abastecedor"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__fulfiller_company_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_search
+msgid "Fulfiller Company"
+msgstr "Compañía Abastecedora"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__fulfiller_partner_id
+msgid "Fulfiller Partner"
+msgstr "Contacto Abastecedor"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__fulfiller_warehouse_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__fulfiller_warehouse_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__fulfiller_warehouse_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_search
+msgid "Fulfiller Warehouse"
+msgstr "Almacén Abastecedor"
+
+#. module: forum_reorder_origin
+#: model:ir.model.fields,field_description:forum_reorder_origin.field_forum_reorder_warning_wizard__has_unfulfillable
+msgid "Has Unfulfillable"
+msgstr "Tiene Reglas No Cumplibles"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__ict_count
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__ict_ids
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.ict_sale_order_form
+msgid "ICT"
+msgstr "ICT"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_search
+msgid "ICT Auto Workflow"
+msgstr "Flujo Automático ICT"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__ict_channel_ids
+msgid "ICT Channels"
+msgstr "Canales ICT"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_transfer_search
+msgid "ICT Date"
+msgstr "Fecha del ICT"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__ict_transfer_type
+msgid "ICT Transfer Type"
+msgstr "Tipo de Transferencia ICT"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_transfer_search
+msgid "ICT User"
+msgstr "Usuario ICT"
+
+#. module: setu_intercompany_transaction
+#: model:ir.ui.menu,name:setu_intercompany_transaction.menu_ict_user_guide
+msgid "ICT User Guide"
+msgstr "Manual del usuario ICT"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process__ict_count
+msgid "ICT count"
+msgstr "Cantidad de ICT"
+
+#. modules: forum_reorder_origin, setu_advance_reordering,
+#. setu_intercompany_transaction
+#: model:ir.model.fields,field_description:forum_reorder_origin.field_forum_reorder_distribution_wizard__id
+#: model:ir.model.fields,field_description:forum_reorder_origin.field_forum_reorder_distribution_wizard_group__id
+#: model:ir.model.fields,field_description:forum_reorder_origin.field_forum_reorder_warning_wizard__id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process__id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_config__id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_line__id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_summary__id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_non_product_forecast__id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess__id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_config__id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_line__id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_summary__id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_planner__id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_process_auto_workflow__id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reordering_settings__id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_create_reordering__id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_forecast_product_sale__id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_product_iwt_history__id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_product_purchase_history__id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_product_sales_history__id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_fiscalperiod__id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_fiscalyear__id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_stock_movement_report__id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_summary_classification__id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_sale_forecast_auto_import_wizard__id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_specific_location_mapping__id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_stock_warehouse_group__id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product__id
+msgid "ID"
+msgstr "ID"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.ict_sale_order_form
+msgid "INTERCOMAPNY TRANSFER"
+msgstr "TRANSFERENCIA INTER-COMPAÑÍA"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.ict_sale_order_form
+msgid "INTERWAREHOUSE TRANSFER"
+msgstr "TRANSFERENCIA INTER-ALMACÉN"
+
+#. modules: setu_advance_reordering, setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_create_reordering__add_iwt_in_lead_calc
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_stock_warehouse_orderpoint__add_iwt_in_lead_calc
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.ict_sale_order_form
+msgid "IWT"
+msgstr "IWT"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,help:setu_intercompany_transaction.field_setu_intercompany_transfer__location_id
+#: model:ir.model.fields,help:setu_intercompany_transaction.field_setu_interwarehouse_channel__location_id
+msgid "IWT will be created for this location from the fulfiller warehouse."
+msgstr "La transferencia inter-almacén (IWT) se va a crear hacia esta ubicación, desde el almacén abastecedor."
+
+#. module: setu_advance_reordering
+#: model:ir.actions.act_window,name:setu_advance_reordering.action_sale_forecast_auto_import_wizard
+#: model:ir.ui.menu,name:setu_advance_reordering.menu_sale_forecast_auto_import_wizard
+msgid "Import / Export Sales Forecast"
+msgstr "Importar / Exportar pronóstico de ventas"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.form_wizard_import_ict_lines
+msgid "Import Intercompany Lines"
+msgstr "Importar Líneas Inter-Compañía"
+
+#. module: setu_intercompany_transaction
+#: model:ir.actions.act_window,name:setu_intercompany_transaction.action_wizard_import_ict_product
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+msgid "Import Lines"
+msgstr "Importar Líneas"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__setu_intercompany_transfer__state__in_progress
+msgid "In Progress"
+msgstr "En Curso"
+
+#. module: setu_advance_reordering
+#. odoo-python
+#: code:addons/setu_advance_reordering/models/forecast_product_sale/reorder_fiscalyear.py:0
+#, python-format
+msgid "Incorrect fiscal year end date: date must be greater than start date!"
+msgstr "Fecha de fin de ejercicio incorrecta: tiene que ser posterior a la de inicio."
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__setu_intercompany_transfer__transfer_type__inter_company
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.res_company_form
+msgid "Inter Company"
+msgstr "Inter-Compañía"
+
+#. modules: setu_advance_reordering, setu_intercompany_transaction
+#: model:ir.actions.act_window,name:setu_intercompany_transaction.setu_intercompany_channel_action
+#: model:ir.ui.menu,name:setu_advance_reordering.setu_intercompany_channel_menu
+#: model:ir.ui.menu,name:setu_intercompany_transaction.setu_intercompany_channel_menu
+msgid "Inter Company Channel"
+msgstr "Canal Inter-Compañía"
+
+#. modules: setu_advance_reordering, setu_intercompany_transaction
+#: model:ir.ui.menu,name:setu_advance_reordering.intercompany_main_menu
+#: model:ir.ui.menu,name:setu_intercompany_transaction.intercompany_main_menu
+msgid "Inter Company Transaction"
+msgstr "Transacciones Inter-Compañía"
+
+#. modules: setu_advance_reordering, setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_advance_reordering/models/advance_procurement/advance_procurement_process.py:0
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid "Inter Company Transactions"
+msgstr "Transacciones Inter-Compañía"
+
+#. modules: setu_advance_reordering, setu_intercompany_transaction
+#: model:ir.actions.act_window,name:setu_intercompany_transaction.setu_intercompany_transfer_action
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__intercompany_transfer_id
+#: model:ir.model.fields.selection,name:setu_advance_reordering.selection__create_reordering__document_creation_option__ict
+#: model:ir.model.fields.selection,name:setu_advance_reordering.selection__stock_warehouse_orderpoint__document_creation_option__ict
+#: model:ir.ui.menu,name:setu_advance_reordering.setu_intercompany_transfer_menu
+#: model:ir.ui.menu,name:setu_intercompany_transaction.setu_intercompany_transfer_menu
+#: model_terms:ir.ui.view,arch_db:setu_advance_reordering.form_advance_procurement_process
+msgid "Inter Company Transfer"
+msgstr "Transferencia Inter-Compañía"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__ict_user_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__ict_user_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__ict_user_id
+msgid "Inter Company User"
+msgstr "Usuario Inter-Compañía"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__setu_intercompany_transfer__transfer_type__inter_warehouse
+msgid "Inter Warehouse"
+msgstr "Inter-Almacén"
+
+#. modules: setu_advance_reordering, setu_intercompany_transaction
+#: model:ir.actions.act_window,name:setu_intercompany_transaction.setu_interwarehouse_channel_action
+#: model:ir.ui.menu,name:setu_advance_reordering.setu_interwarehouse_channel_menu
+#: model:ir.ui.menu,name:setu_intercompany_transaction.setu_interwarehouse_channel_menu
+msgid "Inter Warehouse Channel"
+msgstr "Canal Inter-Almacén"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+msgid "Inter Warehouse Transaction"
+msgstr "Transacción Inter-Almacén"
+
+#. modules: setu_advance_reordering, setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_advance_reordering/models/advance_procurement/advance_procurement_process.py:0
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid "Inter Warehouse Transactions"
+msgstr "Transacciones Inter-Almacén"
+
+#. modules: setu_advance_reordering, setu_intercompany_transaction
+#: model:ir.actions.act_window,name:setu_intercompany_transaction.setu_interwarehouse_transfer_action
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_stock_picking__ict_internal_transfer_id
+#: model:ir.model.fields.selection,name:setu_advance_reordering.selection__create_reordering__document_creation_option__iwt
+#: model:ir.model.fields.selection,name:setu_advance_reordering.selection__stock_warehouse_orderpoint__document_creation_option__iwt
+#: model:ir.ui.menu,name:setu_advance_reordering.setu_interwarehouse_transfer_menu
+#: model:ir.ui.menu,name:setu_intercompany_transaction.setu_interwarehouse_transfer_menu
+#: model_terms:ir.ui.view,arch_db:setu_advance_reordering.form_advance_procurement_process
+msgid "Inter Warehouse Transfer"
+msgstr "Transferencia Inter-Almacén"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+msgid "Inter Warehouse Transfer Lines"
+msgstr "Líneas de la Transferencia Inter-Almacén"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_config__inter_company_channel_id
+msgid "Inter company channel"
+msgstr "Canal inter-compañía"
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid "Inter company channel must be selected to create inter company record."
+msgstr "Hay que elegir un canal inter-compañía para poder crear la transferencia."
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid "Inter company record has been already created."
+msgstr "La transferencia inter-compañía ya fue creada."
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_config__inter_warehouse_channel_id
+msgid "Inter warehouse channel"
+msgstr "Canal inter-almacén"
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid "Inter warehouse record has been already created."
+msgstr "La transferencia inter-almacén ya fue creada."
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__intercompany_channel_ids
+msgid "InterCompany Channels"
+msgstr "Canales Inter-Compañía"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+msgid "InterCompany Transfer Lines"
+msgstr "Líneas de la Transferencia Inter-Compañía"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_ict_auto_workflow_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_ict_auto_workflow_tree
+msgid "Intercompany Auto Workflow"
+msgstr "Flujo Automático Inter-Compañía"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__intercompany_channel_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__intercompany_channel_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_tree
+msgid "Intercompany Channel"
+msgstr "Canal Inter-Compañía"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+msgid "Intercompany Transaction"
+msgstr "Transacción Inter-Compañía"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_account_bank_statement_line__intercompany_transfer_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_account_move__intercompany_transfer_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_account_payment__intercompany_transfer_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_purchase_order__intercompany_transfer_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__intercompany_transfer_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_stock_picking__purchase_intercompany_transfer_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_stock_picking__sale_intercompany_transfer_id
+msgid "Intercompany Transfer"
+msgstr "Transferencia Inter-Compañía"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__intercompany_transfer_line_ids
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+msgid "Intercompany Transfer Lines"
+msgstr "Líneas de la Transferencia Inter-Compañía"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__interwarehouse_channel_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order_line__interwarehouse_channel_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__interwarehouse_channel_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_tree
+msgid "Interwarehouse Channel"
+msgstr "Canal Inter-Almacén"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__interwarehouse_channel_ids
+msgid "Interwarehouse Channels"
+msgstr "Canales Inter-Almacén"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_ict_auto_workflow_form
+msgid "Invoice Auto Workflow"
+msgstr "Flujo Automático de Facturación"
+
+#. module: setu_intercompany_transaction
+#: model:ir.actions.act_window,name:setu_intercompany_transaction.action_move_invoice
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__invoice_ids
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+msgid "Invoices"
+msgstr "Facturas"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_summary__is_order_moq
+msgid "Is Order MOQ ?"
+msgstr "¿Respeta el mínimo de compra?"
+
+#. module: setu_advance_reordering
+#: model_terms:ir.ui.view,arch_db:setu_advance_reordering.advance_reordering_settings_view_form
+msgid "It is the Vendor lead time will be in used in the planner."
+msgstr "Es el plazo de entrega del proveedor que va a usar el planificador."
+
+#. modules: forum_reorder_origin, setu_advance_reordering,
+#. setu_intercompany_transaction
+#: model:ir.model.fields,field_description:forum_reorder_origin.field_forum_reorder_distribution_wizard__write_uid
+#: model:ir.model.fields,field_description:forum_reorder_origin.field_forum_reorder_distribution_wizard_group__write_uid
+#: model:ir.model.fields,field_description:forum_reorder_origin.field_forum_reorder_warning_wizard__write_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process__write_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_config__write_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_line__write_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_summary__write_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_non_product_forecast__write_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess__write_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_config__write_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_line__write_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_summary__write_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_planner__write_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_process_auto_workflow__write_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reordering_settings__write_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_create_reordering__write_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_forecast_product_sale__write_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_product_iwt_history__write_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_product_purchase_history__write_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_product_sales_history__write_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_fiscalperiod__write_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_fiscalyear__write_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_stock_movement_report__write_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_summary_classification__write_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_sale_forecast_auto_import_wizard__write_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_specific_location_mapping__write_uid
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_stock_warehouse_group__write_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__write_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__write_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__write_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__write_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__write_uid
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product__write_uid
+msgid "Last Updated by"
+msgstr "Última Actualización por"
+
+#. modules: forum_reorder_origin, setu_advance_reordering,
+#. setu_intercompany_transaction
+#: model:ir.model.fields,field_description:forum_reorder_origin.field_forum_reorder_distribution_wizard__write_date
+#: model:ir.model.fields,field_description:forum_reorder_origin.field_forum_reorder_distribution_wizard_group__write_date
+#: model:ir.model.fields,field_description:forum_reorder_origin.field_forum_reorder_warning_wizard__write_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process__write_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_config__write_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_line__write_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_summary__write_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_non_product_forecast__write_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess__write_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_config__write_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_line__write_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_summary__write_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_planner__write_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_process_auto_workflow__write_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reordering_settings__write_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_create_reordering__write_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_forecast_product_sale__write_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_product_iwt_history__write_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_product_purchase_history__write_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_product_sales_history__write_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_fiscalperiod__write_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_fiscalyear__write_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_stock_movement_report__write_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_summary_classification__write_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_sale_forecast_auto_import_wizard__write_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_specific_location_mapping__write_date
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_stock_warehouse_group__write_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__write_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__write_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__write_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__write_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__write_date
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_wizard_import_ict_product__write_date
+msgid "Last Updated on"
+msgstr "Última Actualización el"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_setu_interwarehouse_channel__procurement_lead_days
+msgid "Lead Days"
+msgstr "Días de Plazo"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,help:setu_advance_reordering.field_setu_intercompany_channel__procurement_lead_days
+#: model:ir.model.fields,help:setu_advance_reordering.field_setu_interwarehouse_channel__procurement_lead_days
+msgid "Lead Days will be in Replenishment from Warehouses Configuration"
+msgstr "Los días de plazo se toman de la configuración de Reposición de Almacenes"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_config__vendor_lead_days
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_setu_intercompany_channel__procurement_lead_days
+msgid "Lead days"
+msgstr "Días de plazo"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__locations_ids
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__locations_ids
+msgid "Locations"
+msgstr "Ubicaciones"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__manage_lot_serial
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__manage_lot_serial
+msgid "Manage serial / lot number in Inter Company Transactions?"
+msgstr "¿Gestionar número de serie / lote en las transacciones inter-compañía?"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_ict_option__manual
+msgid "Manual - Select ICT Channel manually in sale order"
+msgstr "Manual - Elegir el canal ICT a mano en la orden de venta"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_iwt_option__manual
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__sale_order__sale_iwt_option__manual
+msgid "Manual - Select Inter Warehouse Channel manually in sale order"
+msgstr "Manual - Elegir el canal inter-almacén a mano en la orden de venta"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reordering_settings__max_lead_days_calc_method
+msgid "Max lead days calculation Method"
+msgstr "Método de cálculo del plazo máximo"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess__minimum_reorder_amount
+msgid "Min order amount"
+msgstr "Importe mínimo del pedido"
+
+#. modules: setu_advance_reordering, setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process__name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess__name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_planner__name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_process_auto_workflow__name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reordering_settings__name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_forecast_product_sale__name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_fiscalyear__name
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_stock_warehouse_group__name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__name
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__name
+msgid "Name"
+msgstr "Nombre"
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/models/setu_intercompany_transfer.py:0
+#: code:addons/setu_intercompany_transaction/models/setu_intercompany_transfer.py:0
+#: code:addons/setu_intercompany_transaction/models/setu_intercompany_transfer.py:0
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__setu_intercompany_transfer__state__draft
+#, python-format
+msgid "New"
+msgstr "Nuevo"
+
+#. module: setu_advance_reordering
+#. odoo-python
+#: code:addons/setu_advance_reordering/models/forecast_product_sale/reorder_fiscalyear.py:0
+#, python-format
+msgid "No sales forecast record found for this year to update Actual Sales."
+msgstr "No hay pronóstico de ventas de este año para actualizar con las ventas reales."
+
+#. module: setu_advance_reordering
+#: model_terms:ir.ui.view,arch_db:setu_advance_reordering.form_advance_procurement_process
+msgid "Not Found Forecast Sale"
+msgstr "Sin pronóstico de ventas"
+
+#. module: setu_intercompany_transaction
+#: model:ir.actions.act_url,name:setu_intercompany_transaction.action_ict_user_guide
+msgid "Open ICT User Guide"
+msgstr "Abrir el manual del usuario ICT"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__origin_ict_id
+msgid "Origin ICT"
+msgstr "ICT de Origen"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__origin_order_id
+msgid "Origin Sale Order"
+msgstr "Orden de Venta de Origen"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_product_purchase_history__po_qty
+msgid "PO Qty"
+msgstr "Cantidad de la OC"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__product_packaging_id
+msgid "Packaging"
+msgstr "Empaque"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__product_packaging_qty
+msgid "Packaging Quantity"
+msgstr "Cantidad por Empaque"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__picking_ids
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_form
+msgid "Pickings"
+msgstr "Transferencias"
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/models/setu_intercompany_transfer.py:0
+#, python-format
+msgid "Please add any product to do a transfer."
+msgstr "Agregá al menos un producto para poder hacer la transferencia."
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__unit_price
+msgid "Price"
+msgstr "Precio"
+
+#. modules: setu_advance_reordering, setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__pricelist_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__pricelist_id
+#: model_terms:ir.ui.view,arch_db:setu_advance_reordering.res_partner_advance_reorder_inherit_view
+msgid "Pricelist"
+msgstr "Lista de Precios"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__sequence
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__sequence
+msgid "Priority"
+msgstr "Prioridad"
+
+#. modules: forum_reorder_origin, setu_advance_reordering,
+#. setu_intercompany_transaction
+#: model:ir.model,name:forum_reorder_origin.model_product_template
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_line__product_id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_summary__product_id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_non_product_forecast__product_id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_line__product_id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_summary__product_id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_forecast_product_sale__product_id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_product_iwt_history__product_id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_product_purchase_history__product_id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_product_sales_history__product_id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_stock_movement_report__product_id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_summary_classification__product_id
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_stock_warehouse_orderpoint__product_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__product_id
+#: model_terms:ir.ui.view,arch_db:setu_advance_reordering.forecast_product_sale_search
+#: model_terms:ir.ui.view,arch_db:setu_advance_reordering.product_iwt_history_search
+#: model_terms:ir.ui.view,arch_db:setu_advance_reordering.product_purchase_history_search
+#: model_terms:ir.ui.view,arch_db:setu_advance_reordering.product_sales_history_search
+msgid "Product"
+msgstr "Producto"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_summary__uom_id
+msgid "Product UOM"
+msgstr "Unidad de Medida del Producto"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__fulfiller_fiscal_position_id
+msgid "Purchase Fiscal Position"
+msgstr "Posición Fiscal de Compra"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reordering_settings__purchase_lead_calc_base_on
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_create_reordering__purchase_lead_calc_base_on
+msgid "Purchase lead calculation base on"
+msgstr "Base de cálculo del plazo de compra"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__purchase_ids
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+msgid "Purchases"
+msgstr "Compras"
+
+#. module: setu_advance_reordering
+#. odoo-python
+#: code:addons/setu_advance_reordering/models/advance_reorder_demand/advance_reorder_order_process.py:0
+#, python-format
+msgid "Quantities in Missing Forecasted sales lines should be greater then 0."
+msgstr "Las cantidades de las líneas de pronóstico faltantes tienen que ser mayores que 0."
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__quantity
+msgid "Quantity"
+msgstr "Cantidad"
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/models/setu_intercompany_transfer.py:0
+#, python-format
+msgid "Quantity should be greater than 0 to do a transfer."
+msgstr "La cantidad tiene que ser mayor que 0 para poder hacer la transferencia."
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,help:setu_advance_reordering.field_advance_reorder_orderprocess__reorder_amount
+msgid "Reorder amount will be calculated from the generated demands"
+msgstr "El importe a reordenar se calcula a partir de las demandas generadas"
+
+#. module: setu_advance_reordering
+#: model:ir.model,name:setu_advance_reordering.model_reorder_fiscalperiod
+msgid "Reorder period is used to manage monthly timeframe for reordering"
+msgstr "El período de reordenamiento define la ventana mensual del reordenamiento"
+
+#. module: setu_advance_reordering
+#: model:ir.ui.menu,name:setu_advance_reordering.menu_advance_reorder_orderprocess
+msgid "Reorder with Real Demand"
+msgstr "Reordenar por demanda real"
+
+#. module: setu_advance_reordering
+#: model:ir.ui.menu,name:setu_advance_reordering.menu_advance_reorder_process_auto_workflow
+msgid "Reorder with Real Demand Auto Workflow"
+msgstr "Flujo automático de reordenamiento por demanda real"
+
+#. module: setu_advance_reordering
+#: model:ir.ui.menu,name:setu_advance_reordering.menu_advance_reorder_planner
+msgid "Reorder with Real Demand planner"
+msgstr "Planificador de reordenamiento por demanda real"
+
+#. module: setu_advance_reordering
+#: model:ir.ui.menu,name:setu_advance_reordering.reordering_rule
+msgid "Reordering with Order Points"
+msgstr "Reglas de reordenamiento"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__stock_replenishment_priority__refill_from_intercomapny
+msgid "Replenish stock from another company's warehouse"
+msgstr "Reponer stock desde el almacén de otra compañía"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__stock_replenishment_priority__refill_from_interwarehouse
+msgid "Replenish stock from another warehouse of the same company"
+msgstr "Reponer stock desde otro almacén de la misma compañía"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__requestor_company_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__requestor_company_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_form
+msgid "Requestor"
+msgstr "Solicitante"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__requestor_company_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_search
+msgid "Requestor Company"
+msgstr "Compañía Solicitante"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__requestor_partner_id
+msgid "Requestor Partner"
+msgstr "Contacto Solicitante"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__requestor_warehouse_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_interwarehouse_channel__requestor_warehouse_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_search
+msgid "Requestor Warehouse"
+msgstr "Almacén Solicitante"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+msgid "Return"
+msgstr "Devolución"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_tree
+msgid "Reverse Transaction"
+msgstr "Transacción Inversa"
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/models/setu_intercompany_transfer.py:0
+#, python-format
+msgid "Reverse Transactions"
+msgstr "Transacciones Inversas"
+
+#. modules: setu_advance_reordering, setu_intercompany_transaction
+#: model:ir.actions.act_window,name:setu_intercompany_transaction.setu_reverse_transfer_action
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__setu_intercompany_transfer__transfer_type__reverse_transfer
+#: model:ir.ui.menu,name:setu_advance_reordering.setu_reverse_transfer_menu
+#: model:ir.ui.menu,name:setu_intercompany_transaction.setu_reverse_transfer_menu
+msgid "Reverse Transfer"
+msgstr "Transferencia inversa"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_form
+msgid "Reverse Transfer Lines"
+msgstr "Líneas de la Transferencia Inversa"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,help:setu_advance_reordering.field_advance_reordering_settings__reorder_rounding_method
+msgid "Rounding Method will be set rounding according to selected value"
+msgstr "El método de redondeo define cómo se redondea según el valor elegido"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_ict_auto_workflow_form
+msgid "Sale / Purchase Auto Workflow"
+msgstr "Flujo Automático de Venta / Compra"
+
+#. modules: setu_advance_reordering, setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_reorder_stock_movement_report__sales
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__sale_ids
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+msgid "Sales"
+msgstr "Ventas"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__requestor_fiscal_position_id
+msgid "Sales Fiscal Position"
+msgstr "Posición Fiscal de Venta"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__sales_team_id
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__sales_team_id
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_channel_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_search
+msgid "Sales Team"
+msgstr "Equipo de Ventas"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,help:setu_advance_reordering.field_advance_procurement_process_line__expected_sales
+msgid "Sales possibility during the transit days or coverage days"
+msgstr "Venta posible durante los días de tránsito o de cobertura"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,help:setu_advance_reordering.field_advance_procurement_process__procurement_date
+msgid "Set date and time advance reorder process occur"
+msgstr "Fecha y hora en que se ejecuta el proceso de reordenamiento"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,help:setu_advance_reordering.field_advance_procurement_process__buffer_stock_days
+msgid "Set days to maintain advance stock for products for next days"
+msgstr "Días de stock anticipado a mantener para los próximos días"
+
+#. module: setu_advance_reordering
+#. odoo-python
+#: code:addons/setu_advance_reordering/models/advance_reordering_settings.py:0
+#: model:ir.actions.server,name:setu_advance_reordering.action_advance_reordering_settings
+#: model:ir.ui.menu,name:setu_advance_reordering.menu_reorder_res_settings
+#, python-format
+msgid "Settings - Advance Reordering"
+msgstr "Configuración - Reordenamiento avanzado"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwarehouse_transfer_tree
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_interwareouse_transfer_form
+msgid "Setu Inter Warehouse Transaction"
+msgstr "Transacción Inter-Almacén"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_ict_auto_workflow_form
+msgid "Setu Intercompany Auto Workflow"
+msgstr "Flujo Automático Inter-Compañía"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_form
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_search
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_intercompany_transfer_tree
+msgid "Setu Intercompany Transaction"
+msgstr "Transacción Inter-Compañía"
+
+#. module: setu_intercompany_transaction
+#: model_terms:ir.ui.view,arch_db:setu_intercompany_transaction.setu_reverse_transfer_form
+msgid "Setu Reverse Transaction"
+msgstr "Transacción Inversa"
+
+#. modules: setu_advance_reordering, setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__state
+#: model_terms:ir.ui.view,arch_db:setu_advance_reordering.advance_reorder_planner_search
+msgid "State"
+msgstr "Estado"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_res_company__stock_replenishment_priority
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_sale_order__stock_replenishment_priority
+msgid "Stock Replenish source"
+msgstr "Origen de la Reposición de Stock"
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid "Stock of"
+msgstr "Stock de"
+
+#. module: setu_advance_reordering
+#. odoo-python
+#: code:addons/setu_advance_reordering/wizard/sale_forecast_auto_import_wizard.py:0
+#, python-format
+msgid "The file must have an extension .csv"
+msgstr "El archivo tiene que tener extensión .csv"
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/wizard/wizard_import_ict_products.py:0
+#, python-format
+msgid "The file must have an extention .csv"
+msgstr "El archivo tiene que tener extensión .csv"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__invoice_count
+msgid "Total Invoice"
+msgstr "Total de Facturas"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__delivery_count
+msgid "Total Pickings"
+msgstr "Total de Transferencias"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__purchase_count
+msgid "Total Purchase"
+msgstr "Total de Compras"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__sale_count
+msgid "Total Sale"
+msgstr "Total de Ventas"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer__transfer_type
+msgid "Transfer Type"
+msgstr "Tipo de Transferencia"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_transfer_line__product_uom_id
+msgid "Unit of Measure"
+msgstr "Unidad de Medida"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__validate_ict_invoices
+msgid "Validate intercompany invoices?"
+msgstr "¿Validar las facturas inter-compañía?"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__validate_ict
+msgid "Validate intercompany record?"
+msgstr "¿Validar la transferencia inter-compañía?"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_ict_auto_workflow__validate_ict_so_po
+msgid "Validate intercompany sale / purchase?"
+msgstr "¿Validar la venta / compra inter-compañía?"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,field_description:setu_intercompany_transaction.field_setu_intercompany_channel__vendor_bill_journal_id
+msgid "Vendor Bill Journal"
+msgstr "Diario de Facturas de Proveedor"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_summary__vendor_moq
+msgid "Vendor MOQ"
+msgstr "Mínimo de Compra del Proveedor"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reordering_settings__vendor_static_lead_days
+msgid "Vendor Static Lead Days"
+msgstr "Días de Plazo Fijos del Proveedor"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reordering_settings__vendor_lead_days_method
+msgid "Vendor lead days calculation Method"
+msgstr "Método de cálculo del plazo del proveedor"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_line__warehouse_id
+msgid "WH"
+msgstr "Almacén"
+
+#. module: setu_advance_reordering
+#: model:ir.actions.act_window,name:setu_advance_reordering.actions_stock_warehouse_group
+#: model:ir.model,name:setu_advance_reordering.model_stock_warehouse_group
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_stock_warehouse__warehouse_group_ids
+#: model:ir.model.fields,help:setu_advance_reordering.field_advance_reorder_orderprocess_line__warehouse_group_id
+#: model:ir.ui.menu,name:setu_advance_reordering.menu_stock_warehouse_group
+msgid "Warehouse Group"
+msgstr "Grupos de almacenes"
+
+#. module: setu_advance_reordering
+#. odoo-python
+#: code:addons/setu_advance_reordering/models/advance_procurement/advance_procurement_process.py:0
+#, python-format
+msgid "Warehouse already added in configuration.Please select another one"
+msgstr "Ese almacén ya está en la configuración. Elegí otro."
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/models/setu_intercompany_transfer.py:0
+#, python-format
+msgid "Warning"
+msgstr "Advertencia"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_ict_option__insufficient_stock_all_product
+msgid "When all products out of stock in requestor company"
+msgstr "Cuando ningún producto tiene stock en la compañía solicitante"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_iwt_option__insufficient_stock_all_product
+msgid "When all products out of stock in requestor warehouse"
+msgstr "Cuando ningún producto tiene stock en el almacén solicitante"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_ict_option__insufficient_stock_single_product
+msgid "When any single product is out of stock in requestor company"
+msgstr "Cuando algún producto no tiene stock en la compañía solicitante"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields.selection,name:setu_intercompany_transaction.selection__res_company__create_iwt_option__insufficient_stock_single_product
+msgid "When any single product is out of stock in requestor warehouse"
+msgstr "Cuando algún producto no tiene stock en el almacén solicitante"
+
+#. module: forum_reorder_origin
+#: model:ir.model.fields,field_description:forum_reorder_origin.field_forum_reorder_distribution_wizard_group__wizard_id
+msgid "Wizard"
+msgstr "Asistente"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_procurement_process_line__xyz_classification
+#: model:ir.model.fields,field_description:setu_advance_reordering.field_advance_reorder_orderprocess_line__xyz_classification
+msgid "XYZ"
+msgstr "XYZ"
+
+#. module: setu_advance_reordering
+#: model:ir.model.fields,help:setu_advance_reordering.field_create_reordering__consider_current_period_sales
+#: model:ir.model.fields,help:setu_advance_reordering.field_stock_warehouse_orderpoint__consider_current_period_sales
+msgid "consider current period sales in the sales history calculation"
+msgstr "Incluir las ventas del período actual en el cálculo del histórico de ventas"
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid "has been not found in any Companies!"
+msgstr "no se encontró en ninguna compañía."
+
+#. module: setu_intercompany_transaction
+#. odoo-python
+#: code:addons/setu_intercompany_transaction/models/sale_order.py:0
+#, python-format
+msgid "has been not found in any warehouses!"
+msgstr "no se encontró en ningún almacén."
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,help:setu_intercompany_transaction.field_setu_intercompany_channel__fulfiller_fiscal_position_id
+msgid "select fiscal position for purchase order"
+msgstr "Posición fiscal a usar en la orden de compra"
+
+#. module: setu_intercompany_transaction
+#: model:ir.model.fields,help:setu_intercompany_transaction.field_setu_intercompany_channel__requestor_fiscal_position_id
+msgid "select fiscal position for sale order"
+msgstr "Posición fiscal a usar en la orden de venta"

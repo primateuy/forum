@@ -1,6 +1,6 @@
 {
     'name': 'FORUM - Optimización Reglas de Abastecimiento',
-    'version': '17.0.2.1.0',
+    'version': '17.0.2.2.0',
     'category': 'Inventory/Inventory',
     'summary': 'Agrega información de origen, sincroniza múltiplos y valida stock en reglas de reabastecimiento',
     'description': """
@@ -13,6 +13,9 @@
         - Columna de faltante en origen, totalizable en la lista
         - Wizard para repartir el stock insuficiente entre las reglas del mismo origen,
           reusando el motor de distribución de primate_reposicion_avanzada
+        - El criterio de reparto se puede cambiar cuantas veces haga falta hasta ordenar:
+          se guarda la demanda original y cada reparto se recalcula desde ahí
+        - Acción para restaurar la demanda original y deshacer un reparto
     """,
     'author': 'Primate',
     'website': 'https://primateuy.odoo.com',

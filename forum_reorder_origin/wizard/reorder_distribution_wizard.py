@@ -20,9 +20,20 @@ class ForumReorderDistributionWizard(models.TransientModel):
         selection=DISTRIBUTION_STRATEGIES,
         string='Estrategia de Distribución',
         required=True,
-        default='proporcional',
         help='Cómo repartir el stock disponible del almacén origen entre las reglas que '
-             'compiten por él.',
+             'compiten por él. Viene precargado con el último criterio aplicado, si hay '
+             'uno: elegí otro y volvé a aplicar para cambiar la decisión.',
+    )
+    previous_strategy = fields.Selection(
+        selection=DISTRIBUTION_STRATEGIES,
+        string='Criterio ya aplicado',
+        readonly=True,
+        help='Criterio con el que se repartió la última vez. Aplicar de nuevo lo reemplaza: '
+             'el reparto se recalcula desde la demanda original, no sobre el anterior.',
+    )
+    has_previous = fields.Boolean(
+        string='Ya hay un reparto aplicado',
+        readonly=True,
     )
     strategy_warehouse_ids = fields.Many2many(
         'stock.warehouse',
@@ -75,6 +86,8 @@ class ForumReorderDistributionWizard(models.TransientModel):
                 'available_qty': datos['available'],
                 'shortfall_qty': datos['shortfall'],
                 'orderpoint_count': len(del_grupo),
+                'assigned_qty': sum(del_grupo.mapped('qty_to_order')),
+                'applied_strategy': (del_grupo.mapped('forum_distribution_strategy') or [False])[0],
             }))
 
         if not lineas_grupo:
@@ -82,7 +95,18 @@ class ForumReorderDistributionWizard(models.TransientModel):
                 'No hay grupos con faltante en la selección. Todas las reglas alcanzadas '
                 'entran en el stock disponible de su almacén origen.'))
 
-        res.update({'group_ids': lineas_grupo, 'orderpoint_ids': [(6, 0, alcanzadas.ids)]})
+        # Precarga del criterio: el último aplicado sobre las reglas alcanzadas. Así el
+        # usuario ve con qué se repartió y solo tiene que cambiar el que quiere probar, en
+        # vez de que el wizard vuelva siempre a 'proporcional' y le tape la decisión previa.
+        previos = [e for e in alcanzadas.mapped('forum_distribution_strategy') if e]
+        anterior = previos[0] if previos else False
+        res.update({
+            'group_ids': lineas_grupo,
+            'orderpoint_ids': [(6, 0, alcanzadas.ids)],
+            'previous_strategy': anterior,
+            'has_previous': bool(anterior),
+            'distribution_strategy': anterior or 'proporcional',
+        })
         return res
 
     def action_apply(self):
@@ -92,6 +116,10 @@ class ForumReorderDistributionWizard(models.TransientModel):
         que el usuario use el botón estándar "Ordenar". Y no agrega ninguna validación sobre
         el valor escrito — una vez distribuido, qty_to_order vuelve a comportarse como el
         campo estándar de Odoo, de libre edición.
+
+        Antes de escribir se guarda la demanda original de cada regla. Es lo que permite
+        volver a entrar acá y aplicar otro criterio: el reparto se recalcula siempre desde la
+        demanda original, nunca sobre el resultado del reparto anterior.
         """
         self.ensure_one()
         op_obj = self.env['stock.warehouse.orderpoint']
@@ -106,11 +134,16 @@ class ForumReorderDistributionWizard(models.TransientModel):
                 continue
 
             del_grupo = datos['orderpoints']
+            # La foto se toma antes de tocar qty_to_order, y solo la primera vez del ciclo.
+            del_grupo.forum_snapshot_demand(strategy=self.distribution_strategy)
             multiple = max(del_grupo.mapped('qty_multiple') or [1]) or 1
             candidatos = [
                 {
                     'key': op.id,
-                    'demand_qty': op.qty_to_order,
+                    # La demanda efectiva, no qty_to_order: si ya hubo un reparto, lo que
+                    # pide la regla HOY es el resultado de ese reparto y usarlo acá haría que
+                    # el segundo criterio repartiera sobre las sobras del primero.
+                    'demand_qty': op.forum_demand_effective,
                     'ads': self._ads_del_almacen(op),
                     'sequence': op.warehouse_id.id,
                 }
@@ -149,8 +182,12 @@ class ForumReorderDistributionWizard(models.TransientModel):
             'params': {
                 'title': _('Distribución aplicada'),
                 'message': _('Se recalculó "Por Ordenar" en %(reglas)s reglas de '
-                             '%(grupos)s grupo(s). Las cantidades quedan editables a mano.',
-                             reglas=total_reglas, grupos=len(self.group_ids)),
+                             '%(grupos)s grupo(s) con el criterio "%(criterio)s". Las '
+                             'cantidades quedan editables a mano, y podés volver a '
+                             'distribuir con otro criterio hasta que ordenes.',
+                             reglas=total_reglas, grupos=len(self.group_ids),
+                             criterio=dict(DISTRIBUTION_STRATEGIES).get(
+                                 self.distribution_strategy, self.distribution_strategy)),
                 'type': 'success',
                 'sticky': False,
                 'next': {'type': 'ir.actions.act_window_close'},
@@ -182,3 +219,10 @@ class ForumReorderDistributionWizardGroup(models.TransientModel):
                                  digits='Product Unit of Measure')
     shortfall_qty = fields.Float('Faltante', readonly=True,
                                  digits='Product Unit of Measure')
+    assigned_qty = fields.Float(
+        'Ya asignado', readonly=True, digits='Product Unit of Measure',
+        help='Suma de lo que las reglas del grupo piden en este momento. Antes del primer '
+             'reparto coincide con la demanda; después muestra el resultado del criterio '
+             'que está aplicado.')
+    applied_strategy = fields.Selection(
+        selection=DISTRIBUTION_STRATEGIES, string='Criterio aplicado', readonly=True)
