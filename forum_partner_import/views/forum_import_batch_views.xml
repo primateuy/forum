@@ -50,6 +50,8 @@
               <group string="Archivo de origen">
                 <field name="file_path" readonly="1"/>
                 <field name="file_info" readonly="1"/>
+                <field name="file_path_resolved" readonly="1"
+                       groups="base.group_no_one"/>
                 <field name="file_ok" invisible="1"/>
               </group>
               <group string="Staging">

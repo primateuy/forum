@@ -151,23 +151,60 @@ log.
 ## Checklist pre-producción
 
 El módulo **no hardcodea ningún conteo**: el pool y los matcheos se consultan en
-runtime. Pero antes de correrlo en el destino final conviene mirar estos
-números, que van a ser distintos a los de la base de prueba.
+runtime. Pero antes de correrlo en el destino final hay que hacer esto.
+
+### 1. Dump completo de la base — BLOQUEANTE
+
+**No arrancar el batch sin un dump verificado.** No es una recomendación de
+prudencia genérica: **es el único camino de vuelta real.** La reversión completa
+por SQL es inviable a este volumen —hay 124 claves foráneas apuntando a
+`res_partner`, 61 sin índice, y borrar los ~543.000 contactos creados lleva
+alrededor de **8 horas** (ver `FINDINGS.md`)—. Si algo sale mal y no hay dump,
+no hay forma práctica de dejar la base como estaba.
+
+```sh
+pg_dump -Fc -d <BASE> -f /ruta/backup_pre_import_$(date +%Y%m%d_%H%M%S).dump
+```
+
+`-Fc` es formato custom: comprimido y restaurable con `pg_restore` de forma
+selectiva. Verificar que terminó bien **antes** de seguir:
+
+```sh
+# 1) pg_dump tiene que haber salido con código 0
+echo $?
+
+# 2) el archivo no puede estar vacío ni truncado
+ls -lh /ruta/backup_pre_import_*.dump
+
+# 3) el índice del dump se tiene que poder leer entero
+pg_restore -l /ruta/backup_pre_import_*.dump | tail -5
+```
+
+Si `pg_restore -l` falla o corta antes de tiempo, el dump no sirve: rehacerlo.
+
+Para restaurar:
+
+```sh
+dropdb <BASE> && createdb <BASE>
+pg_restore -d <BASE> -j 4 /ruta/backup_pre_import_XXXXXXXX.dump
+```
+
+### 2. Verificaciones sobre la base destino
 
 ```sql
--- 0) Programa de lealtad a usar y su compañía
+-- 2.1) Programa de lealtad a usar y su compañía
 SELECT id, name->>'en_US' AS nombre, program_type, active, company_id
   FROM loyalty_program WHERE program_type = 'loyalty' ORDER BY id;
 
--- 1) Pool disponible: ¿alcanza, o hay que crear tarjetas?
---    Comparar contra las filas del CSV con Puntos > 0.
+-- 2.2) Pool disponible: ¿alcanza, o hay que crear tarjetas?
+--      Comparar contra las filas del CSV con Puntos > 0.
 SELECT count(*) FILTER (WHERE partner_id IS NULL) AS libres,
        count(*) FILTER (WHERE partner_id IS NOT NULL) AS asignadas,
        count(*) AS total,
        coalesce(sum(points) FILTER (WHERE partner_id IS NULL), 0) AS puntos_en_el_pool
   FROM loyalty_card WHERE program_id = <PROGRAMA>;
 
--- 2) Tipo de documento de la cédula: confirmar el id antes de cargar
+-- 2.3) Tipo de documento de la cédula: confirmar el id antes de cargar
 SELECT id, name->>'en_US' AS nombre, active, check_number, check_type
   FROM l10n_latam_identification_type WHERE active;
 
@@ -175,26 +212,37 @@ SELECT l10n_latam_identification_type_id AS tipo, count(*)
   FROM res_partner WHERE vat IS NOT NULL AND vat <> ''
  GROUP BY 1 ORDER BY 2 DESC;
 
--- 3) Cédulas duplicadas en la base (el módulo las resuelve, pero conviene verlas)
+-- 2.4) Cédulas duplicadas en la base (el módulo las resuelve, pero conviene verlas)
 SELECT vat, count(*) AS veces, string_agg(id::text, ',' ORDER BY id) AS ids
   FROM res_partner
  WHERE l10n_latam_identification_type_id = <TIPO_DOC> AND vat IS NOT NULL AND vat <> ''
  GROUP BY vat HAVING count(*) > 1 ORDER BY veces DESC;
 
--- 4) unaccent instalado (hace falta para resolver los departamentos)
+-- 2.5) unaccent instalado (hace falta para resolver los departamentos)
 SELECT count(*) FROM pg_extension WHERE extname = 'unaccent';
 
--- 5) Departamentos de Uruguay cargados
+-- 2.6) Departamentos de Uruguay cargados
 SELECT count(*) FROM res_country_state
  WHERE country_id = (SELECT id FROM res_country WHERE code = 'UY');
 
--- 6) Espacio en las secuencias (int4 aguanta hasta 2.147.483.647)
+-- 2.7) Espacio en las secuencias (int4 aguanta hasta 2.147.483.647)
 SELECT last_value FROM res_partner_id_seq;
 SELECT last_value FROM loyalty_card_id_seq;
 ```
 
-**Después de cargar el staging y antes de iniciar**, el resumen del log ya
-trae lo importante; se puede ampliar con:
+### 3. Verificar el CSV desplegado
+
+```sh
+shasum -a 256 forum_partner_import/data/forum_clientes_puntos_20260831.csv
+# tiene que dar c2bae129efdca336c19d407d6d69221b70af9c17f653258b3a440783ef44f82e
+```
+
+El form también lo valida solo: muestra la ruta del archivo dentro del módulo y
+un diagnóstico, y no deja cargar si no lo encuentra o no puede leerlo.
+
+### 4. Después de cargar el staging, antes de iniciar
+
+El resumen del log ya trae lo importante; se puede ampliar con:
 
 ```sql
 -- Discrepancias entre la columna "Acción" del CSV y la realidad de la base
@@ -216,7 +264,8 @@ La tabla staging es el registro de todo lo que se tocó: guarda el `partner_id`
 y el `card_id` de cada fila. **No borrarla hasta estar conforme con el
 resultado.**
 
-> **Para revertir una corrida completa, restaurar el dump.** El borrado de los
+> **Para revertir una corrida completa, restaurar el dump del paso 1 del
+> checklist.** El borrado de los
 > contactos en el lugar es inviable a este volumen: hay **124 claves foráneas
 > apuntando a `res_partner`, 61 de ellas sin índice** en la columna que
 > referencia, así que cada contacto borrado fuerza un scan de esas tablas.
@@ -283,6 +332,15 @@ sobre el mismo archivo, `crear = 0` y no se duplicó ningún contacto.
 Tener en cuenta que la carga del staging es más lenta cuanto más grande esté
 `res_partner` (39 s con 104.000 contactos, 78 s con 647.000), porque el join de
 matching crece.
+
+## Hallazgos colaterales
+
+Verificando el procedimiento de reversión apareció algo que excede a este
+módulo: **61 de las 124 claves foráneas que apuntan a `res_partner` no tienen
+índice**, y una de ellas —`loyalty_card.earned_partner_id`, 521.875 filas— la
+consulta el POS en cada cierre de orden, con un scan secuencial de 188 ms.
+Está documentado y medido en **`FINDINGS.md`**, con el índice sugerido. No se
+aplicó nada: es insumo para decidir.
 
 ## El archivo CSV
 

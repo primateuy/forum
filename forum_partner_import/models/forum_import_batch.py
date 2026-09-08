@@ -65,35 +65,49 @@ class ForumImportBatch(models.Model):
     # Archivo de origen
     # ------------------------------------------------------------------
     file_path = fields.Char(
-        string="Ruta del archivo", compute="_compute_file_info", store=False,
-        help="El CSV vive dentro del módulo. No se sube por la interfaz.",
+        string="Archivo (ruta en el módulo)", compute="_compute_file_info", store=False,
+        help="Ruta relativa al módulo. Es la fuente de verdad: se resuelve en "
+             "cada servidor con odoo.tools.file_path, así que el módulo funciona "
+             "igual en cualquier despliegue sin configurar nada.",
+    )
+    file_path_resolved = fields.Char(
+        string="Ruta resuelta en este servidor", compute="_compute_file_info", store=False,
+        help="Dato informativo: dónde quedó el archivo en esta instalación.",
     )
     file_ok = fields.Boolean(string="Archivo accesible", compute="_compute_file_info")
     file_info = fields.Char(string="Diagnóstico del archivo", compute="_compute_file_info")
 
+    def _ruta_absoluta_csv(self):
+        """Resuelve la ruta del CSV en este servidor.
+
+        `tools.file_path` es la utilidad vigente en Odoo 17 (`get_module_resource`
+        ya no existe). La ruta absoluta se resuelve siempre en runtime y no se
+        guarda en ningún lado: lo único que el módulo conoce es RUTA_CSV.
+        """
+        return tools.file_path(RUTA_CSV)
+
     @api.depends("state")
     def _compute_file_info(self):
-        """Resuelve la ruta del CSV dentro del módulo y valida que se pueda leer.
-
-        Se usa `tools.file_path`, que es la utilidad vigente en Odoo 17
-        (`get_module_resource` ya no existe en esta versión).
-        """
+        """Valida que el CSV del módulo exista y se pueda leer."""
         for batch in self:
-            ruta, ok, info = False, False, ""
+            resuelta, ok, info = False, False, ""
             try:
-                ruta = tools.file_path(RUTA_CSV)
-            except Exception as e:
-                info = _("No se encontró el archivo en el módulo: %s") % e
+                resuelta = self._ruta_absoluta_csv()
+            except Exception:
+                # El texto de la excepción incluye rutas de la instalación: no
+                # se propaga, porque lo accionable es qué archivo falta.
+                info = _("No se encontró %s dentro del módulo.") % RUTA_CSV
             else:
-                if not os.path.isfile(ruta):
-                    info = _("La ruta existe pero no es un archivo.")
-                elif not os.access(ruta, os.R_OK):
-                    info = _("El archivo existe pero no es legible por el usuario del servidor.")
+                if not os.path.isfile(resuelta):
+                    info = _("%s existe en el módulo pero no es un archivo.") % RUTA_CSV
+                elif not os.access(resuelta, os.R_OK):
+                    info = _("%s no es legible por el usuario del servidor.") % RUTA_CSV
                 else:
-                    tam = os.path.getsize(ruta)
+                    tam = os.path.getsize(resuelta)
                     ok = True
                     info = _("Legible. %.1f MB.") % (tam / 1024.0 / 1024.0)
-            batch.file_path = ruta
+            batch.file_path = RUTA_CSV
+            batch.file_path_resolved = resuelta
             batch.file_ok = ok
             batch.file_info = info
 
@@ -293,7 +307,7 @@ class ForumImportBatch(models.Model):
         en memoria. Los 81 MB pasan como flujo.
         """
         t = self._staging_name()
-        ruta = self.file_path
+        ruta = self._ruta_absoluta_csv()
         sql = """
             COPY {t} ({cols})
             FROM STDIN
