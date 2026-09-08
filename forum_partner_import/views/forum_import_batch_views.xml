@@ -97,6 +97,10 @@
               <field name="cards_updated" invisible="1"/>
               <field name="started_at" invisible="1"/>
               <field name="ended_at" invisible="1"/>
+              <field name="loading_step" invisible="1"/>
+              <field name="loading_steps_total" invisible="1"/>
+              <field name="loading_phase" invisible="1"/>
+              <field name="loading_started_at" invisible="1"/>
             </group>
 
             <group string="Detalle" invisible="state == 'draft'">

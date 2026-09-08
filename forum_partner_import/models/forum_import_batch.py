@@ -161,6 +161,20 @@ class ForumImportBatch(models.Model):
     cards_created = fields.Integer(string="Tarjetas creadas", readonly=True, copy=False)
     cards_updated = fields.Integer(string="Tarjetas actualizadas", readonly=True, copy=False)
     progress = fields.Float(string="Avance", compute="_compute_progress")
+    loading_step = fields.Integer(
+        string="Paso de la carga", readonly=True, copy=False,
+        help="Cuántos pasos del armado del staging se completaron.",
+    )
+    loading_steps_total = fields.Integer(
+        string="Pasos totales de la carga", readonly=True, copy=False,
+    )
+    loading_phase = fields.Char(
+        string="Etapa actual", readonly=True, copy=False,
+        help="Qué está haciendo ahora mismo la carga del staging.",
+    )
+    loading_started_at = fields.Datetime(
+        string="Inicio de la carga", readonly=True, copy=False,
+    )
     started_at = fields.Datetime(
         string="Inicio del procesamiento", readonly=True, copy=False,
         help="Se sella la primera vez que arranca. Al reanudar no se pisa, para "
@@ -216,43 +230,101 @@ class ForumImportBatch(models.Model):
     # 1. Carga del staging
     # ==================================================================
     def action_cargar_staging(self):
-        """Crea la tabla staging y carga el CSV con COPY, luego pre-procesa."""
+        """Encola el armado del staging. El trabajo lo hace el cron.
+
+        Antes esto corría dentro del request del botón: entre 60 y 90 segundos
+        con el navegador esperando la respuesta y la pantalla congelada, sin
+        forma de saber si avanzaba. Ahora el botón devuelve enseguida, el
+        formulario recarga y el widget muestra en qué etapa va.
+        """
         self.ensure_one()
         if self.state not in ("draft", "error", "ready"):
             raise UserError(_("Solo se puede cargar el staging desde Borrador."))
         if not self.file_ok:
             raise UserError(_("El archivo no está accesible: %s") % self.file_info)
 
-        self.write({"state": "loading"})
+        self.write({
+            "state": "loading",
+            "loading_step": 0,
+            "loading_steps_total": len(self._pasos_de_carga()),
+            "loading_phase": _("En cola…"),
+            "loading_started_at": fields.Datetime.now(),
+            "total_rows": 0, "offset": 0, "processed": 0,
+            "created": 0, "updated": 0, "ignored": 0, "errors": 0,
+            "cards_from_pool": 0, "cards_created": 0, "cards_updated": 0,
+            "started_at": False, "ended_at": False,
+        })
+        cron = self.env.ref("forum_partner_import.ir_cron_forum_partner_import",
+                            raise_if_not_found=False)
+        if cron:
+            cron.sudo().write({"active": True})
+            cron.sudo()._trigger()
         self.env.cr.commit()
+        # Sin acción de retorno a propósito: así el formulario recarga el
+        # registro y el widget arranca viendo el estado 'loading'.
+        return True
+
+    def _pasos_de_carga(self):
+        """Etapas del armado del staging, en orden.
+
+        Cada una es (etiqueta que ve el usuario, método). El armado se corta en
+        pasos por dos razones: para poder mostrar una barra que signifique algo
+        —el COPY solo no se puede subdividir— y para hacer commit entre etapa y
+        etapa, que es lo que permite que la pantalla las vea pasar.
+        """
+        return [
+            (_("Creando la tabla de trabajo"),        self._crear_staging),
+            (_("Leyendo el archivo"),                 self._copiar_csv),
+            (_("Limpiando los datos"),                self._pp_limpieza),
+            (_("Armando nombres"),                    self._pp_nombres),
+            (_("Validando nombre y cédula"),          self._pp_validaciones),
+            (_("Resolviendo departamentos"),          self._pp_departamentos),
+            (_("Normalizando teléfonos"),             self._pp_telefonos),
+            (_("Armando direcciones"),                self._pp_direcciones),
+            (_("Buscando los contactos existentes"),  self._pp_matching),
+            (_("Definiendo la acción de cada fila"),  self._pp_accion_efectiva),
+            (_("Calculando estadísticas"),            self._pp_analyze),
+        ]
+
+    def _cargar_staging_en_segundo_plano(self):
+        """Ejecuta las etapas de carga, con commit y avance entre cada una."""
+        self.ensure_one()
+        pasos = self._pasos_de_carga()
+        t_total = time.time()
 
         try:
-            t0 = time.time()
-            self._crear_staging()
-            filas = self._copiar_csv()
-            self._log("COPY terminado: %d filas en %.1fs" % (filas, time.time() - t0))
+            for i, (etiqueta, metodo) in enumerate(pasos, start=1):
+                self.invalidate_recordset(["state"])
+                if self.state != "loading":
+                    self._log("Carga interrumpida en '%s'." % etiqueta)
+                    return
+                t0 = time.time()
+                self.write({"loading_step": i - 1, "loading_phase": etiqueta})
+                self.env.cr.commit()
 
-            t1 = time.time()
-            self._preprocesar()
-            self._log("Pre-procesamiento terminado en %.1fs" % (time.time() - t1))
+                metodo()
 
+                self.write({"loading_step": i})
+                self.env.cr.commit()
+                _logger.info("[forum_partner_import][batch %s] carga %d/%d %s en %.1fs",
+                             self.id, i, len(pasos), etiqueta, time.time() - t0)
+
+            self.env.cr.execute("SELECT count(*) FROM %s" % self._staging_name())
+            filas = self.env.cr.fetchone()[0]
             resumen = self._resumen_staging()
             self.write({
                 "state": "ready",
                 "total_rows": filas,
-                "offset": 0,
-                "processed": 0, "created": 0, "updated": 0, "ignored": 0, "errors": 0,
-                "cards_from_pool": 0, "cards_created": 0, "cards_updated": 0,
+                "loading_phase": _("Listo"),
             })
-            self._log("Staging listo. " + resumen)
+            self._log("Staging armado en %.1fs. %s" % (time.time() - t_total, resumen))
             self.env.cr.commit()
         except Exception as e:
             self.env.cr.rollback()
-            self.write({"state": "error"})
-            self._log("ERROR cargando staging: %s" % e)
+            self.write({"state": "error", "loading_phase": _("Error")})
+            self._log("ERROR armando el staging: %s" % e)
             self.env.cr.commit()
-            raise UserError(_("Falló la carga del staging: %s") % e)
-        return True
+            _logger.exception("[forum_partner_import] falló el armado del staging")
 
     def _crear_staging(self):
         """Tabla UNLOGGED: no se escribe al WAL, es mucho más rápida y no hace
@@ -321,10 +393,10 @@ class ForumImportBatch(models.Model):
     # ==================================================================
     # 2. Pre-procesamiento (una sola pasada set-based)
     # ==================================================================
-    def _preprocesar(self):
-        t = self._staging_name()
+    def _pp_limpieza(self):
+        """Trim, NULLIF de vacíos, fechas, sexo y puntos tipados."""
         cr = self.env.cr
-
+        t = self._staging_name()
         # to_date tolerante: make_date sí valida (31/02 revienta en vez de
         # correrse al 3 de marzo, que es lo que hace to_date).
         cr.execute("""
@@ -368,12 +440,20 @@ class ForumImportBatch(models.Model):
                                     THEN btrim(puntos)::int ELSE 0 END
         """.format(t=t), {"vacios": list(DOMICILIOS_VACIOS)})
 
+    def _pp_nombres(self):
+        """Nombre visible: 'Nombre Apellido', tolerando Nombre vacío."""
+        cr = self.env.cr
+        t = self._staging_name()
         # Nombre visible: "Nombre Apellido", tolerando Nombre vacío.
         cr.execute("""
             UPDATE {t} SET
                 nombre_completo = btrim(concat_ws(' ', nombre, apellido))
         """.format(t=t))
 
+    def _pp_validaciones(self):
+        """Marca las filas que no se van a poder procesar."""
+        cr = self.env.cr
+        t = self._staging_name()
         # Marcar filas sin apellido ni nombre: el constraint _check_name de
         # partner_firstname exige al menos uno.
         cr.execute("""
@@ -387,6 +467,10 @@ class ForumImportBatch(models.Model):
             WHERE cedula IS NULL
         """.format(t=t))
 
+    def _pp_departamentos(self):
+        """Resuelve el departamento del CSV contra res.country.state."""
+        cr = self.env.cr
+        t = self._staging_name()
         # --- Departamento -> res.country.state ---------------------------
         # unaccent está instalado; los departamentos vienen sin tildes.
         cr.execute("""
@@ -397,6 +481,10 @@ class ForumImportBatch(models.Model):
               AND unaccent(lower(s.departamento)) = unaccent(lower(st.name))
         """.format(t=t))
 
+    def _pp_telefonos(self):
+        """Calcula phone_sanitized igual que lo haría phone_validation."""
+        cr = self.env.cr
+        t = self._staging_name()
         # --- phone_sanitized (mismo resultado que phone_validation para UY) ---
         # El compute real toma el primer número no vacío entre mobile y phone.
         cr.execute("""
@@ -412,6 +500,10 @@ class ForumImportBatch(models.Model):
                 END)
         """.format(t=t))
 
+    def _pp_direcciones(self):
+        """Arma contact_address_complete."""
+        cr = self.env.cr
+        t = self._staging_name()
         # --- contact_address_complete (stored computed de res.partner) ----
         # Formato observado en los partners existentes de esta base:
         # "calle, ciudad, departamento, país", salteando los vacíos.
@@ -427,6 +519,10 @@ class ForumImportBatch(models.Model):
             WHERE s2.row_num = s.row_num
         """.format(t=t), {"pais": self.reference_partner_id.country_id.name or None})
 
+    def _pp_matching(self):
+        """Busca cada cédula en res_partner y resuelve los duplicados."""
+        cr = self.env.cr
+        t = self._staging_name()
         # --- Matching contra res_partner REAL ----------------------------
         # No se confía en la columna "En Odoo" del CSV: la base pudo cambiar
         # desde que se generó el archivo. La acción efectiva sale de esta
@@ -473,6 +569,10 @@ class ForumImportBatch(models.Model):
         """.format(t=t), {"program": self.loyalty_program_id.id,
                           "doc_type": self.doc_type_id.id})
 
+    def _pp_accion_efectiva(self):
+        """Define qué se hace con cada fila."""
+        cr = self.env.cr
+        t = self._staging_name()
         # --- Acción efectiva --------------------------------------------
         cr.execute("""
             UPDATE {t} SET accion_efectiva = CASE
@@ -483,7 +583,9 @@ class ForumImportBatch(models.Model):
             END
         """.format(t=t), {"ignorar": ACCION_IGNORAR})
 
-        cr.execute("ANALYZE %s" % t)
+    def _pp_analyze(self):
+        """Estadísticas para que el planificador elija bien en las tandas."""
+        self.env.cr.execute("ANALYZE %s" % self._staging_name())
 
     def _resumen_staging(self):
         """Texto con el reparto de acciones efectivas y las discrepancias."""
@@ -650,16 +752,26 @@ class ForumImportBatch(models.Model):
     # ==================================================================
     @api.model
     def _cron_procesar(self):
-        """Cron: avanza los batches en curso y se autodesactiva si no hay."""
-        pendientes = self.search([("state", "=", "processing")], order="id")
-        if not pendientes:
+        """Cron: arma los staging pendientes y avanza los batches en curso.
+
+        Las dos fases largas —armar el staging y procesar las tandas— corren
+        acá y no en el request de un botón, para que la pantalla no quede
+        colgada esperando y pueda mostrar el avance.
+        """
+        cargando = self.search([("state", "=", "loading")], order="id")
+        procesando = self.search([("state", "=", "processing")], order="id")
+
+        if not cargando and not procesando:
             cron = self.env.ref("forum_partner_import.ir_cron_forum_partner_import",
                                 raise_if_not_found=False)
             if cron:
                 cron.sudo().write({"active": False})
             return True
 
-        for batch in pendientes:
+        for batch in cargando:
+            batch._cargar_staging_en_segundo_plano()
+
+        for batch in procesando:
             batch._procesar_varias_tandas()
         return True
 

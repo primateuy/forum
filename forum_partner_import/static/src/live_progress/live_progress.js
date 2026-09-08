@@ -42,6 +42,7 @@ const CAMPOS = [
     "state", "offset", "total_rows", "processed", "created", "updated",
     "ignored", "errors", "cards_from_pool", "cards_created", "cards_updated",
     "started_at", "ended_at",
+    "loading_step", "loading_steps_total", "loading_phase", "loading_started_at",
 ];
 // Peso de la última muestra en el ritmo suavizado. Bajo = más estable.
 const ALFA = 0.3;
@@ -229,6 +230,10 @@ export class ForumImportProgress extends Component {
             cards_updated: d.cards_updated || 0,
             started_at: d.started_at,
             ended_at: d.ended_at,
+            loading_step: d.loading_step || 0,
+            loading_steps_total: d.loading_steps_total || 0,
+            loading_phase: d.loading_phase || "",
+            loading_started_at: d.loading_started_at,
         };
         return this.state.vivo ? Object.assign({}, base, this.state.vivo) : base;
     }
@@ -237,13 +242,38 @@ export class ForumImportProgress extends Component {
         return ESTADOS_VIVOS.includes(this.datos.state);
     }
 
+    /** Armando el staging: la barra va por etapas, no por filas. */
+    get cargando() {
+        return this.datos.state === "loading";
+    }
+
     get termino() {
         return ["done", "error", "cancel"].includes(this.datos.state);
     }
 
     get porcentaje() {
-        const { processed, total_rows } = this.datos;
-        return total_rows ? Math.min(100, Math.round((processed / total_rows) * 100)) : 0;
+        const d = this.datos;
+        if (this.cargando) {
+            // Durante el armado no hay filas procesadas que contar: la barra
+            // avanza por etapas terminadas.
+            return d.loading_steps_total
+                ? Math.min(100, Math.round((d.loading_step / d.loading_steps_total) * 100))
+                : 0;
+        }
+        return d.total_rows
+            ? Math.min(100, Math.round((d.processed / d.total_rows) * 100))
+            : 0;
+    }
+
+    /** Texto de la derecha de la barra: etapas mientras carga, filas al procesar. */
+    get detalleBarra() {
+        const d = this.datos;
+        if (this.cargando) {
+            return d.loading_steps_total
+                ? _t("etapa %s de %s", d.loading_step, d.loading_steps_total)
+                : "";
+        }
+        return `${this.fmt(d.processed)} / ${this.fmt(d.total_rows)}`;
     }
 
     get hayErrores() {
@@ -252,7 +282,8 @@ export class ForumImportProgress extends Component {
 
     /** Segundos transcurridos desde que arrancó (hasta el fin, si terminó). */
     get segundosTranscurridos() {
-        const inicio = this._aMilis(this.datos.started_at);
+        const inicio = this._aMilis(
+            this.cargando ? this.datos.loading_started_at : this.datos.started_at);
         if (!inicio) {
             return null;
         }
@@ -267,7 +298,9 @@ export class ForumImportProgress extends Component {
 
     /** Estimación de lo que falta, con el ritmo medido entre lecturas. */
     get eta() {
-        if (!this.corriendo) {
+        // Durante el armado del staging no hay ritmo por fila que proyectar:
+        // mostrar un número inventado sería peor que no mostrar nada.
+        if (!this.corriendo || this.cargando) {
             return null;
         }
         const { processed, total_rows } = this.datos;
@@ -291,7 +324,7 @@ export class ForumImportProgress extends Component {
     }
 
     get ritmoTexto() {
-        const r = this.state.ritmo;
+        const r = this.cargando ? 0 : this.state.ritmo;
         if (!r) {
             return "";
         }

@@ -16,8 +16,15 @@
             <span class="fw-bold"><t t-esc="porcentaje"/>%</span>
           </div>
         </div>
-        <span class="text-muted small text-nowrap">
-          <t t-esc="fmt(datos.processed)"/> / <t t-esc="fmt(datos.total_rows)"/>
+        <span class="text-muted small text-nowrap" t-esc="detalleBarra"/>
+      </div>
+
+      <!-- Etapa actual, solo mientras se arma el staging -->
+      <div t-if="cargando and datos.loading_phase" class="alert alert-info py-2 mb-2">
+        <i class="fa fa-cog fa-spin me-1"/>
+        <strong t-esc="datos.loading_phase"/>
+        <span class="text-muted ms-2">
+          Se está armando la tabla de trabajo. Podés cerrar esta pantalla.
         </span>
       </div>
 
@@ -46,8 +53,8 @@
         </div>
       </div>
 
-      <!-- Contadores -->
-      <div class="row g-2">
+      <!-- Contadores: no aplican mientras se arma el staging -->
+      <div class="row g-2" t-if="!cargando">
         <div class="col-6 col-md-3">
           <div class="border rounded p-2 text-center">
             <div class="text-muted small">Creados</div>
@@ -76,7 +83,7 @@
         </div>
       </div>
 
-      <div class="row g-2 mt-1">
+      <div class="row g-2 mt-1" t-if="!cargando">
         <div class="col-6 col-md-4">
           <div class="border rounded p-2 text-center">
             <div class="text-muted small">Tarjetas del pool</div>
@@ -97,7 +104,7 @@
         </div>
       </div>
 
-      <div t-if="corriendo" class="text-muted small mt-2">
+      <div t-if="corriendo and !cargando" class="text-muted small mt-2">
         <i class="fa fa-refresh fa-spin me-1"/>
         Actualizándose solo. Podés cerrar la pantalla: el proceso sigue en segundo plano.
       </div>
