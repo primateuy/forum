@@ -1,0 +1,167 @@
+<odoo>
+  <data>
+
+    <record id="view_forum_import_batch_form" model="ir.ui.view">
+      <field name="name">forum.import.batch.form</field>
+      <field name="model">forum.import.batch</field>
+      <field name="arch" type="xml">
+        <form string="Importación de clientes FORUM">
+          <header>
+            <button name="action_cargar_staging" type="object" class="btn-primary"
+                    string="1. Cargar staging"
+                    invisible="state not in ('draft', 'error', 'ready')"
+                    confirm="Se va a leer el CSV completo y crear la tabla staging. Puede demorar unos minutos. ¿Continuar?"/>
+            <button name="action_iniciar" type="object" class="btn-primary"
+                    string="2. Iniciar procesamiento"
+                    invisible="state != 'ready'"
+                    confirm="Antes de empezar se genera un respaldo de las tarjetas del programa. El procesamiento corre en segundo plano y PISA los puntos de las tarjetas que se asignen. ¿Continuar?"/>
+            <button name="action_reanudar" type="object" class="btn-primary"
+                    string="Reanudar" invisible="state not in ('cancel', 'error')"/>
+            <button name="action_cancelar" type="object" class="btn-secondary"
+                    string="Cancelar procesamiento" invisible="state != 'processing'"/>
+            <button name="action_backup_tarjetas" type="object" class="btn-secondary"
+                    string="Generar backup ahora" invisible="state in ('done', 'cancel')"/>
+            <button name="action_exportar_errores" type="object" class="btn-secondary"
+                    string="Exportar errores" invisible="errors == 0"/>
+            <button name="action_exportar_duplicados" type="object" class="btn-secondary"
+                    string="Exportar duplicados" invisible="state in ('draft', 'loading')"/>
+            <button name="action_drop_staging" type="object" class="btn-secondary"
+                    string="Borrar staging" invisible="state in ('draft', 'processing')"
+                    confirm="Se borra la tabla staging con el detalle fila por fila. ¿Continuar?"/>
+            <field name="state" widget="statusbar"
+                   statusbar_visible="draft,ready,processing,done"/>
+          </header>
+          <sheet>
+            <div class="oe_title">
+              <h1><field name="name" placeholder="Nombre de la importación..."/></h1>
+            </div>
+
+            <div class="alert alert-danger" role="alert" invisible="file_ok">
+              <strong>El archivo de origen no está accesible.</strong>
+              <field name="file_info" readonly="1" nolabel="1" class="oe_inline"/>
+            </div>
+            <div class="alert alert-info" role="alert"
+                 invisible="not file_ok or state != 'draft'">
+              El CSV se lee del filesystem del servidor, desde adentro del módulo.
+              No se sube por la interfaz ni se guarda en la base.
+            </div>
+
+            <group>
+              <group string="Archivo de origen">
+                <field name="file_path" readonly="1"/>
+                <field name="file_info" readonly="1"/>
+                <field name="file_ok" invisible="1"/>
+              </group>
+              <group string="Staging">
+                <field name="staging_table" readonly="1"/>
+                <field name="total_rows" readonly="1"/>
+              </group>
+            </group>
+
+            <group string="Configuración">
+              <group>
+                <field name="reference_partner_id"
+                       readonly="state not in ('draft', 'ready')"
+                       options="{'no_create': True}"/>
+                <field name="loyalty_program_id"
+                       readonly="state not in ('draft', 'ready')"
+                       options="{'no_create': True}"/>
+                <field name="doc_type_id"
+                       readonly="state not in ('draft', 'ready')"
+                       options="{'no_create': True}"/>
+              </group>
+              <group>
+                <field name="batch_size" readonly="state == 'processing'"/>
+                <field name="batches_per_run" readonly="state == 'processing'"/>
+                <field name="points_mode" readonly="state == 'processing'"/>
+                <field name="backup_dir" readonly="state == 'processing'"/>
+              </group>
+            </group>
+
+            <group string="Avance">
+              <group>
+                <field name="progress" widget="progressbar" readonly="1"/>
+                <field name="offset" readonly="1" string="Puntero (fila)"/>
+                <field name="processed" readonly="1"/>
+              </group>
+              <group>
+                <field name="created" readonly="1"/>
+                <field name="updated" readonly="1"
+                       help="Clientes que ya existían. De estos solo se tocan los puntos, no sus datos."/>
+                <field name="ignored" readonly="1"/>
+                <field name="errors" readonly="1"/>
+              </group>
+            </group>
+
+            <group string="Tarjetas de lealtad">
+              <group>
+                <field name="pool_available" readonly="1"
+                       help="Consultado en vivo sobre la base actual."/>
+                <field name="cards_from_pool" readonly="1"/>
+              </group>
+              <group>
+                <field name="cards_created" readonly="1"/>
+                <field name="cards_updated" readonly="1"/>
+                <field name="backup_path" readonly="1"/>
+              </group>
+            </group>
+
+            <notebook>
+              <page string="Log" name="log">
+                <field name="error_log" readonly="1" widget="text" nolabel="1"/>
+              </page>
+            </notebook>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <record id="view_forum_import_batch_tree" model="ir.ui.view">
+      <field name="name">forum.import.batch.tree</field>
+      <field name="model">forum.import.batch</field>
+      <field name="arch" type="xml">
+        <tree string="Importaciones FORUM"
+              decoration-success="state == 'done'"
+              decoration-danger="state == 'error'"
+              decoration-warning="state == 'processing'"
+              decoration-muted="state == 'cancel'">
+          <field name="name"/>
+          <field name="create_date" string="Creada"/>
+          <field name="total_rows"/>
+          <field name="processed"/>
+          <field name="progress" widget="progressbar"/>
+          <field name="created"/>
+          <field name="updated"/>
+          <field name="errors"/>
+          <field name="cards_from_pool" string="Pool"/>
+          <field name="cards_created" string="Nuevas"/>
+          <field name="state" widget="badge"
+                 decoration-success="state == 'done'"
+                 decoration-danger="state == 'error'"
+                 decoration-warning="state == 'processing'"/>
+        </tree>
+      </field>
+    </record>
+
+    <record id="action_forum_import_batch" model="ir.actions.act_window">
+      <field name="name">Importación FORUM</field>
+      <field name="res_model">forum.import.batch</field>
+      <field name="view_mode">tree,form</field>
+      <field name="help" type="html">
+        <p class="o_view_nocontent_smiling_face">Crear una importación</p>
+        <p>
+          Carga masiva de clientes y puntos desde el CSV incluido en el módulo.
+          El proceso corre por tandas en segundo plano.
+        </p>
+      </field>
+    </record>
+
+    <menuitem id="menu_forum_import_batch"
+              name="Importación FORUM"
+              parent="contacts.menu_contacts"
+              action="action_forum_import_batch"
+              groups="base.group_system"
+              sequence="90"/>
+
+  </data>
+</odoo>

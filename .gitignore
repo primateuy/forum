@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+
+# Entornos y config local
+.env
+.venv/
+venv/
+
+# Editores
+.idea/
+.vscode/
+*.swp
+*~
+
+# macOS
+.DS_Store
+
+# Logs y temporales
+*.log
+*.tmp
+
+# NOTA: los CSV de datos de los módulos NO se excluyen a propósito.
+# forum_partner_import/data/*.csv se versiona con el código para que el
+# deploy por git deje el archivo auditado junto al módulo.
