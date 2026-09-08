@@ -147,6 +147,14 @@ class ForumImportBatch(models.Model):
     cards_created = fields.Integer(string="Tarjetas creadas", readonly=True, copy=False)
     cards_updated = fields.Integer(string="Tarjetas actualizadas", readonly=True, copy=False)
     progress = fields.Float(string="Avance", compute="_compute_progress")
+    started_at = fields.Datetime(
+        string="Inicio del procesamiento", readonly=True, copy=False,
+        help="Se sella la primera vez que arranca. Al reanudar no se pisa, para "
+             "que el tiempo total refleje el proceso completo.",
+    )
+    ended_at = fields.Datetime(
+        string="Fin del procesamiento", readonly=True, copy=False,
+    )
     pool_available = fields.Integer(
         string="Tarjetas libres en el pool", compute="_compute_pool_available",
         help="Se consulta en vivo: nunca se asume un número fijo.",
@@ -569,7 +577,10 @@ class ForumImportBatch(models.Model):
         if not self.backup_path or not os.path.isfile(self.backup_path):
             self._hacer_backup_tarjetas()
 
-        self.write({"state": "processing"})
+        vals = {"state": "processing", "ended_at": False}
+        if not self.started_at:
+            vals["started_at"] = fields.Datetime.now()
+        self.write(vals)
         cron = self.env.ref("forum_partner_import.ir_cron_forum_partner_import",
                             raise_if_not_found=False)
         if cron:
@@ -578,13 +589,16 @@ class ForumImportBatch(models.Model):
         self._log("Procesamiento iniciado. Puntero en %d de %d."
                   % (self.offset, self.total_rows))
         self.env.cr.commit()
-        return self._notificar(
-            _("Procesamiento iniciado"),
-            _("El cron procesa las tandas en segundo plano. Podés cerrar esta pantalla."))
+        # Se devuelve True a propósito, sin acción de notificación: cuando un
+        # botón no devuelve acción, el formulario recarga el registro, y esa
+        # recarga es la que hace que el widget de avance vea el estado
+        # 'processing' y arranque el polling. Con una notificación de por medio
+        # el registro del cliente se quedaba en 'ready' y la barra no se movía.
+        return True
 
     def action_cancelar(self):
         self.ensure_one()
-        self.write({"state": "cancel"})
+        self.write({"state": "cancel", "ended_at": fields.Datetime.now()})
         self._log("Cancelado por el usuario en la fila %d." % self.offset)
         return True
 
@@ -592,7 +606,10 @@ class ForumImportBatch(models.Model):
         self.ensure_one()
         if self.state not in ("cancel", "error"):
             raise UserError(_("Solo se reanuda un batch cancelado o con error."))
-        self.write({"state": "processing"})
+        vals = {"state": "processing", "ended_at": False}
+        if not self.started_at:
+            vals["started_at"] = fields.Datetime.now()
+        self.write(vals)
         self._log("Reanudado desde la fila %d." % self.offset)
         cron = self.env.ref("forum_partner_import.ir_cron_forum_partner_import",
                             raise_if_not_found=False)
@@ -649,18 +666,25 @@ class ForumImportBatch(models.Model):
                 self.env.cr.commit()
             except Exception as e:
                 self.env.cr.rollback()
-                self.write({"state": "error"})
+                self.write({"state": "error", "ended_at": fields.Datetime.now()})
                 self._log("ERROR en la tanda que arranca en %d: %s" % (self.offset, e))
                 self.env.cr.commit()
                 _logger.exception("[forum_partner_import] tanda fallida")
                 return
 
+        # Si ya no quedan filas se cierra acá mismo. Sin esto la pantalla se
+        # queda mostrando "Procesando" al 100% hasta el tick siguiente del
+        # cron, que es confuso: parece colgado cuando en realidad terminó.
+        self.invalidate_recordset(["offset"])
+        if self.offset >= self.total_rows:
+            self._finalizar()
+            return
+
         # Quedan filas: se reencola para seguir sin esperar al próximo tick.
-        if self.offset < self.total_rows:
-            cron = self.env.ref("forum_partner_import.ir_cron_forum_partner_import",
-                                raise_if_not_found=False)
-            if cron:
-                cron.sudo()._trigger()
+        cron = self.env.ref("forum_partner_import.ir_cron_forum_partner_import",
+                            raise_if_not_found=False)
+        if cron:
+            cron.sudo()._trigger()
 
     def _procesar_tanda(self):
         """Procesa una tanda de `batch_size` filas."""
@@ -726,7 +750,7 @@ class ForumImportBatch(models.Model):
     def _finalizar(self):
         """Post-proceso liviano al terminar todas las tandas."""
         self.ensure_one()
-        self.write({"state": "done"})
+        self.write({"state": "done", "ended_at": fields.Datetime.now()})
         self.env.registry.clear_cache()
         self._log("Terminado. Creados=%d Actualizados=%d Ignorados=%d Errores=%d | "
                   "Tarjetas: pool=%d nuevas=%d actualizadas=%d"

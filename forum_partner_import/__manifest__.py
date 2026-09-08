@@ -19,6 +19,12 @@
         "data/ir_cron.xml",
         "views/forum_import_batch_views.xml",
     ],
+    "assets": {
+        "web.assets_backend": [
+            "forum_partner_import/static/src/live_progress/live_progress.js",
+            "forum_partner_import/static/src/live_progress/live_progress.xml",
+        ],
+    },
     "installable": True,
     "application": False,
 }

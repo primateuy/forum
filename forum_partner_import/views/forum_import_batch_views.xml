@@ -78,30 +78,36 @@
               </group>
             </group>
 
-            <group string="Avance">
-              <group>
-                <field name="progress" widget="progressbar" readonly="1"/>
-                <field name="offset" readonly="1" string="Puntero (fila)"/>
-                <field name="processed" readonly="1"/>
-              </group>
-              <group>
-                <field name="created" readonly="1"/>
-                <field name="updated" readonly="1"
-                       help="Clientes que ya existían. De estos solo se tocan los puntos, no sus datos."/>
-                <field name="ignored" readonly="1"/>
-                <field name="errors" readonly="1"/>
-              </group>
+            <!-- Avance en vivo: el widget hace polling mientras el estado sea
+                 processing/loading y se apaga solo al terminar. Los campos van
+                 declarados (invisibles) porque el widget los lee del record. -->
+            <group string="Avance" invisible="state == 'draft'">
+              <field name="progress" widget="forum_import_progress" nolabel="1" colspan="2"/>
+              <field name="offset" invisible="1"/>
+              <field name="total_rows" invisible="1"/>
+              <field name="processed" invisible="1"/>
+              <field name="created" invisible="1"/>
+              <field name="updated" invisible="1"/>
+              <field name="ignored" invisible="1"/>
+              <field name="errors" invisible="1"/>
+              <field name="cards_from_pool" invisible="1"/>
+              <field name="cards_created" invisible="1"/>
+              <field name="cards_updated" invisible="1"/>
+              <field name="started_at" invisible="1"/>
+              <field name="ended_at" invisible="1"/>
             </group>
 
-            <group string="Tarjetas de lealtad">
+            <group string="Detalle" invisible="state == 'draft'">
               <group>
-                <field name="pool_available" readonly="1"
-                       help="Consultado en vivo sobre la base actual."/>
-                <field name="cards_from_pool" readonly="1"/>
+                <field name="offset" readonly="1" string="Puntero (fila)"/>
+                <field name="started_at" readonly="1"/>
+                <field name="ended_at" readonly="1" invisible="not ended_at"/>
               </group>
               <group>
-                <field name="cards_created" readonly="1"/>
-                <field name="cards_updated" readonly="1"/>
+                <field name="updated" readonly="1"
+                       help="Clientes que ya existían. De estos solo se tocan los puntos, no sus datos."/>
+                <field name="pool_available" readonly="1"
+                       help="Consultado en vivo sobre la base actual."/>
                 <field name="backup_path" readonly="1"/>
               </group>
             </group>

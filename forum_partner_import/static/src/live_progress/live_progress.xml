@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+  <t t-name="forum_partner_import.LiveProgress">
+    <div class="o_forum_import_progress">
+
+      <!-- Barra -->
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <div class="progress flex-grow-1" style="height: 22px;">
+          <div class="progress-bar"
+               t-att-class="hayErrores ? 'bg-warning' : (corriendo ? 'progress-bar-striped progress-bar-animated bg-primary' : 'bg-success')"
+               role="progressbar"
+               t-attf-style="width: {{ porcentaje }}%;"
+               t-att-aria-valuenow="porcentaje"
+               aria-valuemin="0" aria-valuemax="100">
+            <span class="fw-bold"><t t-esc="porcentaje"/>%</span>
+          </div>
+        </div>
+        <span class="text-muted small text-nowrap">
+          <t t-esc="fmt(datos.processed)"/> / <t t-esc="fmt(datos.total_rows)"/>
+        </span>
+      </div>
+
+      <!-- Cronómetro y ETA -->
+      <div class="d-flex flex-wrap gap-4 mb-2">
+        <div>
+          <span class="text-muted small d-block">Transcurrido</span>
+          <span class="fs-5 font-monospace" t-esc="transcurrido"/>
+        </div>
+        <div t-if="corriendo">
+          <span class="text-muted small d-block">Restante estimado</span>
+          <span class="fs-5 font-monospace text-primary" t-esc="eta"/>
+        </div>
+        <div t-if="corriendo and ritmoTexto">
+          <span class="text-muted small d-block">Ritmo</span>
+          <span class="fs-5 font-monospace" t-esc="ritmoTexto"/>
+        </div>
+        <div t-if="termino">
+          <span class="text-muted small d-block">Estado</span>
+          <span class="fs-5"
+                t-att-class="datos.state === 'done' ? 'text-success' : (datos.state === 'error' ? 'text-danger' : 'text-muted')">
+            <t t-if="datos.state === 'done'">Terminado</t>
+            <t t-elif="datos.state === 'error'">Con error</t>
+            <t t-else="">Cancelado</t>
+          </span>
+        </div>
+      </div>
+
+      <!-- Contadores -->
+      <div class="row g-2">
+        <div class="col-6 col-md-3">
+          <div class="border rounded p-2 text-center">
+            <div class="text-muted small">Creados</div>
+            <div class="fs-5 fw-bold text-success" t-esc="fmt(datos.created)"/>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="border rounded p-2 text-center">
+            <div class="text-muted small">Actualizados</div>
+            <div class="fs-5 fw-bold" t-esc="fmt(datos.updated)"/>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="border rounded p-2 text-center">
+            <div class="text-muted small">Ignorados</div>
+            <div class="fs-5 fw-bold text-muted" t-esc="fmt(datos.ignored)"/>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="border rounded p-2 text-center"
+               t-att-class="hayErrores ? 'border-danger' : ''">
+            <div class="text-muted small">Errores</div>
+            <div t-att-class="hayErrores ? 'fs-5 fw-bold text-danger' : 'fs-5 fw-bold text-muted'"
+                 t-esc="fmt(datos.errors)"/>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-2 mt-1">
+        <div class="col-6 col-md-4">
+          <div class="border rounded p-2 text-center">
+            <div class="text-muted small">Tarjetas del pool</div>
+            <div class="fs-5 fw-bold" t-esc="fmt(datos.cards_from_pool)"/>
+          </div>
+        </div>
+        <div class="col-6 col-md-4">
+          <div class="border rounded p-2 text-center">
+            <div class="text-muted small">Tarjetas creadas</div>
+            <div class="fs-5 fw-bold" t-esc="fmt(datos.cards_created)"/>
+          </div>
+        </div>
+        <div class="col-6 col-md-4">
+          <div class="border rounded p-2 text-center">
+            <div class="text-muted small">Tarjetas actualizadas</div>
+            <div class="fs-5 fw-bold" t-esc="fmt(datos.cards_updated)"/>
+          </div>
+        </div>
+      </div>
+
+      <div t-if="corriendo" class="text-muted small mt-2">
+        <i class="fa fa-refresh fa-spin me-1"/>
+        Actualizándose solo. Podés cerrar la pantalla: el proceso sigue en segundo plano.
+      </div>
+    </div>
+  </t>
+
+</templates>
