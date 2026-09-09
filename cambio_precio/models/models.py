@@ -367,10 +367,45 @@ class PromoEngine(models.AbstractModel):
     _name = 'promo.engine'
     _description = 'Promo Rule Engine'
 
+    def _get_program_domain(self, order):
+        """Devuelve el dominio de programas aplicables a una orden de venta.
+
+        Reutiliza el dominio estándar de `sale_loyalty` (`sale.order._get_program_domain`),
+        que respeta la casilla "Disponible en > Ventas" (`sale_ok`), la compañía,
+        las listas de precios permitidas y la vigencia del programa. Si ese método
+        no existe (sale_loyalty no instalado), se cae a un dominio equivalente
+        construido a mano.
+
+        Args:
+            order (sale.order): orden sobre la que se evalúan los programas.
+
+        Returns:
+            list: dominio de búsqueda para `loyalty.program`.
+        """
+        if hasattr(order, '_get_program_domain'):
+            return order._get_program_domain()
+
+        today = fields.Date.context_today(order)
+        domain = [('active', '=', True)]
+        if 'sale_ok' in self.env['loyalty.program']._fields:
+            domain.append(('sale_ok', '=', True))
+        domain += [
+            *self.env['loyalty.program']._check_company_domain(order.company_id),
+            '|', ('pricelist_ids', '=', False),
+            ('pricelist_ids', 'in', [order.pricelist_id.id]),
+            '|', ('date_from', '=', False), ('date_from', '<=', today),
+            '|', ('date_to', '=', False), ('date_to', '>=', today),
+        ]
+        return domain
+
     def apply_promotions(self, order):
         rewards = []
-        active_programs = self.env['loyalty.program'].search([('active', '=', True)])
-        
+        # FIX [#4467]: solo programas habilitados para Ventas (sale_ok), de la compañía,
+        # vigentes y compatibles con la lista de precios de la orden. Antes se
+        # tomaban TODOS los programas activos, por lo que una promoción marcada
+        # solo para Punto de venta también se aplicaba en el módulo de ventas.
+        active_programs = self.env['loyalty.program'].search(self._get_program_domain(order))
+
 
         for program in active_programs:
             program_conditions_met = True

@@ -29,88 +29,121 @@ class AccountMoveLine(models.Model):
     )
 
     # -------------------------------------------------------------------------
-    # Cálculo automático de divisa secundaria
+    # Cálculo de divisa secundaria
     # -------------------------------------------------------------------------
-    @api.depends('debit', 'credit', 'move_id.date', 'company_id.secondary_currency_id')
-    def _compute_amount_secondary(self):
-        """
-        Calcula el importe en divisa secundaria cada vez que cambian los montos
-        (debit/credit) o la fecha del asiento.
+    def _get_secondary_rate(self, sec_currency, date):
+        """Devuelve la cotización vigente de la divisa secundaria a una fecha.
 
-        Se dispara automáticamente en todos los flujos: _post(), conciliación
-        bancaria, escritura directa de líneas, etc.  No depende de que se
-        ejecute _post().
+        Busca la última cotización cargada con fecha menor o igual a `date`
+        -mismo criterio que usa el core de Odoo para convertir importes- en
+        lugar de exigir una cotización cargada exactamente ese día. Así un
+        asiento de un sábado, un feriado o un día sin carga toma el último
+        tipo de cambio conocido en vez de quedar sin valor.
+
+        Args:
+            sec_currency (res.currency): divisa secundaria de la empresa.
+            date (date): fecha contable del asiento.
+
+        Returns:
+            res.currency.rate: cotización vigente, o recordset vacío si no
+                existe ninguna cotización anterior o igual a esa fecha.
         """
-        # Agrupar líneas por (company, fecha) para minimizar queries
+        if not sec_currency or not date:
+            return self.env['res.currency.rate']
+        return self.env['res.currency.rate'].search([
+            ('currency_id', '=', sec_currency.id),
+            ('name', '<=', date),
+        ], order='name desc', limit=1)
+
+    def _apply_secondary_currency(self, strict=False):
+        """Calcula `amount_secondary` y `tipo_cambio` sobre las líneas de `self`.
+
+        El importe en divisa secundaria es un dato informativo: no debe frenar
+        la contabilización de una venta, una factura o una amortización. Por eso
+        el modo por defecto no interrumpe el flujo.
+
+        Args:
+            strict (bool): si es True lanza UserError cuando falta la divisa
+                secundaria o la cotización. Si es False (default) deja los
+                importes en 0, registra un warning y sigue adelante.
+
+        Raises:
+            UserError: solo en modo estricto (invocación explícita del usuario
+                desde el wizard), cuando falta configuración o cotización.
+        """
+        # Agrupar líneas por (divisa secundaria, fecha) para minimizar queries
         grouped = {}
         for line in self:
             sec_currency = line.company_id.secondary_currency_id
             if not sec_currency:
-                line.amount_secondary = 0
-                line.tipo_cambio = 0
+                line.amount_secondary = 0.0
+                line.tipo_cambio = 0.0
                 continue
             key = (sec_currency.id, line.move_id.date)
-            grouped.setdefault(key, []).append(line)
+            grouped.setdefault(key, self.env['account.move.line'])
+            grouped[key] |= line
 
-        for (sec_currency_id, fecha), lines in grouped.items():
-            # Buscar tipo de cambio para esta fecha y moneda secundaria
-            rate_record = self.env['res.currency.rate'].search([
-                ('name', '=', fecha),
-                ('currency_id', '=', sec_currency_id),
-            ], limit=1)
-            if rate_record:
-                rate = rate_record.rate
-                inverse_rate = rate_record.inverse_company_rate
-                for line in lines:
-                    debit_credit = line.debit or (line.credit * -1)
-                    line.amount_secondary = debit_credit * rate
-                    line.tipo_cambio = inverse_rate
-            else:
-                for line in lines:
-                    line.amount_secondary = 0
-                    line.tipo_cambio = 0
-
-    def compute_amount_secondary(self):
-        """
-        Método legacy: fuerza el recálculo de divisa secundaria.
-        Se mantiene para compatibilidad con el wizard y con _post().
-        Lanza UserError si falta configuración (solo cuando se invoca
-        explícitamente, no desde el compute automático).
-        """
-        sec_currency = self.env.companies.secondary_currency_id
-        if not sec_currency:
+        if strict and self and not grouped:
             raise UserError(_(
                 "No se configuró la moneda secundaria. "
                 "En el formulario de la empresa se configura la moneda secundaria."
             ))
 
-        # Agrupar por fecha para minimizar queries
-        by_date = {}
-        for rec in self:
-            by_date.setdefault(rec.move_id.date, self.env['account.move.line'])
-            by_date[rec.move_id.date] |= rec
-
-        for fecha, lines in by_date.items():
-            rate_record = self.env['res.currency.rate'].search([
-                ('name', '=', fecha),
-                ('currency_id', '=', sec_currency.id),
-            ], limit=1)
+        missing = []
+        for (sec_currency_id, date), lines in grouped.items():
+            sec_currency = self.env['res.currency'].browse(sec_currency_id)
+            rate_record = self._get_secondary_rate(sec_currency, date)
             if not rate_record:
-                # Tomar la primera línea para el mensaje de error
-                sample = lines[0]
+                missing.append((date, sec_currency, lines[:1]))
+                for line in lines:
+                    line.amount_secondary = 0.0
+                    line.tipo_cambio = 0.0
+                continue
+            for line in lines:
+                debit_credit = line.debit or (line.credit * -1)
+                line.amount_secondary = debit_credit * rate_record.rate
+                line.tipo_cambio = rate_record.inverse_company_rate
+
+        if missing:
+            detalle = "\n".join(
+                _("- Fecha %(fecha)s, moneda %(moneda)s "
+                  "(asiento: %(asiento)s, cuenta: %(cuenta)s)") % {
+                    'fecha': date,
+                    'moneda': sec_currency.name,
+                    'asiento': sample.move_name,
+                    'cuenta': sample.account_id.name,
+                }
+                for date, sec_currency, sample in missing
+            )
+            if strict:
                 raise UserError(_(
-                    "No se encontró tipo de cambio para la fecha %s "
-                    "y moneda %s (en el asiento: %s con cuenta: %s)."
-                ) % (
-                    fecha,
-                    sec_currency.name,
-                    sample.move_name,
-                    sample.account_id.name,
-                ))
-            for rec in lines:
-                debit_credit = rec.debit or (rec.credit * -1)
-                rec.amount_secondary = debit_credit * rate_record.rate
-                rec.tipo_cambio = rate_record.inverse_company_rate
+                    "No se encontró tipo de cambio para:\n%s"
+                ) % detalle)
+            _logger.warning(
+                "aml_secondary_currency: sin tipo de cambio, importe en divisa "
+                "secundaria dejado en 0 para:\n%s", detalle,
+            )
+
+    @api.depends('debit', 'credit', 'move_id.date', 'company_id.secondary_currency_id')
+    def _compute_amount_secondary(self):
+        """Calcula el importe en divisa secundaria de forma automática.
+
+        Se dispara cada vez que cambian los montos (debit/credit), la fecha del
+        asiento o la divisa secundaria de la empresa, en todos los flujos:
+        _post(), conciliación bancaria, escritura directa de líneas, etc. Nunca
+        lanza excepciones: un dato informativo no puede frenar una operación.
+        """
+        self._apply_secondary_currency(strict=False)
+
+    def compute_amount_secondary(self):
+        """Método legacy: fuerza el recálculo de divisa secundaria.
+
+        Se mantiene por compatibilidad con el wizard y con `_post()`. No
+        interrumpe el flujo: si falta la cotización solo registra un warning y
+        deja los importes en 0, para que puedan recalcularse después con el
+        wizard una vez cargado el tipo de cambio.
+        """
+        self._apply_secondary_currency(strict=False)
 
     # -------------------------------------------------------------------------
     # Fecha del tipo de cambio en asientos manuales
