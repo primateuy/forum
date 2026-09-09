@@ -37,6 +37,17 @@ de códigos de tarjeta.
 6. Al terminar: `Exportar errores` / `Exportar duplicados` si hace falta, y
    `Borrar staging` cuando ya no se necesite.
 
+Hay además dos botones de reparación, pensados para arreglar corridas viejas.
+Los dos son idempotentes y solo tocan lo que está vacío:
+
+- **Reparar campos obligatorios** — completa en toda `res_partner` los
+  `Selection` con default que quedaron en `NULL`. Sin esto, el formulario del
+  contacto no deja guardar ninguna edición. Ver *Defaults que el ORM habría
+  aplicado y el INSERT no*.
+- **Completar calle** — vuelca el domicilio del CSV (incluido el literal
+  `Sin dirección`) a la calle de los contactos que creó la importación y la
+  tienen vacía. Ver *La calle cuando el origen no trae domicilio*.
+
 El cron (`FORUM: importación masiva de clientes`) arranca **desactivado**. Lo
 activa el propio batch al iniciar y se autodesactiva cuando no quedan batches
 en curso.
@@ -119,6 +130,72 @@ Los ids de `res_partner` y `loyalty_card` se piden por adelantado a la
 secuencia (`nextval`) y se guardan en staging. Eso evita depender de
 `RETURNING` para correlacionar con el CSV y permite setear
 `commercial_partner_id` con el propio id en el mismo INSERT.
+
+### Defaults que el ORM habría aplicado y el INSERT no
+
+Además de los *stored computed*, hay una segunda clase de campo que el INSERT
+por SQL se saltea: los `Selection` con `default=` que **no son `required` en
+Python pero sí llevan `required="1"` en la vista del core**. Son cuatro:
+
+- `sale_warn` — de `sale`, exigido en `sale/views/res_partner_views.xml:58`
+- `purchase_warn` — de `purchase`, en `purchase/views/res_partner_views.xml:105`
+- `picking_warn` — de `stock`, en `stock/views/res_partner_views.xml:33`
+- `invoice_warn` — de `account`, en `account/views/partner_view.xml:182`
+
+Todos tienen `default='no-message'`. Como no son required a nivel modelo, el
+INSERT pasa sin chistar y quedan en `NULL`; después el formulario del contacto
+**no deja guardar ninguna edición**, porque la vista los pide y están vacíos.
+
+`_completar_defaults()` los rellena al final de cada tanda. No están listados a
+mano: `_campos_required_en_vista()` lee el arch ya heredado del formulario —lo
+mismo que recibe el navegador— y se queda con los `required` **incondicionales**
+(una expresión como `required="sale_warn and sale_warn != 'no-message'"` depende
+de otro campo y no corresponde forzarla). Sobre esos se pide el `default_get()`
+al ORM, filtrando a `Selection` stored, no computados, no related, no
+company-dependent, y excluyendo `lang`/`tz`. Si mañana otro módulo agrega un
+campo con el mismo patrón, entra solo.
+
+**Por qué acotado a la vista y no a todos los `Selection` con default.** En la
+base de Forum hay otros dos que el ORM también completaría —
+`followup_reminder_type` (recordatorios de cobranza automáticos, Enterprise) y
+`vendor_rule` (reabastecimiento, de `setu_advance_reordering`)—. Ninguno de los
+dos rompe la edición, y no hay razón para fijar una config de cobranza en
+543.000 clientes de retail: quedan como están.
+
+Para las importaciones que ya corrieron sin esto está el botón **"Reparar
+campos obligatorios"** (`action_reparar_defaults`), que hace lo mismo sobre
+`res_partner` entera. Es idempotente —solo toca lo que está en `NULL`—, va por
+tramos de 50.000 ids con commit entre tramo y tramo, y no pisa `write_date`.
+
+### La calle cuando el origen no trae domicilio
+
+El CSV trae el literal `Sin dirección` en **635.056 de las 646.073 filas**
+(98,3 %); solo 11.017 tienen una dirección real. La primera versión convertía
+ese texto a `NULL`, y el resultado fue que la calle quedaba vacía en casi todas
+las fichas.
+
+Ahora ese texto **es el dato**: `_pp_limpieza` normaliza los vacíos y las
+variantes de `DOMICILIOS_VACIOS` al valor del campo **Calle cuando no hay dato**
+(`street_placeholder`, por defecto `Sin dirección`), y de ahí va a `street` en
+el INSERT. Dejar el campo en blanco vuelve al comportamiento viejo.
+
+`contact_address_complete` lo sigue automáticamente, porque `_pp_direcciones` lo
+arma desde la misma columna.
+
+Para lo ya importado está el botón **"Completar calle"**
+(`action_reparar_direcciones`): renormaliza el staging con el placeholder
+vigente y lo vuelca a `street`, recalculando `contact_address_complete` con la
+misma fórmula del compute de `web_map`. Dos límites:
+
+- **Solo contactos que creó la importación** (`accion_efectiva = 'crear'`). A
+  los que ya existían el módulo no les toca los datos personales, y esto no es
+  la excepción.
+- **Solo los que tienen la calle vacía**: nunca pisa una dirección real.
+
+Necesita la tabla staging **de la corrida**, porque es lo único que registra qué
+contactos creó la importación. Si se recargó el staging después de correr, el
+matching marca a todos como `actualizar` y el botón falla con un mensaje
+explícito en vez de no hacer nada en silencio.
 
 ### Sexo y fecha de nacimiento
 `gender` (de `partner_contact_gender`): Femenino→`female`, Masculino→`male`.

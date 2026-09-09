@@ -17,6 +17,8 @@ import os
 import time
 from datetime import datetime
 
+from lxml import etree
+
 from odoo import _, api, fields, models, tools
 from odoo.exceptions import UserError
 
@@ -36,8 +38,17 @@ COLUMNAS_CSV = [
 # Valor exacto de la columna Acción que se ignora sin procesar.
 ACCION_IGNORAR = "Ya existe - sin puntos"
 
-# Domicilios que en el origen significan "sin dato".
+# Domicilios que en el origen significan "sin dato". Se normalizan todos al
+# texto de `street_placeholder` para que la calle nunca quede vacía en la ficha.
 DOMICILIOS_VACIOS = ("Sin dirección", "Sin direccion", "Sin Dirección", "SIN DIRECCION")
+
+# Campos donde NULL es significativo: el contacto hereda el valor del usuario o
+# del contexto. Se excluyen del relleno de defaults para no fijarlos a mano.
+DEFAULTS_NO_RELLENAR = ("lang", "tz")
+
+# Filas por tramo en las reparaciones masivas. Cada tramo hace commit, así el
+# botón no deja una transacción de 646.000 filas abierta durante minutos.
+PASO_REPARACION = 50000
 
 
 class ForumImportBatch(models.Model):
@@ -134,6 +145,12 @@ class ForumImportBatch(models.Model):
     )
     batches_per_run = fields.Integer(
         string="Tandas por corrida del cron", default=4, required=True,
+    )
+    street_placeholder = fields.Char(
+        string="Calle cuando no hay dato", default="Sin dirección",
+        help="El origen trae 'Sin dirección' en la enorme mayoría de las filas. "
+             "Ese texto se guarda tal cual en la calle del contacto, para que el "
+             "campo no quede vacío. Si se deja en blanco, la calle queda vacía.",
     )
     points_mode = fields.Selection(
         [("overwrite", "Pisar con el valor del CSV"), ("add", "Sumar al valor actual")],
@@ -423,7 +440,7 @@ class ForumImportBatch(models.Model):
                 apellido     = NULLIF(btrim(apellido), ''),
                 domicilio    = CASE WHEN btrim(coalesce(domicilio,'')) = ''
                                      OR btrim(domicilio) = ANY(%(vacios)s)
-                                    THEN NULL ELSE btrim(domicilio) END,
+                                    THEN %(placeholder)s::varchar ELSE btrim(domicilio) END,
                 telefonos    = NULLIF(btrim(telefonos), ''),
                 celular      = NULLIF(btrim(celular), ''),
                 departamento = NULLIF(btrim(departamento), ''),
@@ -438,7 +455,18 @@ class ForumImportBatch(models.Model):
                                     ELSE NULL END,
                 puntos_int   = CASE WHEN btrim(coalesce(puntos,'')) ~ '^-?[0-9]+$'
                                     THEN btrim(puntos)::int ELSE 0 END
-        """.format(t=t), {"vacios": list(DOMICILIOS_VACIOS)})
+        """.format(t=t), {"vacios": list(DOMICILIOS_VACIOS),
+                          "placeholder": self._placeholder_calle()})
+
+    def _placeholder_calle(self):
+        """Texto que va a la calle cuando el origen no trae domicilio.
+
+        El CSV trae 'Sin dirección' literal en 635.056 de las 646.073 filas. Ese
+        texto es el dato: se guarda tal cual en `street` en vez de dejar el campo
+        vacío. Devuelve None si se configuró en blanco, y ahí la calle queda NULL.
+        """
+        self.ensure_one()
+        return (self.street_placeholder or "").strip() or None
 
     def _pp_nombres(self):
         """Nombre visible: 'Nombre Apellido', tolerando Nombre vacío."""
@@ -832,13 +860,19 @@ class ForumImportBatch(models.Model):
         # ---- 5.1 Clientes nuevos -----------------------------------------
         creados = self._insertar_partners(t, params)
 
-        # ---- 5.2 Propiedades por compañía del partner de referencia ------
+        # ---- 5.2 Defaults que el ORM habría puesto y el INSERT no --------
+        # sale_warn, purchase_warn, picking_warn e invoice_warn no son required
+        # en Python pero sí en la vista: si quedan NULL, el formulario del
+        # contacto no deja guardar ninguna edición.
+        self._completar_defaults(t, params)
+
+        # ---- 5.3 Propiedades por compañía del partner de referencia ------
         self._copiar_propiedades(t, params)
 
-        # ---- 5.3 Tarjetas ------------------------------------------------
+        # ---- 5.4 Tarjetas ------------------------------------------------
         del_pool, nuevas, actualizadas = self._procesar_tarjetas(t, params)
 
-        # ---- 5.4 Contadores y puntero ------------------------------------
+        # ---- 5.5 Contadores y puntero ------------------------------------
         cr.execute("""
             SELECT accion_efectiva, count(*) FROM {t}
              WHERE row_num BETWEEN %(desde)s AND %(hasta)s
@@ -959,6 +993,102 @@ class ForumImportBatch(models.Model):
                AND s.partner_id IS NOT NULL
         """.format(t=t), vals)
         return cr.rowcount
+
+    # ==================================================================
+    # 6.b Defaults que el ORM habría aplicado y el INSERT no
+    # ==================================================================
+    def _defaults_selection(self):
+        """Devuelve {columna: valor} de los Selection de res.partner con default.
+
+        Se le pregunta al ORM en vez de listar los campos a mano, así el módulo
+        cubre los que agregue cualquier módulo instalado sin tocar código.
+
+        Se acota a los que la **vista** marca obligatorios, que es exactamente
+        el bug: `sale_warn`, `purchase_warn`, `picking_warn` e `invoice_warn` no
+        son required en Python pero el formulario del core los pide, así que el
+        INSERT por SQL pasa dejándolos NULL y después la ficha no deja guardar
+        ninguna edición.
+
+        El filtro es por vista y no una lista fija a propósito: si mañana otro
+        módulo agrega un campo con el mismo patrón, entra solo. Y deja afuera
+        los Selection con default que **no** rompen nada —en esta base
+        `followup_reminder_type` (cobranza automática) y `vendor_rule`
+        (reabastecimiento de proveedores)—, que no hay razón para fijar en
+        543.000 clientes.
+        """
+        Partner = self.env["res.partner"].with_context({}).sudo()
+        obligatorios = self._campos_required_en_vista()
+        candidatos = [
+            nombre for nombre, f in Partner._fields.items()
+            if f.type == "selection" and f.store and f.column_type
+            and not f.compute and not f.related and not f.company_dependent
+            and nombre in obligatorios
+            and nombre not in DEFAULTS_NO_RELLENAR
+        ]
+        if not candidatos:
+            return {}
+        defaults = Partner.default_get(candidatos)
+        return {n: v for n, v in defaults.items() if v not in (None, False, "")}
+
+    def _campos_required_en_vista(self):
+        """Campos que el formulario de res.partner exige sin condición.
+
+        Se leen los arch crudos de las vistas activas, NO el resultado de
+        `get_view()`: ese aplica el filtrado por grupos del usuario que llama, y
+        `invoice_warn` vive dentro de una sección con `groups=` de contabilidad,
+        así que desaparecía para cualquiera que no tuviera ese permiso. El
+        conjunto de campos rotos no puede depender de quién aprieta el botón.
+
+        Solo cuentan los `required` incondicionales: una expresión como
+        `required="sale_warn and sale_warn != 'no-message'"` depende de otro
+        campo y no corresponde forzarla.
+        """
+        vistas = self.env["ir.ui.view"].sudo().search([
+            ("model", "=", "res.partner"), ("type", "=", "form"),
+        ])
+        obligatorios = set()
+        for vista in vistas:
+            try:
+                raiz = etree.fromstring((vista.arch_db or "").encode("utf-8"))
+            except etree.XMLSyntaxError:
+                # Una vista rota no debe tumbar la reparación: se saltea.
+                continue
+            for nodo in raiz.iter("field"):
+                if nodo.get("name") and nodo.get("required") in ("1", "True", "true"):
+                    obligatorios.add(nodo.get("name"))
+        return obligatorios
+
+    def _sql_defaults(self, defaults, alias=""):
+        """Arma el SET, la condición y los parámetros del UPDATE de defaults.
+
+        Todas las columnas se rellenan en una sola sentencia y no una por una:
+        así cada fila se reescribe una vez sola en vez de una vez por campo.
+        `alias` es el prefijo de la tabla en la condición (el SET de PostgreSQL
+        no admite alias en la columna de destino, la condición sí lo necesita
+        cuando el UPDATE tiene un FROM).
+        """
+        pre = (alias + ".") if alias else ""
+        sets = ", ".join(
+            "{c} = coalesce({p}{c}, %(v_{c})s)".format(c=c, p=pre) for c in defaults)
+        cond = " OR ".join("{p}{c} IS NULL".format(c=c, p=pre) for c in defaults)
+        vals = {"v_%s" % c: v for c, v in defaults.items()}
+        return sets, cond, vals
+
+    def _completar_defaults(self, t, params):
+        """Rellena los defaults en los partners recién insertados por la tanda."""
+        defaults = self._defaults_selection()
+        if not defaults:
+            return 0
+        sets, cond, vals = self._sql_defaults(defaults, alias="p")
+        self.env.cr.execute("""
+            UPDATE res_partner p SET {sets}
+              FROM {t} s
+             WHERE s.partner_id = p.id
+               AND s.row_num BETWEEN %(desde)s AND %(hasta)s
+               AND s.accion_efectiva = 'crear'
+               AND ({cond})
+        """.format(sets=sets, cond=cond, t=t), dict(params, **vals))
+        return self.env.cr.rowcount
 
     def _copiar_propiedades(self, t, params):
         """Replica las propiedades por compañía del partner de referencia.
@@ -1269,6 +1399,187 @@ class ForumImportBatch(models.Model):
         self.env.cr.execute("DROP TABLE IF EXISTS %s" % self._staging_name())
         self._log("Tabla staging borrada.")
         return True
+
+    # ==================================================================
+    # 9. Reparaciones sobre datos ya importados
+    # ==================================================================
+    def _rango_ids_partner(self):
+        """Rango de ids de res_partner, para recorrer la tabla por tramos."""
+        self.env.cr.execute("SELECT min(id), max(id) FROM res_partner")
+        return self.env.cr.fetchone()
+
+    def action_reparar_defaults(self):
+        """Rellena en TODA res_partner los Selection con default que quedaron NULL.
+
+        Los contactos que creó este módulo entraron por INSERT directo, así que
+        el ORM nunca aplicó sus defaults. Los cuatro campos de advertencia
+        (sale_warn, purchase_warn, picking_warn, invoice_warn) no son required
+        en Python pero sí llevan `required="1"` en las vistas del core, y con el
+        valor en NULL el formulario del contacto no deja guardar ninguna edición.
+
+        Va sobre la tabla entera y no solo sobre lo importado a propósito: el
+        staging puede no existir, y cualquier contacto con esos campos en NULL
+        está igual de roto. Es idempotente —solo toca lo que está en NULL— y no
+        pisa `write_date`, para no ensuciar el historial de edición real.
+        """
+        self.ensure_one()
+        defaults = self._defaults_selection()
+        if not defaults:
+            return self._notificar(
+                _("Nada que reparar"),
+                _("res.partner no tiene campos de selección con valor por defecto."))
+
+        sets, cond, vals = self._sql_defaults(defaults)
+        detalle = ", ".join("%s=%s" % (c, v) for c, v in sorted(defaults.items()))
+        minimo, maximo = self._rango_ids_partner()
+        if minimo is None:
+            return self._notificar(_("Nada que reparar"), _("No hay contactos."))
+
+        # Se deja asentado qué campos se van a tocar ANTES de empezar: la lista
+        # sale del ORM, así que puede incluir campos de módulos custom, y si el
+        # request se corta a mitad de camino igual queda el registro de qué hizo.
+        self._log("Reparando defaults en res_partner (ids %d-%d): %s"
+                  % (minimo, maximo, detalle))
+        self.env.cr.commit()
+
+        cr = self.env.cr
+        total, desde = 0, minimo
+        while desde <= maximo:
+            hasta = desde + PASO_REPARACION - 1
+            cr.execute("""
+                UPDATE res_partner SET {sets}
+                 WHERE id BETWEEN %(desde)s AND %(hasta)s
+                   AND ({cond})
+            """.format(sets=sets, cond=cond),
+                dict(vals, desde=desde, hasta=hasta))
+            total += cr.rowcount
+            cr.commit()
+            desde = hasta + 1
+
+        self.env.registry.clear_cache()
+        self._log("Defaults reparados en %d contactos (%s)." % (total, detalle))
+        self.env.cr.commit()
+        return self._notificar(
+            _("Campos obligatorios reparados"),
+            _("%(n)s contactos corregidos. Campos: %(campos)s",
+              n=total, campos=detalle))
+
+    def _batches_con_contactos_creados(self):
+        """Batches cuyo staging todavía registra los contactos que crearon."""
+        aptos = self.env["forum.import.batch"]
+        for batch in self.search([("created", ">", 0)], order="id"):
+            if not batch._staging_existe():
+                continue
+            self.env.cr.execute("""
+                SELECT 1 FROM {t}
+                 WHERE procesado = true AND accion_efectiva = 'crear' LIMIT 1
+            """.format(t=batch._staging_name()))
+            if self.env.cr.fetchone():
+                aptos |= batch
+        return aptos
+
+    def action_reparar_direcciones(self):
+        """Vuelca el domicilio del CSV a la calle de los contactos que la tienen vacía.
+
+        El origen trae 'Sin dirección' literal en la enorme mayoría de las filas
+        y la carga original lo convertía a NULL, así que la calle quedó vacía en
+        casi todas las fichas. Este botón guarda ese texto tal cual.
+
+        Dos límites, los dos a propósito:
+
+        - Solo contactos que **creó esta importación** (`accion_efectiva =
+          'crear'`). A los que ya existían el módulo nunca les toca los datos
+          personales, y esto no es la excepción.
+        - Solo los que tienen la calle vacía: nunca pisa una dirección real.
+
+        Además recalcula `contact_address_complete` en las filas que modifica,
+        con la misma fórmula del compute de `web_map`, para que el campo stored
+        no quede desalineado con la calle.
+        """
+        self.ensure_one()
+        if not self._staging_existe():
+            raise UserError(_(
+                "No existe la tabla staging de este batch, que es de donde sale "
+                "el domicilio de cada cédula. Volvé a correr '1. Cargar staging': "
+                "relee el CSV y no toca ningún contacto."))
+
+        t = self._staging_name()
+        cr = self.env.cr
+
+        # El staging tiene que ser el de la corrida: es lo único que registra
+        # qué contactos creó la importación. Si se recargó el archivo después,
+        # el matching marca a todos como 'actualizar' —ya existen— y el botón no
+        # tendría a quién tocar. Mejor fallar que no hacer nada en silencio.
+        cr.execute("""
+            SELECT count(*) FROM {t}
+             WHERE procesado = true AND accion_efectiva = 'crear'
+        """.format(t=t))
+        if not cr.fetchone()[0]:
+            # El mensaje nombra el batch que sí sirve: los batches se listan por
+            # id descendente y varios comparten nombre, así que es muy fácil
+            # apretar el botón parado en el equivocado.
+            aptos = self._batches_con_contactos_creados()
+            sugerencia = ""
+            if aptos:
+                sugerencia = _(" El que sí los registra es: %s.") % ", ".join(
+                    '"%s" (id %d)' % (b.name, b.id) for b in aptos)
+            raise UserError(_(
+                "Este batch (id %(id)s) no creó ningún contacto, así que su "
+                "staging no registra a cuáles habría que completarles la "
+                "calle.%(sugerencia)s",
+                id=self.id, sugerencia=sugerencia))
+
+        # 1. El staging viejo tiene el domicilio ya nulificado por la carga
+        #    original. Se le vuelve a aplicar la normalización vigente para que
+        #    el botón sirva sin tener que recargar el archivo entero.
+        cr.execute("""
+            UPDATE {t} SET domicilio = %(placeholder)s
+             WHERE btrim(coalesce(domicilio, '')) = ''
+                OR btrim(domicilio) = ANY(%(vacios)s)
+        """.format(t=t), {"placeholder": self._placeholder_calle(),
+                          "vacios": list(DOMICILIOS_VACIOS)})
+        cr.commit()
+
+        # 2. Volcado a res_partner, por tramos de row_num.
+        #    El nombre del país es un campo traducible (jsonb en 17), por eso se
+        #    lee con el idioma del usuario y se cae a en_US si no está traducido.
+        cr.execute("SELECT min(row_num), max(row_num) FROM %s" % t)
+        minimo, maximo = cr.fetchone()
+        if minimo is None:
+            return self._notificar(_("Nada que reparar"), _("El staging está vacío."))
+
+        total, desde = 0, minimo
+        lang = self.env.user.lang or "en_US"
+        while desde <= maximo:
+            hasta = desde + PASO_REPARACION - 1
+            cr.execute("""
+                UPDATE res_partner p SET
+                    street = s.domicilio,
+                    contact_address_complete = NULLIF(btrim(btrim(concat_ws(', ',
+                        s.domicilio,
+                        NULLIF(btrim(concat_ws(' ', p.zip, p.city)), ''),
+                        (SELECT st.name FROM res_country_state st
+                          WHERE st.id = p.state_id),
+                        (SELECT coalesce(c.name ->> %(lang)s, c.name ->> 'en_US')
+                           FROM res_country c WHERE c.id = p.country_id)
+                    )), ','), '')
+                  FROM {t} s
+                 WHERE s.partner_id = p.id
+                   AND s.row_num BETWEEN %(desde)s AND %(hasta)s
+                   AND s.accion_efectiva = 'crear'
+                   AND s.domicilio IS NOT NULL
+                   AND coalesce(p.street, '') = ''
+            """.format(t=t), {"desde": desde, "hasta": hasta, "lang": lang})
+            total += cr.rowcount
+            cr.commit()
+            desde = hasta + 1
+
+        self.env.registry.clear_cache()
+        self._log("Calle completada en %d contactos que la tenían vacía." % total)
+        self.env.cr.commit()
+        return self._notificar(
+            _("Direcciones reparadas"),
+            _("%s contactos pasaron a tener calle.", total))
 
     def unlink(self):
         """Al borrar el batch se lleva su tabla staging."""

@@ -25,6 +25,14 @@
                     string="Exportar errores" invisible="errors == 0"/>
             <button name="action_exportar_duplicados" type="object" class="btn-secondary"
                     string="Exportar duplicados" invisible="state in ('draft', 'loading')"/>
+            <button name="action_reparar_defaults" type="object" class="btn-secondary"
+                    string="Reparar campos obligatorios"
+                    invisible="state == 'processing'"
+                    confirm="Se completan en TODOS los contactos los campos de selección con valor por defecto que hayan quedado vacíos (advertencias de venta, compra, recolección y factura). Solo toca los que están vacíos. ¿Continuar?"/>
+            <button name="action_reparar_direcciones" type="object" class="btn-secondary"
+                    string="Completar calle"
+                    invisible="state in ('draft', 'loading', 'processing')"
+                    confirm="Se copia el domicilio del CSV a la calle de los contactos que la tengan vacía, incluido el texto 'Sin dirección'. No pisa ninguna dirección ya cargada. ¿Continuar?"/>
             <button name="action_drop_staging" type="object" class="btn-secondary"
                     string="Borrar staging" invisible="state in ('draft', 'processing')"
                     confirm="Se borra la tabla staging con el detalle fila por fila. ¿Continuar?"/>
@@ -76,6 +84,8 @@
                 <field name="batch_size" readonly="state == 'processing'"/>
                 <field name="batches_per_run" readonly="state == 'processing'"/>
                 <field name="points_mode" readonly="state == 'processing'"/>
+                <field name="street_placeholder" readonly="state == 'processing'"
+                       placeholder="Dejar vacío para no completar la calle"/>
                 <field name="backup_dir" readonly="state == 'processing'"/>
               </group>
             </group>
