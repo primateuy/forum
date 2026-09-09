@@ -271,11 +271,7 @@ class ForumImportBatch(models.Model):
             "cards_from_pool": 0, "cards_created": 0, "cards_updated": 0,
             "started_at": False, "ended_at": False,
         })
-        cron = self.env.ref("forum_partner_import.ir_cron_forum_partner_import",
-                            raise_if_not_found=False)
-        if cron:
-            cron.sudo().write({"active": True})
-            cron.sudo()._trigger()
+        self._encolar_cron()
         self.env.cr.commit()
         # Sin acción de retorno a propósito: así el formulario recarga el
         # registro y el widget arranca viendo el estado 'loading'.
@@ -725,11 +721,7 @@ class ForumImportBatch(models.Model):
         if not self.started_at:
             vals["started_at"] = fields.Datetime.now()
         self.write(vals)
-        cron = self.env.ref("forum_partner_import.ir_cron_forum_partner_import",
-                            raise_if_not_found=False)
-        if cron:
-            cron.sudo().write({"active": True})
-            cron.sudo()._trigger()
+        self._encolar_cron()
         self._log("Procesamiento iniciado. Puntero en %d de %d."
                   % (self.offset, self.total_rows))
         self.env.cr.commit()
@@ -755,12 +747,22 @@ class ForumImportBatch(models.Model):
             vals["started_at"] = fields.Datetime.now()
         self.write(vals)
         self._log("Reanudado desde la fila %d." % self.offset)
+        self._encolar_cron()
+        return True
+
+    def _encolar_cron(self):
+        """Pide que el cron corra ya, sin esperar al próximo tick.
+
+        `_trigger()` deja una fila en `ir_cron_trigger` y el scheduler levanta
+        el cron al instante, ignorando el `nextcall`. Es lo único que hace falta
+        porque el cron está siempre activo: antes acá también se hacía
+        `write({"active": True})`, y ese write es justamente el que reventaba
+        cuando lo llamaba el propio cron (`_try_lock` sobre su fila bloqueada).
+        """
         cron = self.env.ref("forum_partner_import.ir_cron_forum_partner_import",
                             raise_if_not_found=False)
         if cron:
-            cron.sudo().write({"active": True})
             cron.sudo()._trigger()
-        return True
 
     def _staging_existe(self):
         self.ensure_one()
@@ -790,10 +792,8 @@ class ForumImportBatch(models.Model):
         procesando = self.search([("state", "=", "processing")], order="id")
 
         if not cargando and not procesando:
-            cron = self.env.ref("forum_partner_import.ir_cron_forum_partner_import",
-                                raise_if_not_found=False)
-            if cron:
-                cron.sudo().write({"active": False})
+            # No se auto-desactiva: no se puede. El cron queda activo con un
+            # intervalo largo y este tick sale enseguida sin hacer nada.
             return True
 
         for batch in cargando:
@@ -835,10 +835,7 @@ class ForumImportBatch(models.Model):
             return
 
         # Quedan filas: se reencola para seguir sin esperar al próximo tick.
-        cron = self.env.ref("forum_partner_import.ir_cron_forum_partner_import",
-                            raise_if_not_found=False)
-        if cron:
-            cron.sudo()._trigger()
+        self._encolar_cron()
 
     def _procesar_tanda(self):
         """Procesa una tanda de `batch_size` filas."""

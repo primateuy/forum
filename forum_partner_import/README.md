@@ -48,9 +48,24 @@ Los dos son idempotentes y solo tocan lo que está vacío:
   `Sin dirección`) a la calle de los contactos que creó la importación y la
   tienen vacía. Ver *La calle cuando el origen no trae domicilio*.
 
-El cron (`FORUM: importación masiva de clientes`) arranca **desactivado**. Lo
-activa el propio batch al iniciar y se autodesactiva cuando no quedan batches
-en curso.
+El cron (`FORUM: importación masiva de clientes`) queda **siempre activo**, con
+un intervalo de 10 minutos. El trabajo se dispara con `_trigger()`, que hace
+correr un cron activo al instante sin esperar al `nextcall`; el intervalo es
+solo la red de seguridad para cuando el servidor se cae con un batch a medias y
+se corta la cadena de triggers.
+
+**Por qué no se prende y se apaga solo.** Lo intentaba, y nunca funcionó:
+`ir.cron.write()` llama a `_try_lock()`, que pide un lock sobre su propia fila,
+y esa fila ya está bloqueada por el cursor que ejecuta el job. Auto-desactivarse
+desde adentro del propio cron falla **siempre**:
+
+    psycopg2.errors.LockNotAvailable: could not obtain lock on row in relation "ir_cron"
+    UserError: Record cannot be modified right now: This cron task is currently
+    being executed and may not be modified
+
+O sea que en la práctica el cron ya quedaba activo para siempre, pero además
+tiraba un traceback cada dos minutos. Ahora no hay ningún `write` sobre
+`ir.cron` en el módulo: solo `_trigger()`.
 
 ## Decisiones tomadas
 

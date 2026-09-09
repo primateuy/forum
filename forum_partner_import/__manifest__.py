@@ -2,7 +2,7 @@
 {
     "name": "Importación masiva de clientes FORUM",
     "summary": "Carga masiva de clientes y puntos de lealtad desde CSV vía SQL directo",
-    "version": "17.0.1.0.0",
+    "version": "17.0.1.1.0",
     "author": "Primate Uy",
     "category": "Contacts",
     "license": "LGPL-3",
