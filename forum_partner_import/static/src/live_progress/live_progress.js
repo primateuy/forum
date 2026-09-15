@@ -46,6 +46,7 @@ const ESTADOS_VIVOS = ["processing", "loading"];
 const CAMPOS = [
     "state", "import_type", "offset", "total_rows", "processed", "created", "updated",
     "ignored", "errors", "cards_from_pool", "cards_created", "cards_updated",
+    "quants_created", "quants_updated", "quants_zero",
     "started_at", "ended_at",
     "loading_step", "loading_steps_total", "loading_phase", "loading_started_at",
 ];
@@ -93,8 +94,41 @@ function faseClientes(d) {
     };
 }
 
+/**
+ * Ajuste de inventario, fase 1: arma el staging desde el xlsx y carga el
+ * conteo en los quants. Cuenta celdas, no filas del archivo.
+ */
+function faseCargaInventario(d) {
+    const cargando = d.state === "loading";
+    return {
+        clave: "inventario_carga",
+        titulo: _t("Fase 1 · Carga del conteo en los quants"),
+        corriendo: ["loading", "processing"].includes(d.state),
+        cargando,
+        estadoFinal: ["done", "error", "cancel"].includes(d.state) ? d.state : null,
+        hecho: d.processed,
+        total: d.total_rows,
+        inicio: cargando ? d.loading_started_at : d.started_at,
+        fin: d.ended_at,
+        unidad: _t("celdas/s"),
+        etapa: d.loading_phase,
+        paso: d.loading_step,
+        pasos: d.loading_steps_total,
+        filasContadores: [
+            [
+                { etiqueta: _t("Quants creados"), valor: d.quants_created, clase: "text-success" },
+                { etiqueta: _t("Quants actualizados"), valor: d.quants_updated, clase: "" },
+                { etiqueta: _t("En cero sin quant"), valor: d.quants_zero, clase: "text-muted" },
+                { etiqueta: _t("Ignoradas"), valor: d.ignored, clase: "text-muted" },
+                { etiqueta: _t("Errores"), valor: d.errors, error: true },
+            ],
+        ],
+    };
+}
+
 export const SECCIONES_POR_TIPO = {
     clientes: (d) => [faseClientes(d)],
+    inventario: (d) => [faseCargaInventario(d)],
 };
 
 export class ForumImportProgress extends Component {
