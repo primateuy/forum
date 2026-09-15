@@ -495,11 +495,12 @@ Son **dos fases**, cada una con su botón, su puntero y su barra en el widget:
 | fase | qué hace | cómo | toca contabilidad |
 |---|---|---|---|
 | 1. Carga del conteo | escribe la cantidad contada en cada quant, como si alguien la tipeara en *Inventario físico* | SQL por tandas | no |
-| 2. Aplicación | crea el movimiento de cada quant con diferencia, su valuación y su asiento | ORM (`_apply_inventory`) por tandas | sí |
+| 2. Aplicación | crea el movimiento de cada quant, su línea, su capa de valuación y, si corresponde, su asiento | SQL por tandas, con los productos valorizados por el ORM (`_apply_inventory`) | sí (solo vía ORM) |
 
-La fase 1 se puede revisar y repetir sin consecuencias. La fase 2 es la que
-mueve stock y valuación, y **no se hace por SQL**: las capas FIFO, la valuación
-y los asientos los resuelve el ORM.
+La fase 1 se puede revisar y repetir sin consecuencias. La fase 2 mueve stock:
+va por SQL **replicando campo por campo lo que hace el ORM**, validado con una
+prueba de paridad contra `_apply_inventory`. Todo lo que tiene valuación
+distinta de cero —y por lo tanto asientos— sigue yendo por el ORM.
 
 ## Flujo de uso
 
@@ -521,7 +522,8 @@ y los asientos los resuelve el ORM.
 |---|---|
 | Armado del staging (lectura del xlsx + pre-proceso) | 25,7 s |
 | Fase 1: 930.892 celdas en tandas de 5.000 | 37 s |
-| Fase 2: tandas de 2.000 quants | ~60 s por tanda (~30 ms por quant) |
+| Fase 2: tanda de 50.000 celdas (SQL + ORM) | ~16 s |
+| Fase 2 completa: 904.061 celdas + recálculos finales | **5 min 37 s** |
 
 ## El archivo
 
@@ -626,41 +628,138 @@ Upsert de `stock_quant` por tandas de celdas. En cada tanda:
 dio 0 quants creados, 835.309 actualizados y el mismo total de quants, sin
 duplicados.
 
-**Motivo.** `stock_change_qty_reason` está instalado: el campo `reason` del quant
-viaja al origen de cada movimiento. Se completa solo con
-`Ajuste inventario FORUM 12/09/2026 - batch <id>` si no se escribe otro.
+**Motivo.** Se completa solo con `Ajuste inventario FORUM 12/09/2026 - batch <id>`
+si no se escribe otro, y va al origen de cada movimiento. El campo `reason` del
+quant y de la línea de movimiento lo agrega `stock_change_qty_reason` (OCA), que
+en Forum está instalado. **Es una dependencia blanda**: no está en `depends`; si
+el módulo no está, el ajuste funciona igual y el motivo queda solo en el origen.
 
 ## Fase 2: aplicación
 
-Lo mismo que el botón *Aplicar* de Inventario físico, pero por tandas:
+La primera versión aplicaba por el ORM (`_apply_inventory`) en tandas: ~30 ms por
+quant, **7-8 horas**, casi todo recompute de tchistorico. Ahora la aplicación va
+por SQL set-based y el ORM queda solo para lo que tiene valuación.
 
-- **Una tanda por corrida del cron** (default 2.000 quants), con commit, y
-  `_trigger()` para la siguiente.
-- **Ordenado por ubicación** (columna del Excel): cada sucursal queda bloqueada
-  en un solo tramo.
-- En cada tanda se bloquean los quants (`FOR NO KEY UPDATE`), se pone el contado
-  y **se recalcula la diferencia contra la cantidad de ese momento**.
-- Sin diferencia → se limpia el conteo, sin movimiento. Con diferencia →
-  `_apply_inventory()` de toda la tanda; si falla, **quant por quant, cada uno en
-  su savepoint**, y solo los que fallan quedan como error (con el mensaje en
-  staging y en el export). Esos quants conservan el conteo en Inventario físico.
-- Si un par tiene más de un quant, se fusionan con `_merge_quants` del core
-  antes de ajustar.
-- Un choque de concurrencia (serialización, deadlock) **reintenta la tanda**
-  hasta 3 veces antes de marcar error: la tanda se revierte entera, así que
-  repetirla es seguro.
+### La disección (la spec de la réplica)
 
-**Verificado** sobre las primeras tandas: las 5.556 celdas aplicadas quedaron
-con cantidad = contado, conteo limpio, el motivo en el origen del movimiento y
-su capa de valuación; 11 asientos para los productos con costo.
+Se aplicó por el ORM, con rollback, un quant de cada caso —alta pura, alta con
+capas FIFO, suba, baja con consumo FIFO, quant negativo, contado 0 con stock,
+diferencia 0, reserva, producto con costo en tiempo real (alta y baja), producto
+con capa negativa— y se registró **todo** lo que la transacción escribió
+(`pg_stat_xact_user_tables`, filas nuevas y antes/después). Lo que hace
+`_apply_inventory` por quant:
+
+| qué | detalle |
+|---|---|
+| `stock.move` + `stock.move.line` en `done` | nombre `Product Quantity Updated (<responsable>)`, origen = motivo, `reference` = nombre, `priority '0'`, `picked`, `is_inventory`, `date` a segundos. **Con diferencia 0 igual crea un movimiento de cantidad 0** (`Product Quantity Confirmed`) |
+| sentido | diferencia > 0: ubicación de ajuste de inventario → existencias; si no, al revés |
+| quant contado | `quantity += diferencia`; conteo limpio; `inventory_date` = próxima fecha de inventario de la ubicación; `reason`/`user_id` en NULL. `in_date`: en una entrada, el más viejo entre el suyo (si tenía stock) y ahora; en una salida, el suyo (si tenía stock) o ahora |
+| quant de la ubicación de ajuste | `quantity -= diferencia`; `in_date` de la última línea del producto (orden de id). Si no existe se crea: su `inventory_diff_quantity` es −(cantidad final) y su `unit_value_report` queda NULL |
+| `stock.valuation.layer` | una por movimiento con cantidad, **aunque valga 0**: primero todas las entradas, después las salidas, que consumen FIFO (`create_date, id`) las capas con saldo, incluidas las recién creadas. Salida cubierta: `remaining_qty 0`, `remaining_value NULL`. tchistorico la guarda con `moneda_reporte_id` y sus campos en 0 |
+| ubicación | `last_inventory_date` = hoy |
+| cascadas | `value_report` (tchistorico) en **todos** los quants del producto, `ultimo_costo_mr` del producto y la plantilla, `qty_to_order` de los puntos de reorden |
+
+Lo que **no** hace, y se verificó: `_trigger_assign` (reservar movimientos en
+espera) solo lo llama el `_action_done` del picking; los movimientos de
+inventario no tienen picking.
+
+### Réplica SQL + híbrido ORM
+
+Por cada tanda (default **50.000 celdas**, una por corrida del cron):
+
+1. `LOCK TABLE stock_quant` y `stock_valuation_layer` en `SHARE ROW EXCLUSIVE`
+   mientras dura la tanda (~16 s): nadie crea ni mueve quants o capas mientras el
+   SQL decide sobre ellos.
+2. **Clasificación por producto.** Va por el ORM, con todas sus celdas de la
+   tanda, el producto que tenga: costo distinto de 0, capas con valor, capas
+   negativas (vacuum), costo que no sea FIFO, seguimiento por lote, reservas o
+   líneas pendientes en la ubicación (`_free_reservation`), par sin quant o con
+   quants duplicados. **FIFO se lleva por producto**, así que los dos caminos
+   nunca comparten estado. Nada de asientos por SQL.
+3. **SQL** para el resto: `stock_move`, `stock_move_line`, quants, quant de
+   ajuste, capas, consumo FIFO y ubicación, con la diferencia recalculada contra
+   la cantidad de ese momento. Los ids salen de las secuencias en el orden del
+   ORM. Los defaults de cada modelo se le piden a `default_get` (entra lo que
+   agregue cualquier módulo) y los numéricos se guardan con la escala del ORM
+   (`6.00`, no `6`). Como `Field.write`, un campo no se reescribe si el valor no
+   cambia.
+4. **ORM** para los valorizados: `_apply_inventory` de la tanda; si falla,
+   quant por quant con savepoint. El flush va con el entorno del responsable (el
+   del savepoint usaría el del cron y dejaría otro `write_uid`).
+
+En la base de prueba: **134 productos / 3.154 celdas por ORM** de 904.061 (los 69
+con costo, más los que tienen capas negativas, reservas o líneas pendientes).
+Si en el dump fresco de producción ese número explota, se rediscute antes de la
+corrida real.
+
+**Recálculos finales**, una sola vez al terminar las tandas, sobre los productos
+aplicados por SQL (el widget muestra la etapa):
+
+- `value_report` / `unit_value_report` de tchistorico: **por SQL**, con la misma
+  fórmula del compute (suma de `valorRestante` y `remaining_qty` de las capas del
+  producto con valorUnitario, valorRestante y remaining_qty positivos, redondeada
+  a la moneda de reportes). Se eligió SQL porque la fórmula es exacta y por el
+  ORM serían ~850.000 búsquedas. tchistorico no se tocó.
+- `ultimo_costo_mr` de producto y plantilla, y `qty_to_order` de los puntos de
+  reorden: **por el ORM** (`add_to_compute` + flush), por tramos con commit.
+
+### Paridad con el ORM (criterio de aceptación)
+
+Mismo subconjunto aplicado por el ORM puro en una copia y por el motor en otra
+(dos copias de la misma base), y además dentro de una misma base con rollback
+para iterar: **2.356 celdas de 61 productos** —altas con y sin capas, subas,
+bajas FIFO, quants negativos, contado 0, diferencia 0, productos sin quant de
+ajuste, reservas, costo en tiempo real con entradas y salidas (104 asientos),
+capas negativas—. Diff campo a campo de `stock_move`, `stock_move_line`,
+`stock_valuation_layer`, `stock_quant`, `account_move`, `account_move_line`,
+productos, plantillas, puntos de reorden, ubicaciones e `ir_property`,
+normalizando ids nuevos (por clave natural), timestamps y numeración de
+secuencias, y comparando **la representación exacta de cada numérico**.
+
+Resultado: **0 diferencias** en todas las tablas salvo dos cosas de conciliación
+contable, explicadas:
+
+- `matching_number` es la numeración de la conciliación parcial (sale de su id).
+- Cuando dos líneas de asiento del mismo producto y cuenta tienen **el mismo
+  importe**, cuál de las dos queda conciliada depende del orden de un `set` de
+  ids en `_validate_accounting_entries`; los ids cambian entre corridas. Probado:
+  en las copias salió idéntico, con rollback salió intercambiado (y en dos
+  corridas, entre pares distintos). Agregado por (producto, cuenta) —importes,
+  conciliadas y residuales— es idéntico.
+
+Diferencias que aparecieron en el camino y se corrigieron: escala de los
+numéricos, `priority` sin valor, `write_uid` del camino ORM, quant de ajuste
+nuevo (`inventory_diff_quantity` y `unit_value_report`) y la reescritura de
+valores iguales. Una observación de fondo: la escala guardada de un numérico
+que **no cambia** no es determinística ni en el propio ORM (depende de si el
+valor estaba en caché).
+
+### Verificación del después
+
+Sobre la copia aplicada por SQL:
+
+- **Recompute forzado** de todos los calculados stored de lo tocado (movimientos,
+  líneas, capas, productos, puntos de reorden): **0 cambios**. En `stock_quant`
+  cambian `inventory_diff_quantity`/`inventory_quantity_set` —recalcularlos sin un
+  conteo en curso los vuelve a "contado"—, **exactamente igual en la copia
+  aplicada por el ORM**: es comportamiento de esos calculados, no de la réplica.
+- **Stock = contado** en las 2.356 celdas, `qty_available` del ORM coincide, y la
+  suma de capas FIFO coincide con el stock interno de cada producto.
+- **Movimiento posterior normal**: un picking interno sobre un producto ajustado
+  por SQL se reservó y validó sin errores.
+- **UI**: sobre la corrida completa, la ficha de un producto ajustado por SQL y su
+  kardex (botón In/Out) abren sin errores y listan los movimientos del ajuste,
+  de la ubicación de ajuste a cada sucursal, con fecha, referencia y cantidad.
+
+### Operación
 
 **Cancelar** durante la aplicación es un *pedido*: la tanda en curso termina y
-lo ya aplicado queda. No escribe la fila del batch a propósito: la tanda en curso
-la escribe al terminar, y dos escrituras concurrentes sobre la misma fila hacían
-fallar el commit de la tanda entera (pasó en la prueba: se perdía un minuto de
-trabajo y el batch quedaba en error). **Reanudar** retoma desde el puntero. Si el
-servidor se cae a mitad de tanda, esa tanda se revierte y el cron la retoma solo
-(probado: puntero en 6.000, 5.556 movimientos, coherente).
+lo ya aplicado queda (no escribe la fila del batch: la tanda en curso la escribe
+al terminar y el choque hacía fallar su commit). **Reanudar** retoma desde el
+puntero. Un choque de concurrencia **reintenta la tanda** hasta 3 veces. Si el
+servidor se cae a mitad de tanda, esa tanda se revierte y el cron la retoma.
+Un batch arrancado con una versión anterior del módulo se puede reanudar: la
+tanda prepara sola las columnas que le falten al staging.
 
 ### Fecha contable
 
@@ -679,29 +778,29 @@ cargados pueden ser cientos de miles. **Pendiente de confirmación del cliente.*
 fecha del asiento: en producción lo carga el cron del BCU; en la copia de prueba
 hubo que cargar el del día a mano.
 
-### Cuánto tarda, y por qué
+### Cuánto tarda
 
-~30 ms por quant en la copia de prueba, o sea **~7-8 horas para las 918.061
-celdas**. El que pesa es **`tchistorico`**: `stock.quant.value_report` es un
-calculado stored que depende de las capas de valuación **del producto**, así que
-cada movimiento recalcula todos los quants de ese producto (~35 por producto
-después de la carga) y cada uno hace su propia búsqueda. Perfilado sobre 200
-quants, con rollback:
+Aplicación completa por el motor sobre la copia (2026-09-15): **5 min 37 s** para
+904.061 celdas —las 918.061 menos 14.000 que ya había aplicado la versión ORM—:
+~4 min de tandas (19 tandas de 50.000, 12-16 s cada una) y 96 s de recálculos
+finales sobre 23.462 productos. Extrapolado a las 918.061: ~5 min 40 s. 0 errores.
+Después: stock = contado en las 918.061 celdas, ningún quant con conteo pendiente,
+ningún par con quants duplicados.
 
-| | por quant | consultas |
-|---|---|---|
-| tal cual | 69 ms (con profiler) | 10.194 |
-| sin el recompute de `value_report` | 17 ms | 3.374 |
+Por tanda de 50.000 celdas: clasificación 0,5 s, réplica SQL ~8,5 s, camino ORM
+~6,5 s (unas 275 celdas), registro 0,5 s. La clasificación arrancó en 33,7 s con
+subconsultas correlacionadas por producto; set-based quedó en 0,5 s.
 
-No se tocó `tchistorico`. Si la ventana nocturna no alcanza, las opciones son
-diferir ese recompute durante el ajuste (cambio en `general_primate`) o partir
-la aplicación en varias noches: el puntero y **Reanudar** lo permiten, y cada
-tanda deja la base consistente.
+Por qué la versión ORM tardaba horas: `stock.quant.value_report` (tchistorico)
+depende de las capas **del producto**, así que cada movimiento recalculaba todos
+los quants del producto con una búsqueda por quant (perfilado: 69 ms por quant
+tal cual, 17 ms sin ese recompute). El motor SQL lo hace una sola vez al final.
 
 ## Requisitos operativos
 
 - **De noche, con las sucursales cerradas.** Cada tanda de la aplicación bloquea
-  los quants que ajusta durante ~1 minuto y compite con el POS por esos locks.
+  las tablas de quants y de capas de valuación durante ~16 s: nadie puede vender
+  ni recibir mientras dura.
 - **Carga y aplicación en la misma ventana.** La aplicación deja la cantidad
   final igual al contado. **Limitación explícita:** lo que se venda entre el
   conteo físico y la aplicación queda absorbido por el ajuste.
@@ -724,10 +823,6 @@ Lo que **no** toca, a propósito:
   Diferencias", los almacenes de otras compañías: nada de eso se ajusta.
 - **Celdas vacías** — esa sucursal no se toca para ese producto.
 
-Diferencia menor con el botón de la UI: un quant **sin diferencia** se limpia sin
-crear el movimiento de cantidad 0 ("Product Quantity Confirmed") que crearía
-*Aplicar*, así que su fecha de último conteo no se actualiza.
-
 ## Checklist pre-producción
 
 1. **Dump verificado** (ver el de clientes).
@@ -738,5 +833,6 @@ crear el movimiento de cantidad 0 ("Product Quantity Confirmed") que crearía
 5. Después de cargar el staging, revisar el log y el export: IDs no encontrados
    (en producción deberían ser 0), ubicaciones por compañía, no almacenables.
 6. Confirmar con el contador la fecha contable y los asientos.
-7. Estimar la aplicación con las primeras tandas (el widget muestra ritmo y ETA)
-   y decidir si entra en una noche.
+7. Mirar en el log de la primera tanda cuántos productos van por el ORM
+   (`clasificación (N productos vía ORM)`): si en producción son muchos más que en
+   la prueba, rediscutir antes de seguir. El widget muestra ritmo y ETA.
