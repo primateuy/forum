@@ -19,10 +19,14 @@
                     string="2. Cargar conteo en los quants"
                     invisible="import_type != 'inventario' or state != 'ready'"
                     confirm="Se escribe la cantidad contada en los quants de cada sucursal (crea los que no existen, con stock 0). No mueve stock ni contabilidad: eso lo hace el paso 3. Bloquea la tabla de quants unas décimas de segundo por tanda. ¿Continuar?"/>
+            <button name="action_aplicar_ajuste" type="object" class="btn-primary"
+                    string="3. Aplicar ajuste por tandas"
+                    invisible="import_type != 'inventario' or state != 'done'"
+                    confirm="Se crean los movimientos de inventario, la valuación y los asientos de cada quant con diferencia, por tandas en segundo plano. Correrlo DE NOCHE con las sucursales cerradas: cada tanda bloquea los quants que ajusta y compite con el POS. La cantidad final queda igual al contado, aunque se haya vendido algo después de la carga. ¿Continuar?"/>
             <button name="action_reanudar" type="object" class="btn-primary"
                     string="Reanudar" invisible="state not in ('cancel', 'error')"/>
             <button name="action_cancelar" type="object" class="btn-secondary"
-                    string="Cancelar procesamiento" invisible="state != 'processing'"/>
+                    string="Cancelar procesamiento" invisible="state not in ('processing', 'applying')"/>
             <button name="action_backup_tarjetas" type="object" class="btn-secondary"
                     string="Generar backup ahora"
                     invisible="import_type != 'clientes' or state in ('done', 'cancel')"/>
@@ -30,7 +34,7 @@
                     string="Exportar errores" invisible="import_type != 'clientes' or errors == 0"/>
             <button name="action_exportar_errores" type="object" class="btn-secondary"
                     string="Exportar errores e ignoradas"
-                    invisible="import_type != 'inventario' or state in ('draft', 'loading') or (errors == 0 and ignored == 0)"/>
+                    invisible="import_type != 'inventario' or state in ('draft', 'loading') or (errors == 0 and ignored == 0 and apply_errors == 0)"/>
             <button name="action_exportar_duplicados" type="object" class="btn-secondary"
                     string="Exportar duplicados"
                     invisible="import_type != 'clientes' or state in ('draft', 'loading')"/>
@@ -43,10 +47,15 @@
                     invisible="import_type != 'clientes' or state in ('draft', 'loading', 'processing')"
                     confirm="Se copia el domicilio del CSV a la calle de los contactos que la tengan vacía, incluido el texto 'Sin dirección'. No pisa ninguna dirección ya cargada. ¿Continuar?"/>
             <button name="action_drop_staging" type="object" class="btn-secondary"
-                    string="Borrar staging" invisible="state in ('draft', 'processing')"
+                    string="Borrar staging" invisible="state in ('draft', 'processing', 'applying')"
                     confirm="Se borra la tabla staging con el detalle fila por fila. ¿Continuar?"/>
+            <!-- Una barra por tipo: clientes no tiene la fase de aplicación. -->
             <field name="state" widget="statusbar"
-                   statusbar_visible="draft,ready,processing,done"/>
+                   statusbar_visible="draft,ready,processing,done"
+                   invisible="import_type == 'inventario'"/>
+            <field name="state" widget="statusbar"
+                   statusbar_visible="draft,ready,processing,done,applying,applied"
+                   invisible="import_type != 'inventario'"/>
           </header>
           <sheet>
             <div class="oe_title">
@@ -101,6 +110,10 @@
                 <field name="inventory_reason"
                        readonly="state not in ('draft', 'ready', 'done')"
                        placeholder="Se completa solo al cargar"/>
+                <field name="inventory_accounting_date"
+                       readonly="state in ('applying', 'applied')"
+                       placeholder="Vacía: la fecha del apply"/>
+                <field name="apply_batch_size" readonly="state == 'applying'"/>
               </group>
               <group>
                 <field name="batch_size" readonly="state == 'processing'"/>
@@ -133,6 +146,14 @@
               <field name="quants_created" invisible="1"/>
               <field name="quants_updated" invisible="1"/>
               <field name="quants_zero" invisible="1"/>
+              <field name="current_phase" invisible="1"/>
+              <field name="apply_total" invisible="1"/>
+              <field name="apply_processed" invisible="1"/>
+              <field name="applied_count" invisible="1"/>
+              <field name="apply_no_diff" invisible="1"/>
+              <field name="apply_errors" invisible="1"/>
+              <field name="apply_started_at" invisible="1"/>
+              <field name="apply_ended_at" invisible="1"/>
               <field name="started_at" invisible="1"/>
               <field name="ended_at" invisible="1"/>
               <field name="loading_step" invisible="1"/>
@@ -146,6 +167,11 @@
                 <field name="offset" readonly="1" string="Puntero (fila)"/>
                 <field name="started_at" readonly="1"/>
                 <field name="ended_at" readonly="1" invisible="not ended_at"/>
+              </group>
+              <group invisible="import_type != 'inventario' or current_phase != 'apply'">
+                <field name="apply_offset" readonly="1" string="Puntero de aplicación (celda)"/>
+                <field name="apply_started_at" readonly="1"/>
+                <field name="apply_ended_at" readonly="1" invisible="not apply_ended_at"/>
               </group>
               <group invisible="import_type != 'clientes'">
                 <field name="updated" readonly="1"

@@ -14,6 +14,7 @@
         "partner_contact_birthdate",
         "partner_contact_gender",
         "stock",
+        "stock_account",
     ],
     "external_dependencies": {
         "python": ["openpyxl"],

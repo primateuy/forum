@@ -41,17 +41,21 @@ const INTERVALO_POLL = 4000;
 // El cronómetro corre aparte, más fino, porque no cuesta nada.
 const INTERVALO_RELOJ = 1000;
 // Estados en los que tiene sentido preguntar.
-const ESTADOS_VIVOS = ["processing", "loading"];
+const ESTADOS_VIVOS = ["processing", "loading", "applying"];
 // Campos que se releen. Deliberadamente cortos: es lo que viaja cada 4 s.
 const CAMPOS = [
     "state", "import_type", "offset", "total_rows", "processed", "created", "updated",
     "ignored", "errors", "cards_from_pool", "cards_created", "cards_updated",
     "quants_created", "quants_updated", "quants_zero",
+    "current_phase", "apply_total", "apply_processed", "applied_count",
+    "apply_no_diff", "apply_errors", "apply_started_at", "apply_ended_at",
     "started_at", "ended_at",
     "loading_step", "loading_steps_total", "loading_phase", "loading_started_at",
 ];
 // Campos de fecha: el registro los entrega como luxon, el read como string.
-const CAMPOS_FECHA = ["started_at", "ended_at", "loading_started_at"];
+const CAMPOS_FECHA = [
+    "started_at", "ended_at", "loading_started_at", "apply_started_at", "apply_ended_at",
+];
 // Peso de la última muestra en el ritmo suavizado. Bajo = más estable.
 const ALFA = 0.3;
 
@@ -100,12 +104,20 @@ function faseClientes(d) {
  */
 function faseCargaInventario(d) {
     const cargando = d.state === "loading";
+    // Si ya se está aplicando (o se aplicó, o la aplicación se cortó), la
+    // carga terminó bien: su error/cancelación sería de la otra fase.
+    let estadoFinal = null;
+    if (d.current_phase === "apply" || ["done", "applying", "applied"].includes(d.state)) {
+        estadoFinal = "done";
+    } else if (["error", "cancel"].includes(d.state)) {
+        estadoFinal = d.state;
+    }
     return {
         clave: "inventario_carga",
         titulo: _t("Fase 1 · Carga del conteo en los quants"),
         corriendo: ["loading", "processing"].includes(d.state),
         cargando,
-        estadoFinal: ["done", "error", "cancel"].includes(d.state) ? d.state : null,
+        estadoFinal,
         hecho: d.processed,
         total: d.total_rows,
         inicio: cargando ? d.loading_started_at : d.started_at,
@@ -126,9 +138,48 @@ function faseCargaInventario(d) {
     };
 }
 
+/**
+ * Ajuste de inventario, fase 2: aplica el ajuste por tandas (movimientos,
+ * valuación y asientos). Aparece recién cuando se arrancó la aplicación.
+ */
+function faseAplicacionInventario(d) {
+    const enAplicacion = d.current_phase === "apply";
+    let estadoFinal = null;
+    if (d.state === "applied") {
+        estadoFinal = "done";
+    } else if (enAplicacion && ["error", "cancel"].includes(d.state)) {
+        estadoFinal = d.state;
+    }
+    return {
+        clave: "inventario_aplicacion",
+        titulo: _t("Fase 2 · Aplicación del ajuste"),
+        corriendo: d.state === "applying",
+        cargando: false,
+        estadoFinal,
+        hecho: d.apply_processed,
+        total: d.apply_total,
+        inicio: d.apply_started_at,
+        fin: d.apply_ended_at,
+        unidad: _t("celdas/s"),
+        filasContadores: [
+            [
+                { etiqueta: _t("Quants ajustados"), valor: d.applied_count, clase: "text-success" },
+                { etiqueta: _t("Sin diferencia"), valor: d.apply_no_diff, clase: "text-muted" },
+                { etiqueta: _t("Errores"), valor: d.apply_errors, error: true },
+            ],
+        ],
+    };
+}
+
 export const SECCIONES_POR_TIPO = {
     clientes: (d) => [faseClientes(d)],
-    inventario: (d) => [faseCargaInventario(d)],
+    inventario: (d) => {
+        const fases = [faseCargaInventario(d)];
+        if (d.current_phase === "apply" || ["applying", "applied"].includes(d.state)) {
+            fases.push(faseAplicacionInventario(d));
+        }
+        return fases;
+    },
 };
 
 export class ForumImportProgress extends Component {
@@ -276,6 +327,12 @@ export class ForumImportProgress extends Component {
      * porque el promedio global queda contaminado si el proceso estuvo pausado
      * o si se reanudó: daría un ETA pesimista que no se corresponde con lo que
      * está pasando ahora. Solo se mide la fase que está corriendo.
+     *
+     * Una lectura SIN avance no cuenta como muestra. El avance llega de a
+     * saltos, con el commit de cada tanda: en la aplicación del ajuste una
+     * tanda tarda más de un minuto, y medir cada 4 s daba ritmo 0 una y otra
+     * vez, con un ETA que se iba a decenas de horas. Así el ritmo se mide de
+     * salto a salto.
      */
     _actualizarRitmos(datos) {
         const ahora = Date.now();
@@ -284,12 +341,16 @@ export class ForumImportProgress extends Component {
                 continue;
             }
             const previa = this.ultimasMuestras[fase.clave];
-            this.ultimasMuestras[fase.clave] = { hecho: fase.hecho, t: ahora };
             if (!previa) {
+                this.ultimasMuestras[fase.clave] = { hecho: fase.hecho, t: ahora };
                 continue;
             }
             const dt = (ahora - previa.t) / 1000;
             const dn = fase.hecho - previa.hecho;
+            if (dn === 0) {
+                continue;   // sin avance: se mide en el próximo salto, desde la misma muestra
+            }
+            this.ultimasMuestras[fase.clave] = { hecho: fase.hecho, t: ahora };
             if (dt <= 0 || dn < 0) {
                 continue;
             }
@@ -405,15 +466,11 @@ export class ForumImportProgress extends Component {
         if (faltan <= 0) {
             return _t("terminando…");
         }
-        let ritmo = this.state.ritmos[fase.clave];
-        if (!ritmo) {
-            // Todavía no hay dos lecturas: se cae al promedio global.
-            if (!segundos || !fase.hecho) {
-                return _t("calculando…");
-            }
-            ritmo = fase.hecho / segundos;
-        }
-        if (ritmo <= 0) {
+        // Sin un salto medido todavía no se estima. El promedio global (hecho /
+        // transcurrido) parecía un buen respaldo, pero incluye las pausas: al
+        // reanudar una aplicación cortada durante horas daba ETAs de un día.
+        const ritmo = this.state.ritmos[fase.clave];
+        if (!ritmo || ritmo <= 0) {
             return _t("calculando…");
         }
         return this._hhmmss(Math.round(faltan / ritmo));
