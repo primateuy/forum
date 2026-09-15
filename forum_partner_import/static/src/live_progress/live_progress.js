@@ -48,7 +48,8 @@ const CAMPOS = [
     "ignored", "errors", "cards_from_pool", "cards_created", "cards_updated",
     "quants_created", "quants_updated", "quants_zero",
     "current_phase", "apply_total", "apply_processed", "applied_count",
-    "apply_no_diff", "apply_errors", "apply_started_at", "apply_ended_at",
+    "apply_no_diff", "apply_errors", "apply_via_orm", "apply_step",
+    "apply_started_at", "apply_ended_at",
     "started_at", "ended_at",
     "loading_step", "loading_steps_total", "loading_phase", "loading_started_at",
 ];
@@ -79,7 +80,7 @@ function faseClientes(d) {
         inicio: cargando ? d.loading_started_at : d.started_at,
         fin: d.ended_at,
         unidad: _t("filas/s"),
-        etapa: d.loading_phase,
+        etapa: cargando ? d.loading_phase : null,
         paso: d.loading_step,
         pasos: d.loading_steps_total,
         filasContadores: [
@@ -123,7 +124,7 @@ function faseCargaInventario(d) {
         inicio: cargando ? d.loading_started_at : d.started_at,
         fin: d.ended_at,
         unidad: _t("celdas/s"),
-        etapa: d.loading_phase,
+        etapa: cargando ? d.loading_phase : null,
         paso: d.loading_step,
         pasos: d.loading_steps_total,
         filasContadores: [
@@ -161,10 +162,15 @@ function faseAplicacionInventario(d) {
         inicio: d.apply_started_at,
         fin: d.apply_ended_at,
         unidad: _t("celdas/s"),
+        // Al terminar las tandas quedan los recálculos finales: la barra ya
+        // está llena y lo que avanza es la etapa.
+        etapa: d.state === "applying" ? d.apply_step : null,
+        textoEtapa: _t("Recalculando lo que Odoo dispara al mover stock. Podés cerrar esta pantalla."),
         filasContadores: [
             [
                 { etiqueta: _t("Quants ajustados"), valor: d.applied_count, clase: "text-success" },
                 { etiqueta: _t("Sin diferencia"), valor: d.apply_no_diff, clase: "text-muted" },
+                { etiqueta: _t("Vía ORM"), valor: d.apply_via_orm, clase: "" },
                 { etiqueta: _t("Errores"), valor: d.apply_errors, error: true },
             ],
         ],

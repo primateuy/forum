@@ -24,11 +24,12 @@
             <span class="text-muted small text-nowrap" t-esc="sec.detalleBarra"/>
           </div>
 
-          <!-- Etapa actual, solo mientras se arma el staging -->
-          <div t-if="sec.cargando and sec.etapa" class="alert alert-info py-2 mb-2">
+          <!-- Etapa actual: armado del staging, o recálculos finales del apply -->
+          <div t-if="sec.etapa and (sec.cargando or sec.corriendo)" class="alert alert-info py-2 mb-2">
             <i class="fa fa-cog fa-spin me-1"/>
             <strong t-esc="sec.etapa"/>
-            <span class="text-muted ms-2">
+            <span class="text-muted ms-2" t-if="sec.textoEtapa" t-esc="sec.textoEtapa"/>
+            <span class="text-muted ms-2" t-else="">
               Se está armando la tabla de trabajo. Podés cerrar esta pantalla.
             </span>
           </div>

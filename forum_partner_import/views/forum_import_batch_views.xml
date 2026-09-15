@@ -152,6 +152,8 @@
               <field name="applied_count" invisible="1"/>
               <field name="apply_no_diff" invisible="1"/>
               <field name="apply_errors" invisible="1"/>
+              <field name="apply_via_orm" invisible="1"/>
+              <field name="apply_step" invisible="1"/>
               <field name="apply_started_at" invisible="1"/>
               <field name="apply_ended_at" invisible="1"/>
               <field name="started_at" invisible="1"/>
