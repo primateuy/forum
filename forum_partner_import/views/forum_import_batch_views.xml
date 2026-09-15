@@ -50,12 +50,13 @@
             </div>
             <div class="alert alert-info" role="alert"
                  invisible="not file_ok or state != 'draft'">
-              El CSV se lee del filesystem del servidor, desde adentro del módulo.
+              El archivo se lee del filesystem del servidor, desde adentro del módulo.
               No se sube por la interfaz ni se guarda en la base.
             </div>
 
             <group>
               <group string="Archivo de origen">
+                <field name="import_type" readonly="state != 'draft'"/>
                 <field name="file_path" readonly="1"/>
                 <field name="file_info" readonly="1"/>
                 <field name="file_path_resolved" readonly="1"
@@ -69,14 +70,17 @@
             </group>
 
             <group string="Configuración">
-              <group>
+              <group invisible="import_type != 'clientes'">
                 <field name="reference_partner_id"
+                       required="import_type == 'clientes'"
                        readonly="state not in ('draft', 'ready')"
                        options="{'no_create': True}"/>
                 <field name="loyalty_program_id"
+                       required="import_type == 'clientes'"
                        readonly="state not in ('draft', 'ready')"
                        options="{'no_create': True}"/>
                 <field name="doc_type_id"
+                       required="import_type == 'clientes'"
                        readonly="state not in ('draft', 'ready')"
                        options="{'no_create': True}"/>
               </group>
@@ -95,6 +99,7 @@
                  declarados (invisibles) porque el widget los lee del record. -->
             <group string="Avance" invisible="state == 'draft'">
               <field name="progress" widget="forum_import_progress" nolabel="1" colspan="2"/>
+              <field name="import_type" invisible="1"/>
               <field name="offset" invisible="1"/>
               <field name="total_rows" invisible="1"/>
               <field name="processed" invisible="1"/>

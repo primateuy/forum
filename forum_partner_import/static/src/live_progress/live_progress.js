@@ -20,9 +20,14 @@
  * polling se superpone encima, y cuando no hay nada del polling se ve el
  * registro tal cual.
  *
- * EL INTERVALO SE APAGA SOLO. Mientras el estado no sea processing/loading no
- * hay ningún timer corriendo: en draft o done esta pantalla no hace un solo
+ * EL INTERVALO SE APAGA SOLO. Mientras el estado no sea uno de ESTADOS_VIVOS
+ * no hay ningún timer corriendo: en draft o done esta pantalla no hace un solo
  * request.
+ *
+ * SECCIONES POR FASE. Cada tipo de importación declara sus fases en
+ * SECCIONES_POR_TIPO. Una fase es una barra con su cronómetro, su ETA, su ritmo
+ * y sus contadores; el template las dibuja una debajo de la otra. Clientes
+ * tiene una sola fase y se ve exactamente como antes.
  */
 
 import { Component, onWillUnmount, useEffect, useState } from "@odoo/owl";
@@ -39,13 +44,58 @@ const INTERVALO_RELOJ = 1000;
 const ESTADOS_VIVOS = ["processing", "loading"];
 // Campos que se releen. Deliberadamente cortos: es lo que viaja cada 4 s.
 const CAMPOS = [
-    "state", "offset", "total_rows", "processed", "created", "updated",
+    "state", "import_type", "offset", "total_rows", "processed", "created", "updated",
     "ignored", "errors", "cards_from_pool", "cards_created", "cards_updated",
     "started_at", "ended_at",
     "loading_step", "loading_steps_total", "loading_phase", "loading_started_at",
 ];
+// Campos de fecha: el registro los entrega como luxon, el read como string.
+const CAMPOS_FECHA = ["started_at", "ended_at", "loading_started_at"];
 // Peso de la última muestra en el ritmo suavizado. Bajo = más estable.
 const ALFA = 0.3;
+
+/**
+ * Fase única de clientes: arma el staging por etapas y después procesa filas.
+ *
+ * Cada constructor de fase recibe los datos (registro + polling) y devuelve:
+ *   clave, titulo, corriendo, cargando, estadoFinal ('done'|'error'|'cancel'|null),
+ *   hecho, total, inicio, fin, unidad, etapa, paso, pasos, filasContadores.
+ */
+function faseClientes(d) {
+    const cargando = d.state === "loading";
+    return {
+        clave: "clientes",
+        titulo: null,
+        corriendo: ESTADOS_VIVOS.includes(d.state),
+        cargando,
+        estadoFinal: ["done", "error", "cancel"].includes(d.state) ? d.state : null,
+        hecho: d.processed,
+        total: d.total_rows,
+        inicio: cargando ? d.loading_started_at : d.started_at,
+        fin: d.ended_at,
+        unidad: _t("filas/s"),
+        etapa: d.loading_phase,
+        paso: d.loading_step,
+        pasos: d.loading_steps_total,
+        filasContadores: [
+            [
+                { etiqueta: _t("Creados"), valor: d.created, clase: "text-success" },
+                { etiqueta: _t("Actualizados"), valor: d.updated, clase: "" },
+                { etiqueta: _t("Ignorados"), valor: d.ignored, clase: "text-muted" },
+                { etiqueta: _t("Errores"), valor: d.errors, error: true },
+            ],
+            [
+                { etiqueta: _t("Tarjetas del pool"), valor: d.cards_from_pool, clase: "" },
+                { etiqueta: _t("Tarjetas creadas"), valor: d.cards_created, clase: "" },
+                { etiqueta: _t("Tarjetas actualizadas"), valor: d.cards_updated, clase: "" },
+            ],
+        ],
+    };
+}
+
+export const SECCIONES_POR_TIPO = {
+    clientes: (d) => [faseClientes(d)],
+};
 
 export class ForumImportProgress extends Component {
     static template = "forum_partner_import.LiveProgress";
@@ -57,12 +107,12 @@ export class ForumImportProgress extends Component {
         this.state = useState({
             vivo: null,        // último payload del polling, o null
             ahora: Date.now(),
-            ritmo: 0,          // filas por segundo, suavizado
+            ritmos: {},        // unidades por segundo, suavizado, por fase
         });
 
         this.timerPoll = null;
         this.timerReloj = null;
-        this.ultimaMuestra = null;   // {procesadas, t} de la lectura anterior
+        this.ultimasMuestras = {};   // {clave: {hecho, t}} de la lectura anterior
         this.yaRecargo = false;
         this.idActual = null;
         this.leyoInicial = false;
@@ -106,7 +156,7 @@ export class ForumImportProgress extends Component {
         if (id !== this.idActual) {
             this.idActual = id;
             this.leyoInicial = false;
-            this.ultimaMuestra = null;
+            this.ultimasMuestras = {};
             this.yaRecargo = false;
             this.ultimoEstadoRegistro = null;
             this.state.vivo = null;
@@ -120,7 +170,7 @@ export class ForumImportProgress extends Component {
             this.ultimoEstadoRegistro = estadoRegistro;
             if (this.state.vivo && this.state.vivo.state !== estadoRegistro) {
                 this.state.vivo = null;
-                this.ultimaMuestra = null;
+                this.ultimasMuestras = {};
                 this.leyoInicial = false;
             }
         }
@@ -140,7 +190,7 @@ export class ForumImportProgress extends Component {
 
         if (!corriendo) {
             this._pararTodo();
-            this.ultimaMuestra = null;
+            this.ultimasMuestras = {};
             return;
         }
         if (this.timerPoll) {
@@ -171,7 +221,7 @@ export class ForumImportProgress extends Component {
             return;
         }
         const datos = filas[0];
-        this._actualizarRitmo(datos.processed);
+        this._actualizarRitmos(datos);
         this.state.vivo = datos;
 
         if (!ESTADOS_VIVOS.includes(datos.state)) {
@@ -186,136 +236,148 @@ export class ForumImportProgress extends Component {
     }
 
     /**
-     * Ritmo real medido entre lecturas, suavizado.
+     * Ritmo real medido entre lecturas, suavizado, fase por fase.
      *
-     * Se usa el ritmo reciente y no el promedio global (procesadas / tiempo
-     * total) porque el promedio global queda contaminado si el proceso estuvo
-     * pausado o si se reanudó: daría un ETA pesimista que no se corresponde
-     * con lo que está pasando ahora.
+     * Se usa el ritmo reciente y no el promedio global (hecho / tiempo total)
+     * porque el promedio global queda contaminado si el proceso estuvo pausado
+     * o si se reanudó: daría un ETA pesimista que no se corresponde con lo que
+     * está pasando ahora. Solo se mide la fase que está corriendo.
      */
-    _actualizarRitmo(procesadas) {
+    _actualizarRitmos(datos) {
         const ahora = Date.now();
-        const previa = this.ultimaMuestra;
-        this.ultimaMuestra = { procesadas, t: ahora };
-        if (!previa) {
-            return;
+        for (const fase of this._fases(Object.assign({}, this._base(), datos))) {
+            if (!fase.corriendo || fase.cargando) {
+                continue;
+            }
+            const previa = this.ultimasMuestras[fase.clave];
+            this.ultimasMuestras[fase.clave] = { hecho: fase.hecho, t: ahora };
+            if (!previa) {
+                continue;
+            }
+            const dt = (ahora - previa.t) / 1000;
+            const dn = fase.hecho - previa.hecho;
+            if (dt <= 0 || dn < 0) {
+                continue;
+            }
+            const instantaneo = dn / dt;
+            const anterior = this.state.ritmos[fase.clave];
+            this.state.ritmos[fase.clave] = anterior
+                ? ALFA * instantaneo + (1 - ALFA) * anterior
+                : instantaneo;
         }
-        const dt = (ahora - previa.t) / 1000;
-        const dn = procesadas - previa.procesadas;
-        if (dt <= 0 || dn < 0) {
-            return;
-        }
-        const instantaneo = dn / dt;
-        this.state.ritmo = this.state.ritmo
-            ? ALFA * instantaneo + (1 - ALFA) * this.state.ritmo
-            : instantaneo;
     }
 
     // --- lo que se pinta ---------------------------------------------------
 
+    /** Valores del registro, con los enteros en 0 y las fechas tal cual. */
+    _base() {
+        const d = this.props.record.data;
+        const base = {};
+        for (const campo of CAMPOS) {
+            base[campo] = CAMPOS_FECHA.includes(campo) || typeof d[campo] === "string"
+                ? d[campo]
+                : d[campo] || 0;
+        }
+        return base;
+    }
+
     get datos() {
         // El registro es la base; lo del polling se superpone.
-        const d = this.props.record.data;
-        const base = {
-            state: d.state,
-            offset: d.offset || 0,
-            total_rows: d.total_rows || 0,
-            processed: d.processed || 0,
-            created: d.created || 0,
-            updated: d.updated || 0,
-            ignored: d.ignored || 0,
-            errors: d.errors || 0,
-            cards_from_pool: d.cards_from_pool || 0,
-            cards_created: d.cards_created || 0,
-            cards_updated: d.cards_updated || 0,
-            started_at: d.started_at,
-            ended_at: d.ended_at,
-            loading_step: d.loading_step || 0,
-            loading_steps_total: d.loading_steps_total || 0,
-            loading_phase: d.loading_phase || "",
-            loading_started_at: d.loading_started_at,
-        };
+        const base = this._base();
         return this.state.vivo ? Object.assign({}, base, this.state.vivo) : base;
+    }
+
+    _fases(d) {
+        const constructor = SECCIONES_POR_TIPO[d.import_type] || SECCIONES_POR_TIPO.clientes;
+        return constructor(d);
+    }
+
+    /** Fases listas para el template, con lo derivado ya calculado. */
+    get secciones() {
+        return this._fases(this.datos).map((fase) => this._decorar(fase));
     }
 
     get corriendo() {
         return ESTADOS_VIVOS.includes(this.datos.state);
     }
 
-    /** Armando el staging: la barra va por etapas, no por filas. */
-    get cargando() {
-        return this.datos.state === "loading";
+    _decorar(fase) {
+        const hayErrores = fase.filasContadores
+            .flat()
+            .some((c) => c.error && (c.valor || 0) > 0);
+        const segundos = this._segundos(fase);
+        return Object.assign({}, fase, {
+            porcentaje: this._porcentaje(fase),
+            detalleBarra: this._detalleBarra(fase),
+            hayErrores,
+            transcurrido: segundos === null ? "—" : this._hhmmss(segundos),
+            eta: this._eta(fase, segundos),
+            ritmoTexto: this._ritmoTexto(fase),
+            filasContadores: fase.filasContadores.map((fila) =>
+                fila.map((c) => Object.assign({}, c, {
+                    texto: this.fmt(c.valor),
+                    claseValor: c.error
+                        ? ((c.valor || 0) > 0 ? "fs-5 fw-bold text-danger" : "fs-5 fw-bold text-muted")
+                        : `fs-5 fw-bold ${c.clase || ""}`,
+                    claseCaja: c.error && (c.valor || 0) > 0
+                        ? "border rounded p-2 text-center border-danger"
+                        : "border rounded p-2 text-center",
+                }))
+            ),
+            claseColumna: (fila) => (fila.length === 4 ? "col-6 col-md-3"
+                : fila.length === 3 ? "col-6 col-md-4" : "col-6 col-md"),
+        });
     }
 
-    get termino() {
-        return ["done", "error", "cancel"].includes(this.datos.state);
-    }
-
-    get porcentaje() {
-        const d = this.datos;
-        if (this.cargando) {
+    _porcentaje(fase) {
+        if (fase.cargando) {
             // Durante el armado no hay filas procesadas que contar: la barra
             // avanza por etapas terminadas.
-            return d.loading_steps_total
-                ? Math.min(100, Math.round((d.loading_step / d.loading_steps_total) * 100))
+            return fase.pasos
+                ? Math.min(100, Math.round((fase.paso / fase.pasos) * 100))
                 : 0;
         }
-        return d.total_rows
-            ? Math.min(100, Math.round((d.processed / d.total_rows) * 100))
+        return fase.total
+            ? Math.min(100, Math.round((fase.hecho / fase.total) * 100))
             : 0;
     }
 
     /** Texto de la derecha de la barra: etapas mientras carga, filas al procesar. */
-    get detalleBarra() {
-        const d = this.datos;
-        if (this.cargando) {
-            return d.loading_steps_total
-                ? _t("etapa %s de %s", d.loading_step, d.loading_steps_total)
-                : "";
+    _detalleBarra(fase) {
+        if (fase.cargando) {
+            return fase.pasos ? _t("etapa %s de %s", fase.paso, fase.pasos) : "";
         }
-        return `${this.fmt(d.processed)} / ${this.fmt(d.total_rows)}`;
+        return `${this.fmt(fase.hecho)} / ${this.fmt(fase.total)}`;
     }
 
-    get hayErrores() {
-        return (this.datos.errors || 0) > 0;
-    }
-
-    /** Segundos transcurridos desde que arrancó (hasta el fin, si terminó). */
-    get segundosTranscurridos() {
-        const inicio = this._aMilis(
-            this.cargando ? this.datos.loading_started_at : this.datos.started_at);
+    /** Segundos transcurridos desde que arrancó la fase (hasta el fin, si terminó). */
+    _segundos(fase) {
+        const inicio = this._aMilis(fase.inicio);
         if (!inicio) {
             return null;
         }
-        const fin = this._aMilis(this.datos.ended_at) || this.state.ahora;
+        const fin = this._aMilis(fase.fin) || this.state.ahora;
         return Math.max(0, Math.round((fin - inicio) / 1000));
     }
 
-    get transcurrido() {
-        const s = this.segundosTranscurridos;
-        return s === null ? "—" : this._hhmmss(s);
-    }
-
     /** Estimación de lo que falta, con el ritmo medido entre lecturas. */
-    get eta() {
+    _eta(fase, segundos) {
         // Durante el armado del staging no hay ritmo por fila que proyectar:
         // mostrar un número inventado sería peor que no mostrar nada.
-        if (!this.corriendo || this.cargando) {
+        if (!fase.corriendo || fase.cargando) {
             return null;
         }
-        const { processed, total_rows } = this.datos;
-        const faltan = total_rows - processed;
+        const faltan = fase.total - fase.hecho;
         if (faltan <= 0) {
             return _t("terminando…");
         }
-        let ritmo = this.state.ritmo;
+        let ritmo = this.state.ritmos[fase.clave];
         if (!ritmo) {
             // Todavía no hay dos lecturas: se cae al promedio global.
-            const s = this.segundosTranscurridos;
-            if (!s || !processed) {
+            if (!segundos || !fase.hecho) {
                 return _t("calculando…");
             }
-            ritmo = processed / s;
+            ritmo = fase.hecho / segundos;
         }
         if (ritmo <= 0) {
             return _t("calculando…");
@@ -323,12 +385,12 @@ export class ForumImportProgress extends Component {
         return this._hhmmss(Math.round(faltan / ritmo));
     }
 
-    get ritmoTexto() {
-        const r = this.cargando ? 0 : this.state.ritmo;
+    _ritmoTexto(fase) {
+        const r = fase.cargando ? 0 : this.state.ritmos[fase.clave];
         if (!r) {
             return "";
         }
-        return _t("%s filas/s", Math.round(r).toLocaleString());
+        return `${Math.round(r).toLocaleString()} ${fase.unidad}`;
     }
 
     // --- helpers -----------------------------------------------------------

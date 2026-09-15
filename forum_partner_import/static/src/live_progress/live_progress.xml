@@ -3,111 +3,83 @@
 
   <t t-name="forum_partner_import.LiveProgress">
     <div class="o_forum_import_progress">
+      <t t-foreach="secciones" t-as="sec" t-key="sec.clave">
+        <div t-att-class="sec_last ? '' : 'mb-4 pb-3 border-bottom'">
 
-      <!-- Barra -->
-      <div class="d-flex align-items-center gap-2 mb-2">
-        <div class="progress flex-grow-1" style="height: 22px;">
-          <div class="progress-bar"
-               t-att-class="hayErrores ? 'bg-warning' : (corriendo ? 'progress-bar-striped progress-bar-animated bg-primary' : 'bg-success')"
-               role="progressbar"
-               t-attf-style="width: {{ porcentaje }}%;"
-               t-att-aria-valuenow="porcentaje"
-               aria-valuemin="0" aria-valuemax="100">
-            <span class="fw-bold"><t t-esc="porcentaje"/>%</span>
-          </div>
-        </div>
-        <span class="text-muted small text-nowrap" t-esc="detalleBarra"/>
-      </div>
+          <!-- Título de la fase: solo cuando el tipo tiene más de una -->
+          <h5 t-if="sec.titulo" class="mb-2" t-esc="sec.titulo"/>
 
-      <!-- Etapa actual, solo mientras se arma el staging -->
-      <div t-if="cargando and datos.loading_phase" class="alert alert-info py-2 mb-2">
-        <i class="fa fa-cog fa-spin me-1"/>
-        <strong t-esc="datos.loading_phase"/>
-        <span class="text-muted ms-2">
-          Se está armando la tabla de trabajo. Podés cerrar esta pantalla.
-        </span>
-      </div>
+          <!-- Barra -->
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <div class="progress flex-grow-1" style="height: 22px;">
+              <div class="progress-bar"
+                   t-att-class="sec.hayErrores ? 'bg-warning' : (sec.corriendo ? 'progress-bar-striped progress-bar-animated bg-primary' : 'bg-success')"
+                   role="progressbar"
+                   t-attf-style="width: {{ sec.porcentaje }}%;"
+                   t-att-aria-valuenow="sec.porcentaje"
+                   aria-valuemin="0" aria-valuemax="100">
+                <span class="fw-bold"><t t-esc="sec.porcentaje"/>%</span>
+              </div>
+            </div>
+            <span class="text-muted small text-nowrap" t-esc="sec.detalleBarra"/>
+          </div>
 
-      <!-- Cronómetro y ETA -->
-      <div class="d-flex flex-wrap gap-4 mb-2">
-        <div>
-          <span class="text-muted small d-block">Transcurrido</span>
-          <span class="fs-5 font-monospace" t-esc="transcurrido"/>
-        </div>
-        <div t-if="corriendo">
-          <span class="text-muted small d-block">Restante estimado</span>
-          <span class="fs-5 font-monospace text-primary" t-esc="eta"/>
-        </div>
-        <div t-if="corriendo and ritmoTexto">
-          <span class="text-muted small d-block">Ritmo</span>
-          <span class="fs-5 font-monospace" t-esc="ritmoTexto"/>
-        </div>
-        <div t-if="termino">
-          <span class="text-muted small d-block">Estado</span>
-          <span class="fs-5"
-                t-att-class="datos.state === 'done' ? 'text-success' : (datos.state === 'error' ? 'text-danger' : 'text-muted')">
-            <t t-if="datos.state === 'done'">Terminado</t>
-            <t t-elif="datos.state === 'error'">Con error</t>
-            <t t-else="">Cancelado</t>
-          </span>
-        </div>
-      </div>
+          <!-- Etapa actual, solo mientras se arma el staging -->
+          <div t-if="sec.cargando and sec.etapa" class="alert alert-info py-2 mb-2">
+            <i class="fa fa-cog fa-spin me-1"/>
+            <strong t-esc="sec.etapa"/>
+            <span class="text-muted ms-2">
+              Se está armando la tabla de trabajo. Podés cerrar esta pantalla.
+            </span>
+          </div>
 
-      <!-- Contadores: no aplican mientras se arma el staging -->
-      <div class="row g-2" t-if="!cargando">
-        <div class="col-6 col-md-3">
-          <div class="border rounded p-2 text-center">
-            <div class="text-muted small">Creados</div>
-            <div class="fs-5 fw-bold text-success" t-esc="fmt(datos.created)"/>
+          <!-- Cronómetro y ETA -->
+          <div class="d-flex flex-wrap gap-4 mb-2">
+            <div>
+              <span class="text-muted small d-block">Transcurrido</span>
+              <span class="fs-5 font-monospace" t-esc="sec.transcurrido"/>
+            </div>
+            <div t-if="sec.corriendo">
+              <span class="text-muted small d-block">Restante estimado</span>
+              <span class="fs-5 font-monospace text-primary" t-esc="sec.eta"/>
+            </div>
+            <div t-if="sec.corriendo and sec.ritmoTexto">
+              <span class="text-muted small d-block">Ritmo</span>
+              <span class="fs-5 font-monospace" t-esc="sec.ritmoTexto"/>
+            </div>
+            <div t-if="sec.estadoFinal">
+              <span class="text-muted small d-block">Estado</span>
+              <span class="fs-5"
+                    t-att-class="sec.estadoFinal === 'done' ? 'text-success' : (sec.estadoFinal === 'error' ? 'text-danger' : 'text-muted')">
+                <t t-if="sec.estadoFinal === 'done'">Terminado</t>
+                <t t-elif="sec.estadoFinal === 'error'">Con error</t>
+                <t t-else="">Cancelado</t>
+              </span>
+            </div>
           </div>
-        </div>
-        <div class="col-6 col-md-3">
-          <div class="border rounded p-2 text-center">
-            <div class="text-muted small">Actualizados</div>
-            <div class="fs-5 fw-bold" t-esc="fmt(datos.updated)"/>
-          </div>
-        </div>
-        <div class="col-6 col-md-3">
-          <div class="border rounded p-2 text-center">
-            <div class="text-muted small">Ignorados</div>
-            <div class="fs-5 fw-bold text-muted" t-esc="fmt(datos.ignored)"/>
-          </div>
-        </div>
-        <div class="col-6 col-md-3">
-          <div class="border rounded p-2 text-center"
-               t-att-class="hayErrores ? 'border-danger' : ''">
-            <div class="text-muted small">Errores</div>
-            <div t-att-class="hayErrores ? 'fs-5 fw-bold text-danger' : 'fs-5 fw-bold text-muted'"
-                 t-esc="fmt(datos.errors)"/>
-          </div>
-        </div>
-      </div>
 
-      <div class="row g-2 mt-1" t-if="!cargando">
-        <div class="col-6 col-md-4">
-          <div class="border rounded p-2 text-center">
-            <div class="text-muted small">Tarjetas del pool</div>
-            <div class="fs-5 fw-bold" t-esc="fmt(datos.cards_from_pool)"/>
-          </div>
-        </div>
-        <div class="col-6 col-md-4">
-          <div class="border rounded p-2 text-center">
-            <div class="text-muted small">Tarjetas creadas</div>
-            <div class="fs-5 fw-bold" t-esc="fmt(datos.cards_created)"/>
-          </div>
-        </div>
-        <div class="col-6 col-md-4">
-          <div class="border rounded p-2 text-center">
-            <div class="text-muted small">Tarjetas actualizadas</div>
-            <div class="fs-5 fw-bold" t-esc="fmt(datos.cards_updated)"/>
-          </div>
-        </div>
-      </div>
+          <!-- Contadores: no aplican mientras se arma el staging -->
+          <t t-if="!sec.cargando">
+            <t t-foreach="sec.filasContadores" t-as="fila" t-key="fila_index">
+              <div t-att-class="fila_index ? 'row g-2 mt-1' : 'row g-2'">
+                <t t-foreach="fila" t-as="c" t-key="c_index">
+                  <div t-att-class="sec.claseColumna(fila)">
+                    <div t-att-class="c.claseCaja">
+                      <div class="text-muted small" t-esc="c.etiqueta"/>
+                      <div t-att-class="c.claseValor" t-esc="c.texto"/>
+                    </div>
+                  </div>
+                </t>
+              </div>
+            </t>
+          </t>
 
-      <div t-if="corriendo and !cargando" class="text-muted small mt-2">
-        <i class="fa fa-refresh fa-spin me-1"/>
-        Actualizándose solo. Podés cerrar la pantalla: el proceso sigue en segundo plano.
-      </div>
+          <div t-if="sec.corriendo and !sec.cargando" class="text-muted small mt-2">
+            <i class="fa fa-refresh fa-spin me-1"/>
+            Actualizándose solo. Podés cerrar la pantalla: el proceso sigue en segundo plano.
+          </div>
+        </div>
+      </t>
     </div>
   </t>
 

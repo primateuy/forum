@@ -10,6 +10,13 @@ poder retomar desde el puntero si el proceso se corta.
 El ORM se usa solo para el modelo de control, la configuración y la generación
 de códigos de tarjeta (que se toma del método real de loyalty.card para que el
 formato sea idéntico al que produce la UI).
+
+El modelo sirve a más de un tipo de importación (`import_type`). Este archivo
+tiene la infraestructura común —staging, tandas, cron, puntero, avance— y el
+flujo de clientes. Cada tipo nuevo vive en su propio archivo con `_inherit` y
+engancha en los métodos de despacho (`_ruta_relativa_archivo`,
+`_pasos_de_carga`, `_procesar_tanda`, …) mirando su `import_type` y cayendo a
+`super()` para el resto: el flujo de clientes no se entera de que existen.
 """
 import csv
 import logging
@@ -59,6 +66,12 @@ class ForumImportBatch(models.Model):
     name = fields.Char(
         string="Nombre", required=True, default="Importación de clientes FORUM",
     )
+    import_type = fields.Selection(
+        [("clientes", "Clientes y puntos")],
+        string="Tipo de importación", default="clientes", required=True,
+        help="Define qué archivo se lee, qué configuración pide el formulario y "
+             "qué hace cada tanda.",
+    )
     state = fields.Selection(
         [
             ("draft", "Borrador"),
@@ -88,36 +101,42 @@ class ForumImportBatch(models.Model):
     file_ok = fields.Boolean(string="Archivo accesible", compute="_compute_file_info")
     file_info = fields.Char(string="Diagnóstico del archivo", compute="_compute_file_info")
 
-    def _ruta_absoluta_csv(self):
-        """Resuelve la ruta del CSV en este servidor.
+    def _ruta_relativa_archivo(self):
+        """Archivo de origen del tipo de importación, relativo al módulo."""
+        self.ensure_one()
+        return RUTA_CSV
+
+    def _ruta_absoluta_archivo(self):
+        """Resuelve la ruta del archivo de origen en este servidor.
 
         `tools.file_path` es la utilidad vigente en Odoo 17 (`get_module_resource`
         ya no existe). La ruta absoluta se resuelve siempre en runtime y no se
-        guarda en ningún lado: lo único que el módulo conoce es RUTA_CSV.
+        guarda en ningún lado: lo único que el módulo conoce es la ruta relativa.
         """
-        return tools.file_path(RUTA_CSV)
+        return tools.file_path(self._ruta_relativa_archivo())
 
-    @api.depends("state")
+    @api.depends("state", "import_type")
     def _compute_file_info(self):
-        """Valida que el CSV del módulo exista y se pueda leer."""
+        """Valida que el archivo del módulo exista y se pueda leer."""
         for batch in self:
+            relativa = batch._ruta_relativa_archivo()
             resuelta, ok, info = False, False, ""
             try:
-                resuelta = self._ruta_absoluta_csv()
+                resuelta = batch._ruta_absoluta_archivo()
             except Exception:
                 # El texto de la excepción incluye rutas de la instalación: no
                 # se propaga, porque lo accionable es qué archivo falta.
-                info = _("No se encontró %s dentro del módulo.") % RUTA_CSV
+                info = _("No se encontró %s dentro del módulo.") % relativa
             else:
                 if not os.path.isfile(resuelta):
-                    info = _("%s existe en el módulo pero no es un archivo.") % RUTA_CSV
+                    info = _("%s existe en el módulo pero no es un archivo.") % relativa
                 elif not os.access(resuelta, os.R_OK):
-                    info = _("%s no es legible por el usuario del servidor.") % RUTA_CSV
+                    info = _("%s no es legible por el usuario del servidor.") % relativa
                 else:
                     tam = os.path.getsize(resuelta)
                     ok = True
                     info = _("Legible. %.1f MB.") % (tam / 1024.0 / 1024.0)
-            batch.file_path = RUTA_CSV
+            batch.file_path = relativa
             batch.file_path_resolved = resuelta
             batch.file_ok = ok
             batch.file_info = info
@@ -125,18 +144,21 @@ class ForumImportBatch(models.Model):
     # ------------------------------------------------------------------
     # Configuración
     # ------------------------------------------------------------------
+    # Obligatorios solo para clientes: la vista los exige según el tipo y
+    # `_validar_configuracion` lo controla antes de cargar. En Python no pueden
+    # ser `required`, porque un batch de otro tipo no los tiene.
     reference_partner_id = fields.Many2one(
-        "res.partner", string="Partner de referencia", required=True,
+        "res.partner", string="Partner de referencia", ondelete="restrict",
         help="De este contacto se toman los campos que el CSV no trae: compañía, "
              "idioma, zona horaria, país, y las propiedades por compañía si las tuviera.",
     )
     loyalty_program_id = fields.Many2one(
-        "loyalty.program", string="Programa de lealtad", required=True,
+        "loyalty.program", string="Programa de lealtad", ondelete="restrict",
         domain="[('program_type', '=', 'loyalty')]",
         help="Programa contra el que se asignan y crean las tarjetas.",
     )
     doc_type_id = fields.Many2one(
-        "l10n_latam.identification.type", string="Tipo de documento", required=True,
+        "l10n_latam.identification.type", string="Tipo de documento", ondelete="restrict",
         help="Tipo con el que se guarda la cédula en el campo NIF/vat del contacto.",
     )
     batch_size = fields.Integer(
@@ -259,23 +281,41 @@ class ForumImportBatch(models.Model):
             raise UserError(_("Solo se puede cargar el staging desde Borrador."))
         if not self.file_ok:
             raise UserError(_("El archivo no está accesible: %s") % self.file_info)
+        self._validar_configuracion()
 
-        self.write({
-            "state": "loading",
-            "loading_step": 0,
-            "loading_steps_total": len(self._pasos_de_carga()),
-            "loading_phase": _("En cola…"),
-            "loading_started_at": fields.Datetime.now(),
-            "total_rows": 0, "offset": 0, "processed": 0,
-            "created": 0, "updated": 0, "ignored": 0, "errors": 0,
-            "cards_from_pool": 0, "cards_created": 0, "cards_updated": 0,
-            "started_at": False, "ended_at": False,
-        })
+        self.write(dict(
+            self._valores_reset_carga(),
+            state="loading",
+            loading_step=0,
+            loading_steps_total=len(self._pasos_de_carga()),
+            loading_phase=_("En cola…"),
+            loading_started_at=fields.Datetime.now(),
+        ))
         self._encolar_cron()
         self.env.cr.commit()
         # Sin acción de retorno a propósito: así el formulario recarga el
         # registro y el widget arranca viendo el estado 'loading'.
         return True
+
+    def _validar_configuracion(self):
+        """Controla la configuración que el tipo necesita antes de cargar."""
+        self.ensure_one()
+        faltan = [
+            self._fields[campo].string
+            for campo in ("reference_partner_id", "loyalty_program_id", "doc_type_id")
+            if not self[campo]
+        ]
+        if faltan:
+            raise UserError(_("Falta completar: %s.") % ", ".join(faltan))
+
+    def _valores_reset_carga(self):
+        """Contadores y marcas que se ponen en cero al (re)cargar el staging."""
+        return {
+            "total_rows": 0, "offset": 0, "processed": 0,
+            "created": 0, "updated": 0, "ignored": 0, "errors": 0,
+            "cards_from_pool": 0, "cards_created": 0, "cards_updated": 0,
+            "started_at": False, "ended_at": False,
+        }
 
     def _pasos_de_carga(self):
         """Etapas del armado del staging, en orden.
@@ -392,7 +432,7 @@ class ForumImportBatch(models.Model):
         en memoria. Los 81 MB pasan como flujo.
         """
         t = self._staging_name()
-        ruta = self._ruta_absoluta_csv()
+        ruta = self._ruta_absoluta_archivo()
         sql = """
             COPY {t} ({cols})
             FROM STDIN
@@ -713,9 +753,7 @@ class ForumImportBatch(models.Model):
         if self.batch_size < 1:
             raise UserError(_("El tamaño de tanda debe ser mayor a cero."))
 
-        # Paso previo obligatorio: si el backup falla, no se arranca.
-        if not self.backup_path or not os.path.isfile(self.backup_path):
-            self._hacer_backup_tarjetas()
+        self._antes_de_iniciar()
 
         vals = {"state": "processing", "ended_at": False}
         if not self.started_at:
@@ -731,6 +769,12 @@ class ForumImportBatch(models.Model):
         # 'processing' y arranque el polling. Con una notificación de por medio
         # el registro del cliente se quedaba en 'ready' y la barra no se movía.
         return True
+
+    def _antes_de_iniciar(self):
+        """Paso previo obligatorio de clientes: si el backup falla, no se arranca."""
+        self.ensure_one()
+        if not self.backup_path or not os.path.isfile(self.backup_path):
+            self._hacer_backup_tarjetas()
 
     def action_cancelar(self):
         self.ensure_one()
