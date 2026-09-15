@@ -1,7 +1,19 @@
-# Importación masiva de clientes FORUM
+# Importación masiva FORUM: clientes y ajuste de inventario
 
-Carga ~646.000 clientes y sus puntos de lealtad desde un CSV incluido en el
-módulo, usando SQL directo por tandas para no tumbar el servidor.
+El batch (`forum.import.batch`) tiene un **Tipo de importación**:
+
+- **Clientes y puntos** — carga ~646.000 clientes y sus puntos de lealtad desde
+  un CSV incluido en el módulo, usando SQL directo por tandas para no tumbar el
+  servidor. Es todo lo que sigue hasta la sección *Ajuste de inventario*.
+- **Ajuste de inventario** — carga el conteo físico de 39 sucursales desde un
+  xlsx de doble entrada y lo aplica por tandas. Ver
+  [*Ajuste de inventario*](#ajuste-de-inventario) al final.
+
+Los dos comparten la infraestructura: tabla staging UNLOGGED, tandas con commit,
+cron que se re-dispara con `_trigger()`, puntero para retomar y el widget de
+avance en vivo. Cada tipo engancha en métodos de despacho del modelo base
+(`_ruta_relativa_archivo`, `_pasos_de_carga`, `_procesar_tanda`, …) y cae a
+`super()` para el resto.
 
 ## Por qué SQL y no el ORM
 
@@ -25,7 +37,8 @@ de códigos de tarjeta.
 
 ## Flujo de uso
 
-1. **Contactos → Importación FORUM → Crear.**
+1. **Contactos → Importación FORUM → Crear**, con Tipo de importación
+   **Clientes y puntos** (es el default).
 2. Completar **Partner de referencia** (obligatorio, sin default), **Programa de
    lealtad** y **Tipo de documento**.
 3. **1. Cargar staging** — lee el CSV, crea `forum_import_staging_<id>` y
@@ -468,3 +481,262 @@ en memoria.
 Para reemplazarlo por una versión nueva, pisar el archivo respetando el nombre
 (y actualizar el sha256 de arriba), o cambiar `NOMBRE_CSV` en
 `models/forum_import_batch.py`.
+
+---
+
+# Ajuste de inventario
+
+Ajuste de inventario multi-sucursal a partir del conteo físico del 12/09/2026.
+Código en `models/forum_import_batch_inventario.py` (carga) y
+`models/forum_import_batch_inventario_apply.py` (aplicación).
+
+Son **dos fases**, cada una con su botón, su puntero y su barra en el widget:
+
+| fase | qué hace | cómo | toca contabilidad |
+|---|---|---|---|
+| 1. Carga del conteo | escribe la cantidad contada en cada quant, como si alguien la tipeara en *Inventario físico* | SQL por tandas | no |
+| 2. Aplicación | crea el movimiento de cada quant con diferencia, su valuación y su asiento | ORM (`_apply_inventory`) por tandas | sí |
+
+La fase 1 se puede revisar y repetir sin consecuencias. La fase 2 es la que
+mueve stock y valuación, y **no se hace por SQL**: las capas FIFO, la valuación
+y los asientos los resuelve el ORM.
+
+## Flujo de uso
+
+1. **Contactos → Importación FORUM → Crear**, Tipo de importación **Ajuste de
+   inventario**. Completar **Responsable del conteo** (tiene que ser
+   administrador de inventario: es el usuario con el que se aplica) y, si hace
+   falta, **Fecha contable del ajuste** (ver abajo).
+2. **1. Cargar staging** — lee el xlsx y arma `forum_import_staging_<id>`. El log
+   resume acciones, ubicaciones por compañía y cada motivo de ignorado/error.
+3. **2. Cargar conteo en los quants** — fase 1.
+4. Revisar. `Exportar errores e ignoradas` baja un CSV con fila y columna del
+   Excel, el ID externo y el motivo de cada celda que no se va a tocar.
+5. **3. Aplicar ajuste por tandas** — fase 2. **De noche, con las sucursales
+   cerradas** (ver *Requisitos operativos*).
+
+**Medido sobre una copia de o17_support_forum (2026-09-15):**
+
+| etapa | tiempo |
+|---|---|
+| Armado del staging (lectura del xlsx + pre-proceso) | 25,7 s |
+| Fase 1: 930.892 celdas en tandas de 5.000 | 37 s |
+| Fase 2: tandas de 2.000 quants | ~60 s por tanda (~30 ms por quant) |
+
+## El archivo
+
+`data/ajuste_inventario_20260912.xlsx`, copia del "Cuadro de doble entrada -
+Ajuste de Inventario.xlsx" original. Como el CSV de clientes: versionado con el
+código, ruta relativa al módulo resuelta con `odoo.tools.file_path`, y el form
+valida que exista y sea legible antes de dejar cargar.
+
+```
+sha256  ff597ab900ab0d0c0ed39cb3b0fcd3ef7a91ddbe680b1aa666cea6a2e666d61b
+tamaño  8.290.009 bytes
+```
+
+Es una **tabla de doble entrada**, primera hoja:
+
+| fila | contenido |
+|---|---|
+| 1 | nombre del almacén, desde la columna F (39 sucursales) |
+| 2 | `complete_name` de la ubicación de existencias de cada sucursal (`POLO/Existencias`, `032/PAYSANDU/Existencias`, …). **Es la clave de matching** |
+| 3 | cabecera de producto: `id` (ID externo), `default_code`, `name`, `product_tmpl_id/name`, `product_template_variant_value_ids` |
+| 4+ | una variante por fila (23.870). En el cruce con cada columna, la cantidad contada |
+
+Se lee con **openpyxl en modo `read_only`**, fila por fila, sin armar la hoja en
+memoria, y se **des-pivotea**: cada celda con valor pasa a ser una fila de staging
+(producto, ubicación, cantidad), que entra con un solo `COPY`. openpyxl no está
+en los requirements de Odoo 17 (base_import lo importa como opcional): está
+declarado en `external_dependencies`, así que el módulo no instala sin él.
+
+El formato se valida antes de cargar nada: `id` en A3, ubicaciones no vacías y
+sin repetir en la fila 2, y ninguna cantidad en una columna sin ubicación.
+
+## Resolución
+
+Todo set-based, en el armado del staging:
+
+1. **Ubicaciones** — fila 2 contra `stock_location.complete_name` exacto, entre
+   las activas. **Bloqueante**: si una sola no resuelve, no es interna, está
+   repetida o no tiene compañía, no se carga nada y el log dice cuáles.
+2. **Productos** — el ID externo se separa en módulo y nombre y se busca en
+   `ir_model_data` (`model = 'product.product'`). **No** se usa el número
+   embebido en `__export__.product_product_<n>_…`: el id externo es la fuente de
+   verdad.
+3. **Filtro** — se **ignoran con motivo** (no son error) las variantes no
+   almacenables (`type <> 'product'`: consumibles, servicios) y las que tienen
+   seguimiento por lote o número de serie, que no se pueden ajustar en un quant
+   sin lote.
+4. **Errores** — ID externo inexistente, ID externo de otro modelo, cantidad no
+   numérica o negativa, producto de otra compañía que la ubicación, y el mismo
+   par producto/ubicación repetido en el archivo (gana la primera fila).
+5. **Quant existente** — el quant sin lote, paquete ni propietario de cada par.
+
+En la base de prueba: **313 IDs externos no existen** (productos creados después
+del dump; 12.207 celdas, quedan como error) y **16 variantes no son almacenables**
+(15 servicios —descuentos, gastos de hr_expense, la línea de descuento de
+pos_forum_birthday_promo— y el consumible del POS; 624 celdas ignoradas). Con un
+dump fresco de producción esos números cambian: el módulo no los tiene fijos.
+
+### La semántica del 0
+
+**Al revés que en clientes.** En clientes un 0 de puntos es "no tocar". Acá un 0
+es un dato: *en esta sucursal este producto no hay*.
+
+- **Celda vacía** → no genera línea: esa sucursal no se toca para ese producto.
+- **Celda con 0 y el producto tiene quant** → el quant queda contado en 0 y el
+  ajuste lo lleva a 0.
+- **Celda con 0 y no hay quant** → *en cero sin quant*: ya está en cero, no se
+  crea nada. En la aplicación se vuelve a mirar por si apareció un quant.
+
+### Multicompañía
+
+Los nombres de almacén traen razones sociales distintas (Neratur, Faringol,
+Gaimta, Aweryl, Matias Coore), pero **en la base las 39 ubicaciones y sus
+almacenes son de la compañía 1 (FORUM, polo oeste)**. La razón social es solo
+informativa: FORUM es una compañía operativa que explota tiendas de varios RUTs.
+
+Igual el módulo **no asume la compañía**: cada celda toma el `company_id` de su
+ubicación (el quant lo necesita igual al de la ubicación, es un related stored)
+y la aplicación agrupa por compañía para valuar con la correcta. El log de carga
+muestra el reparto de ubicaciones por compañía.
+
+## Fase 1: carga del conteo
+
+Upsert de `stock_quant` por tandas de celdas. En cada tanda:
+
+1. `LOCK TABLE stock_quant IN SHARE ROW EXCLUSIVE MODE`, décimas de segundo. Sin
+   esto, una venta del POS podría crear el quant del mismo par entre el
+   "¿existe?" y el INSERT: el par quedaría partido en dos quants, el ajuste
+   corregiría uno solo y el total no daría el contado. `stock_quant` **no tiene
+   constraint de unicidad**.
+2. Se vuelve a buscar el quant de cada par (pudo aparecer o desaparecer desde el
+   pre-proceso). Si hay más de uno, la celda queda como error.
+3. Existe → `inventory_quantity` = contado, `inventory_diff_quantity`,
+   `inventory_quantity_set`, `inventory_date`, `user_id` y `reason`.
+4. No existe y el contado no es 0 → `INSERT` con `quantity = 0` (stock
+   desconocido: para el sistema es 0) y los NOT NULL y stored del modelo real:
+   `company_id` y `storage_category_id` de la ubicación, `reserved_quantity`,
+   `in_date`, y lo que agregan otros módulos (la moneda de reportes de
+   tchistorico, `reason` de stock_change_qty_reason). Esos extras no están
+   listados a mano: se leen de `stock.quant._fields`.
+
+**Idempotente.** Probado: una segunda carga del mismo archivo sobre la misma base
+dio 0 quants creados, 835.309 actualizados y el mismo total de quants, sin
+duplicados.
+
+**Motivo.** `stock_change_qty_reason` está instalado: el campo `reason` del quant
+viaja al origen de cada movimiento. Se completa solo con
+`Ajuste inventario FORUM 12/09/2026 - batch <id>` si no se escribe otro.
+
+## Fase 2: aplicación
+
+Lo mismo que el botón *Aplicar* de Inventario físico, pero por tandas:
+
+- **Una tanda por corrida del cron** (default 2.000 quants), con commit, y
+  `_trigger()` para la siguiente.
+- **Ordenado por ubicación** (columna del Excel): cada sucursal queda bloqueada
+  en un solo tramo.
+- En cada tanda se bloquean los quants (`FOR NO KEY UPDATE`), se pone el contado
+  y **se recalcula la diferencia contra la cantidad de ese momento**.
+- Sin diferencia → se limpia el conteo, sin movimiento. Con diferencia →
+  `_apply_inventory()` de toda la tanda; si falla, **quant por quant, cada uno en
+  su savepoint**, y solo los que fallan quedan como error (con el mensaje en
+  staging y en el export). Esos quants conservan el conteo en Inventario físico.
+- Si un par tiene más de un quant, se fusionan con `_merge_quants` del core
+  antes de ajustar.
+- Un choque de concurrencia (serialización, deadlock) **reintenta la tanda**
+  hasta 3 veces antes de marcar error: la tanda se revierte entera, así que
+  repetirla es seguro.
+
+**Verificado** sobre las primeras tandas: las 5.556 celdas aplicadas quedaron
+con cantidad = contado, conteo limpio, el motivo en el origen del movimiento y
+su capa de valuación; 11 asientos para los productos con costo.
+
+**Cancelar** durante la aplicación es un *pedido*: la tanda en curso termina y
+lo ya aplicado queda. No escribe la fila del batch a propósito: la tanda en curso
+la escribe al terminar, y dos escrituras concurrentes sobre la misma fila hacían
+fallar el commit de la tanda entera (pasó en la prueba: se perdía un minuto de
+trabajo y el batch quedaba en error). **Reanudar** retoma desde el puntero. Si el
+servidor se cae a mitad de tanda, esa tanda se revierte y el cron la retoma solo
+(probado: puntero en 6.000, 5.556 movimientos, coherente).
+
+### Fecha contable
+
+**Fecha contable del ajuste** (`inventory_accounting_date`): si está vacía, los
+movimientos y asientos llevan la fecha en que se aplica; si tiene valor, se
+aplica con `accounting_date` (el mismo mecanismo de *Inventario físico*). **La
+decide el contador del cliente antes de producción.**
+
+### Asientos
+
+Cada movimiento con valor en una categoría con valuación automática genera **un
+asiento por quant**, en el diario de stock. En la base de prueba casi ningún
+producto tiene costo (69 de 23.541), así que casi no hay asientos; con costos
+cargados pueden ser cientos de miles. **Pendiente de confirmación del cliente.**
+`aml_secondary_currency` exige tipo de cambio de la moneda secundaria para la
+fecha del asiento: en producción lo carga el cron del BCU; en la copia de prueba
+hubo que cargar el del día a mano.
+
+### Cuánto tarda, y por qué
+
+~30 ms por quant en la copia de prueba, o sea **~7-8 horas para las 918.061
+celdas**. El que pesa es **`tchistorico`**: `stock.quant.value_report` es un
+calculado stored que depende de las capas de valuación **del producto**, así que
+cada movimiento recalcula todos los quants de ese producto (~35 por producto
+después de la carga) y cada uno hace su propia búsqueda. Perfilado sobre 200
+quants, con rollback:
+
+| | por quant | consultas |
+|---|---|---|
+| tal cual | 69 ms (con profiler) | 10.194 |
+| sin el recompute de `value_report` | 17 ms | 3.374 |
+
+No se tocó `tchistorico`. Si la ventana nocturna no alcanza, las opciones son
+diferir ese recompute durante el ajuste (cambio en `general_primate`) o partir
+la aplicación en varias noches: el puntero y **Reanudar** lo permiten, y cada
+tanda deja la base consistente.
+
+## Requisitos operativos
+
+- **De noche, con las sucursales cerradas.** Cada tanda de la aplicación bloquea
+  los quants que ajusta durante ~1 minuto y compite con el POS por esos locks.
+- **Carga y aplicación en la misma ventana.** La aplicación deja la cantidad
+  final igual al contado. **Limitación explícita:** lo que se venda entre el
+  conteo físico y la aplicación queda absorbido por el ajuste.
+- **Dump verificado antes de aplicar** (mismo procedimiento que en clientes). La
+  aplicación crea movimientos, valuación y asientos: la vuelta atrás real es
+  restaurar el dump.
+- **Responsable del conteo** administrador de inventario.
+
+## Alcance explícito del ajuste
+
+Lo que **no** toca, a propósito:
+
+- **Variantes no almacenables y con lote/serie** — ignoradas con motivo.
+- **Quants con paquete o propietario** — el conteo va al quant *suelto* de la
+  ubicación. Un producto que además tenga stock en un paquete en esa ubicación
+  queda con el contado **más** lo del paquete (23 quants con paquete en la base
+  de prueba).
+- **Ubicaciones que no están en el archivo** — sububicaciones (ej.
+  `POLO/Existencias/Cajas Cerradas`), `POLO/Entrada`, las salidas, "Auditoría -
+  Diferencias", los almacenes de otras compañías: nada de eso se ajusta.
+- **Celdas vacías** — esa sucursal no se toca para ese producto.
+
+Diferencia menor con el botón de la UI: un quant **sin diferencia** se limpia sin
+crear el movimiento de cantidad 0 ("Product Quantity Confirmed") que crearía
+*Aplicar*, así que su fecha de último conteo no se actualiza.
+
+## Checklist pre-producción
+
+1. **Dump verificado** (ver el de clientes).
+2. `python3 -c "import openpyxl"` en el entorno del servidor.
+3. `shasum -a 256 forum_partner_import/data/ajuste_inventario_20260912.xlsx`
+   contra la huella de arriba.
+4. Tipo de cambio de la moneda secundaria cargado para la fecha contable.
+5. Después de cargar el staging, revisar el log y el export: IDs no encontrados
+   (en producción deberían ser 0), ubicaciones por compañía, no almacenables.
+6. Confirmar con el contador la fecha contable y los asientos.
+7. Estimar la aplicación con las primeras tandas (el widget muestra ritmo y ETA)
+   y decidir si entra en una noche.
