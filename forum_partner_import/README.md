@@ -798,9 +798,13 @@ tal cual, 17 ms sin ese recompute). El motor SQL lo hace una sola vez al final.
 
 ## Requisitos operativos
 
-- **De noche, con las sucursales cerradas.** Cada tanda de la aplicación bloquea
-  las tablas de quants y de capas de valuación durante ~16 s: nadie puede vender
-  ni recibir mientras dura.
+- **De noche, con las sucursales cerradas y el POS sin operar.** Cada tanda de la
+  aplicación toma `LOCK TABLE` sobre `stock_quant` y `stock_valuation_layer` en
+  modo SHARE ROW EXCLUSIVE y lo mantiene **~16 s, toda la tanda**. Mientras dura,
+  **ninguna caja puede cerrar una venta ni nadie puede recibir mercadería**: esas
+  operaciones quedan esperando el lock. Son 19 tandas seguidas para las ~918.000
+  celdas, así que en la práctica el sistema está tomado los ~4 minutos que duran
+  las tandas (más ~1,5 min de recálculos finales, esos sin lock).
 - **Carga y aplicación en la misma ventana.** La aplicación deja la cantidad
   final igual al contado. **Limitación explícita:** lo que se venda entre el
   conteo físico y la aplicación queda absorbido por el ajuste.
