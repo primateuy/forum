@@ -922,21 +922,54 @@ fecha exacta** del asiento, así que la fase 3 lo valida antes de arrancar (ver
 
 ### Cuánto tarda
 
-Aplicación completa por el motor sobre la copia (2026-09-15): **5 min 37 s** para
-904.061 celdas —las 918.061 menos 14.000 que ya había aplicado la versión ORM—:
-~4 min de tandas (19 tandas de 50.000, 12-16 s cada una) y 96 s de recálculos
-finales sobre 23.462 productos. Extrapolado a las 918.061: ~5 min 40 s. 0 errores.
-Después: stock = contado en las 918.061 celdas, ningún quant con conteo pendiente,
-ningún par con quants duplicados.
+Medido sobre `o17_inv_med` (copia con el peor caso: los 23.541 productos del
+archivo con costo y categoría en tiempo real).
 
-Por tanda de 50.000 celdas: clasificación 0,5 s, réplica SQL ~8,5 s, camino ORM
-~6,5 s (unas 275 celdas), registro 0,5 s. La clasificación arrancó en 33,7 s con
-subconsultas correlacionadas por producto; set-based quedó en 0,5 s.
+**Fase 2, aplicación: 12 min 30 s** para las **918.061 celdas**, 19 tandas de
+50.000, **0 errores**. Genera 834.945 quants ajustados, 827.657 capas con valor y
+**827.657 asientos en borrador**. Solo **1.065 celdas (0,12 %)** van por el
+camino ORM. Después: **stock = contado en las 835.309 celdas** y el cuadre
+contable exacto (asientos 11.575.520.446,68 = suma de |valor| de las capas).
 
-Por qué la versión ORM tardaba horas: `stock.quant.value_report` (tchistorico)
-depende de las capas **del producto**, así que cada movimiento recalculaba todos
-los quants del producto con una búsqueda por quant (perfilado: 69 ms por quant
-tal cual, 17 ms sin ese recompute). El motor SQL lo hace una sola vez al final.
+Por tanda de 50.000: ~41 s. Con la valuación y los asientos adentro, la tanda
+pasó de ~16 s (versión sin valuar) a ~41 s.
+
+**Fase 3, publicación: ~3 horas** para los 827.657 asientos, a **13,35 ms por
+asiento**.
+
+🔴 **Una corrección importante sobre este número.** La primera medición dio
+4,95 ms/asiento y se hizo **sobre una tabla con 200 asientos**: no se sostiene a
+escala. Con la tabla real (829.000 asientos y 1,66 millones de líneas) el costo
+es casi tres veces mayor y la curva por tamaño de tanda es **plana**:
+
+| asientos por tanda | ms/asiento (tabla llena) | para 817.007 asientos |
+|---|---|---|
+| 150 | 14,12 | 192 min |
+| **500** (default) | **13,35** | **182 min** |
+| 1.000 | 13,50 | 184 min |
+| 2.000 | 14,21 | 193 min |
+
+**Si se vuelve a medir, tiene que ser con la tabla en volumen real.**
+
+Dónde se va el tiempo, perfilado por componente:
+
+| componente | costo | qué se hizo |
+|---|---|---|
+| `action_post` con el nombre ya puesto | **12,37 ms/asiento** | es el piso del ORM: irreducible sin tocar la numeración |
+| la numeración del diario | ~2,5 ms/asiento | `VACUUM ANALYZE` de `account_move` devolvió el index-only scan de `_get_last_sequence` (18,3 ms y 15.693 *heap fetches* → 1,7 ms y 0) |
+| `search_count` de pendientes **por tanda** | 142 ms (48 con rango) | **eliminado**: eran ~13 min de puro conteo. Ojo que `search(limit=1)` es PEOR (241 ms): sin `order` el planner elige mal |
+| búsqueda de la tanda | 7,1 ms → **0,7 ms** | se usa el rango de ids en vez de traversar `stock_move_id.is_inventory` |
+
+O sea: **el cuello es el `_post` del ORM, no el bucle del módulo**, y por eso las
+~3 h son estructurales. Publicar es lo que asigna la numeración correlativa del
+diario, así que no se reemplaza por SQL. La publicación **no toma el lock de
+quants**: puede correr con el sistema en uso, incluso al día siguiente.
+
+Por qué la primera versión (todo por ORM) tardaba horas ya en el stock:
+`stock.quant.value_report` (tchistorico) depende de las capas **del producto**,
+así que cada movimiento recalculaba todos los quants del producto con una
+búsqueda por quant (perfilado: 69 ms por quant tal cual, 17 ms sin ese
+recompute). El motor SQL lo hace una sola vez al final.
 
 ## Requisitos operativos
 
