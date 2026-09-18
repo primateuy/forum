@@ -830,34 +830,67 @@ habilitada.
 
 ### Paridad con el ORM (criterio de aceptación)
 
-Mismo subconjunto aplicado por el ORM puro en una copia y por el motor en otra
-(dos copias de la misma base), y además dentro de una misma base con rollback
-para iterar: **2.356 celdas de 61 productos** —altas con y sin capas, subas,
-bajas FIFO, quants negativos, contado 0, diferencia 0, productos sin quant de
-ajuste, reservas, costo en tiempo real con entradas y salidas (104 asientos),
-capas negativas—. Diff campo a campo de `stock_move`, `stock_move_line`,
-`stock_valuation_layer`, `stock_quant`, `account_move`, `account_move_line`,
-productos, plantillas, puntos de reorden, ubicaciones e `ir_property`,
-normalizando ids nuevos (por clave natural), timestamps y numeración de
-secuencias, y comparando **la representación exacta de cada numérico**.
+**Cómo se hace.** Dos **copias gemelas** de la misma base pre-apply
+(`o17_par_sql` y `o17_par_orm`), preparadas con el mismo script: neutralizadas
+(correo, crons y WMS), con el peor caso de costeo cargado y la fase 1 corrida.
+En una se aplica el subconjunto por el **camino SQL** y en la otra **el mismo
+subconjunto** por `_apply_inventory`; cada lado vuelca a un archivo lo que
+generó, y un comparador diffea los dos archivos **campo a campo**.
 
-Resultado: **0 diferencias** en todas las tablas salvo dos cosas de conciliación
-contable, explicadas:
+Se hace en dos bases y no con savepoints en una sola porque el diff cruzado
+entre bases no se puede hacer en una sesión de Postgres, y porque una gemela por
+camino garantiza que ningún lado vea estado del otro.
 
-- `matching_number` es la numeración de la conciliación parcial (sale de su id).
-- Cuando dos líneas de asiento del mismo producto y cuenta tienen **el mismo
-  importe**, cuál de las dos queda conciliada depende del orden de un `set` de
-  ids en `_validate_accounting_entries`; los ids cambian entre corridas. Probado:
-  en las copias salió idéntico, con rollback salió intercambiado (y en dos
-  corridas, entre pares distintos). Agregado por (producto, cuenta) —importes,
-  conciliadas y residuales— es idéntico.
+**El subconjunto lo elige una consulta determinista e idéntica en las dos**:
+productos que el SQL sí maneja (los del camino ORM van por ORM en las dos
+gemelas y coincidirían por construcción, no probarían nada), con **entradas,
+salidas y contado 0** entre sus celdas, y **solo celdas con quant**. Ese último
+filtro no es un detalle: una celda de contado 0 sin quant la descarta el SQL y en
+cambio el ORM le crea el quant y un movimiento de **cantidad 0**; sin el filtro
+el diff acusa cientos de filas de diferencia que son del arnés y no del motor.
 
-Diferencias que aparecieron en el camino y se corrigieron: escala de los
-numéricos, `priority` sin valor, `write_uid` del camino ORM, quant de ajuste
-nuevo (`inventory_diff_quantity` y `unit_value_report`) y la reescritura de
-valores iguales. Una observación de fondo: la escala guardada de un numérico
-que **no cambia** no es determinística ni en el propio ORM (depende de si el
-valor estaba en caché).
+**Qué se normaliza, y por qué.** Los ids y los timestamps, porque son
+autogenerados; la **fecha** del asiento, porque las gemelas pueden correr en días
+distintos del reloj; y el **estado** del asiento, porque el ORM publica dentro de
+`_validate_accounting_entries` mientras el SQL los deja en borrador a propósito
+(los publica la fase 3). Todo lo demás se compara, y **los numéricos por su
+representación exacta**: `6.00` y `6` son distintos aunque valgan lo mismo.
+
+**Tablas que se comparan:** `stock_move`, `stock_move_line`,
+`stock_valuation_layer` (incluidos los diez campos de tchistorico),
+`account_move`, `account_move_line` y `stock_quant`.
+
+**Lo que la paridad encontró y se corrigió.** Dos defectos reales de la réplica,
+los dos en la parte de tchistorico, que ningún invariante había detectado porque
+son consistentes internamente:
+
+1. **La condición de la rama era la cotización y no el valor de la capa.** El
+   `create()` de tchistorico entra por su rama de entrada con `value > 0`, por la
+   de salida con `value < 0`, y **todo lo demás —incluido `value = 0`— cae en el
+   `else`**, que deja `cotizacionDia` en 0, `moneda_reporte_id` en NULL y los
+   cuatro campos de costo destino **sin asignar (NULL, no 0)**. La réplica
+   escribía cotización en capas de valor 0. De 12.610 capas de valor 0, el ORM
+   dejó las 12.610 con esos campos en NULL.
+2. **`unit_cost_report` se calcula con la cotización ya redondeada.** Es el único
+   campo **calculado** del módulo, y el ORM lo computa **después** de guardar
+   `cotizacionDia`, o sea desde el valor ya redondeado a sus 6 decimales:
+   `3556 × 0,025083 = 89,195148 → 89,20`, y no `3556 × 0,025082773… = 89,19`.
+
+**Resultado: paridad exacta, 0 diferencias.** Con los dos defectos corregidos y
+el arnés simétrico, el diff sobre **73 productos y 2.589 celdas** —con entradas,
+salidas y contado 0— da **idéntico campo a campo en las seis tablas**:
+
+| tabla | filas | resultado |
+|---|---|---|
+| `stock_move` | 2.589 | idénticas |
+| `stock_move_line` | 2.589 | idénticas |
+| `stock_valuation_layer` | 2.589 | idénticas (incluidos los diez campos de tchistorico) |
+| `account_move` | 2.516 | idénticas |
+| `account_move_line` | 5.032 | idénticas |
+| `stock_quant` | 2.662 | idénticas |
+
+Y un **detalle de rendimiento** que la paridad dejó medido: el mismo subconjunto
+tarda **1,5-1,8 s por SQL contra ~40 s por ORM**, unas 20-25 veces más.
 
 ### Verificación del después
 
