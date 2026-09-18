@@ -894,20 +894,30 @@ tarda **1,5-1,8 s por SQL contra ~40 s por ORM**, unas 20-25 veces más.
 
 ### Verificación del después
 
-Sobre la copia aplicada por SQL:
+Sobre las dos gemelas, para comparar el estado resultante por los **dos**
+caminos:
 
-- **Recompute forzado** de todos los calculados stored de lo tocado (movimientos,
-  líneas, capas, productos, puntos de reorden): **0 cambios**. En `stock_quant`
-  cambian `inventory_diff_quantity`/`inventory_quantity_set` —recalcularlos sin un
-  conteo en curso los vuelve a "contado"—, **exactamente igual en la copia
-  aplicada por el ORM**: es comportamiento de esos calculados, no de la réplica.
-- **Stock = contado** en las 2.356 celdas, `qty_available` del ORM coincide, y la
-  suma de capas FIFO coincide con el stock interno de cada producto.
-- **Movimiento posterior normal**: un picking interno sobre un producto ajustado
-  por SQL se reservó y validó sin errores.
-- **UI**: sobre la corrida completa, la ficha de un producto ajustado por SQL y su
-  kardex (botón In/Out) abren sin errores y listan los movimientos del ajuste,
-  de la ubicación de ajuste a cada sucursal, con fecha, referencia y cantidad.
+| qué se verificó | gemela SQL | gemela ORM |
+|---|---|---|
+| **Recompute forzado** de los calculados stored de las capas tocadas | **0 cambios** | **0 cambios** |
+| `qty_available` / `value_svl` del producto | 187,0 / 366.706,0 | 187,0 / 366.706,0 |
+| Saldo FIFO (Σ `remaining_qty` / `remaining_value`) | 187,0 / 366.706,0 | 187,0 / 366.706,0 |
+| Stock interno en quants | 187,0 | 187,0 |
+| **Movimiento posterior normal** (picking interno de 1 unidad) | se reservó y validó (`assigned` → `done`) | igual |
+
+O sea: el stock del producto, su valuación y el saldo FIFO **cuadran entre sí y
+coinciden entre los dos caminos**, y un movimiento normal posterior sobre un
+producto ajustado por SQL se reserva y se valida sin errores.
+
+El picking posterior **no genera capas** (0 en las dos gemelas) y deja el saldo
+FIFO intacto: es correcto, porque una transferencia *interna* —de existencias a
+existencias— no tiene valuación. (Una primera medición dio "34 capas" y era la
+consulta filtrando por fecha, que arrastraba las capas del propio ajuste.)
+
+De la corrida completa, además: **stock = contado en las 835.309 celdas**,
+ningún quant con conteo pendiente, ningún par con quants duplicados, y el cuadre
+contable exacto (Σ de los asientos = Σ de |valor| de las capas =
+11.575.520.446,68).
 
 ### Operación
 
