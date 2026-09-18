@@ -41,7 +41,7 @@ const INTERVALO_POLL = 4000;
 // El cronómetro corre aparte, más fino, porque no cuesta nada.
 const INTERVALO_RELOJ = 1000;
 // Estados en los que tiene sentido preguntar.
-const ESTADOS_VIVOS = ["processing", "loading", "applying"];
+const ESTADOS_VIVOS = ["processing", "loading", "applying", "posting"];
 // Campos que se releen. Deliberadamente cortos: es lo que viaja cada 4 s.
 const CAMPOS = [
     "state", "import_type", "offset", "total_rows", "processed", "created", "updated",
@@ -50,6 +50,8 @@ const CAMPOS = [
     "current_phase", "apply_total", "apply_processed", "applied_count",
     "apply_no_diff", "apply_errors", "apply_via_orm", "apply_step",
     "apply_layers_valued", "apply_entries",
+    "post_total", "post_done", "post_errors", "post_step",
+    "post_started_at", "post_ended_at", "check_state",
     "apply_started_at", "apply_ended_at",
     "started_at", "ended_at",
     "loading_step", "loading_steps_total", "loading_phase", "loading_started_at",
@@ -182,12 +184,57 @@ function faseAplicacionInventario(d) {
     };
 }
 
+/**
+ * Ajuste de inventario, fase 3: publica por el ORM los asientos que el SQL dejó
+ * en borrador. Aparece recién cuando se arrancó la publicación.
+ */
+function fasePublicacionInventario(d) {
+    const enPublicacion = d.current_phase === "post";
+    let estadoFinal = null;
+    if (d.state === "posted") {
+        estadoFinal = "done";
+    } else if (enPublicacion && ["error", "cancel"].includes(d.state)) {
+        estadoFinal = d.state;
+    }
+    const contadores = [
+        { etiqueta: _t("Asientos publicados"), valor: d.post_done, clase: "text-success" },
+        { etiqueta: _t("A publicar"), valor: d.post_total, clase: "text-muted" },
+        { etiqueta: _t("Errores"), valor: d.post_errors, error: true },
+    ];
+    if (d.check_state && d.check_state !== "pendiente") {
+        contadores.push({
+            etiqueta: _t("Invariantes"),
+            valor: d.check_state === "ok" ? _t("todo verde") : _t("con violaciones"),
+            clase: d.check_state === "ok" ? "text-success" : "",
+            error: d.check_state !== "ok",
+        });
+    }
+    return {
+        clave: "inventario_publicacion",
+        titulo: _t("Fase 3 · Publicación de los asientos"),
+        corriendo: d.state === "posting",
+        cargando: false,
+        estadoFinal,
+        hecho: d.post_done,
+        total: d.post_total,
+        inicio: d.post_started_at,
+        fin: d.post_ended_at,
+        unidad: _t("asientos/s"),
+        etapa: d.state === "posting" ? d.post_step : null,
+        textoEtapa: _t("Publicando por el ORM en tandas. Podés cerrar esta pantalla."),
+        filasContadores: [contadores],
+    };
+}
+
 export const SECCIONES_POR_TIPO = {
     clientes: (d) => [faseClientes(d)],
     inventario: (d) => {
         const fases = [faseCargaInventario(d)];
-        if (d.current_phase === "apply" || ["applying", "applied"].includes(d.state)) {
+        if (d.current_phase === "apply" || ["applying", "applied", "posting", "posted"].includes(d.state)) {
             fases.push(faseAplicacionInventario(d));
+        }
+        if (d.current_phase === "post" || ["posting", "posted"].includes(d.state)) {
+            fases.push(fasePublicacionInventario(d));
         }
         return fases;
     },

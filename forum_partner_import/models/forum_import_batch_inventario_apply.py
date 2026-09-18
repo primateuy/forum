@@ -211,7 +211,11 @@ class ForumImportBatchInventarioApply(models.Model):
             "apply_offset": 0, "apply_total": 0, "apply_processed": 0,
             "applied_count": 0, "apply_no_diff": 0, "apply_errors": 0,
             "apply_via_orm": 0, "apply_step": False,
+            "apply_layers_valued": 0, "apply_entries": 0,
             "apply_started_at": False, "apply_ended_at": False,
+            "post_total": 0, "post_done": 0, "post_errors": 0, "post_step": False,
+            "post_started_at": False, "post_ended_at": False,
+            "check_state": "pendiente", "check_report": False, "check_at": False,
         })
         return valores
 
@@ -222,7 +226,7 @@ class ForumImportBatchInventarioApply(models.Model):
         }
 
     def action_cancelar(self):
-        """Mientras se aplica, cancelar es un PEDIDO: se detiene entre tandas.
+        """Mientras se aplica o se publica, cancelar es un PEDIDO.
 
         No se escribe la fila del batch. La tanda en curso la escribe al
         terminar, y dos escrituras concurrentes sobre la misma fila hacen fallar
@@ -231,9 +235,14 @@ class ForumImportBatchInventarioApply(models.Model):
         y lo lee la corrida siguiente del cron, que arranca con otra transacción.
         """
         self.ensure_one()
-        if self.state != "applying":
+        if self.state not in ("applying", "posting"):
             return super().action_cancelar()
         self.env["ir.config_parameter"].sudo().set_param(PARAM_CANCELAR % self.id, "1")
+        if self.state == "posting":
+            return self._notificar(
+                _("Cancelación pedida"),
+                _("La publicación se detiene al terminar la tanda en curso. Los asientos "
+                  "ya publicados quedan publicados; el resto sigue en borrador."))
         return self._notificar(
             _("Cancelación pedida"),
             _("La aplicación se detiene al terminar la tanda en curso. Lo ya aplicado queda."))
@@ -249,11 +258,20 @@ class ForumImportBatchInventarioApply(models.Model):
 
     def action_reanudar(self):
         self.ensure_one()
-        if self.current_phase != "apply":
+        if self.current_phase not in ("apply", "post"):
             return super().action_reanudar()
         if self.state not in ("cancel", "error"):
             raise UserError(_("Solo se reanuda un batch cancelado o con error."))
         self._apl_cancelacion_pedida()   # un pedido viejo no debe frenar la reanudación
+        if self.current_phase == "post":
+            # Se recuentan los pendientes: los ya publicados no vuelven a pasar.
+            self._pub_validar_cotizaciones()
+            self.write({"state": "posting", "post_ended_at": False,
+                        "post_total": self.post_done + self._pub_pendientes_count()})
+            self._log("Publicación reanudada. Quedan %d asientos en borrador."
+                      % self._pub_pendientes_count())
+            self._encolar_cron()
+            return True
         self.write({"state": "applying", "apply_ended_at": False})
         self._log("Aplicación reanudada desde la celda %d." % self.apply_offset)
         self._encolar_cron()
@@ -274,6 +292,8 @@ class ForumImportBatchInventarioApply(models.Model):
         super()._cron_procesar()
         for batch in self.search([("state", "=", "applying")], order="id"):
             batch._aplicar_varias_tandas()
+        for batch in self.search([("state", "=", "posting")], order="id"):
+            batch._publicar_varias_tandas()
         return True
 
     # ==================================================================
@@ -297,6 +317,13 @@ class ForumImportBatchInventarioApply(models.Model):
 
         self._apl_cancelacion_pedida()
         self._apl_preparar_staging()
+        # Línea base de las tablas por donde sale algo hacia el WMS: el
+        # invariante 7 exige que no haya aparecido ni una fila nueva.
+        base = self._inv_linea_base_wms()
+        if base:
+            self.env["ir.config_parameter"].sudo().set_param(
+                "forum_partner_import.wms_base.%d" % self.id,
+                ",".join("%s=%s" % (tabla, tope) for tabla, tope in sorted(base.items())))
         vals = {"state": "applying", "current_phase": "apply", "apply_ended_at": False,
                 "apply_step": False}
         if not self.apply_started_at:
@@ -1063,6 +1090,272 @@ class ForumImportBatchInventarioApply(models.Model):
             self.env[modelo].invalidate_model()
 
     # ==================================================================
+    # Verificación exhaustiva por invariantes
+    # ==================================================================
+    def action_verificar_invariantes(self):
+        """Corre el set de invariantes a pedido y deja el informe en el batch."""
+        self.ensure_one()
+        if not self._es_inventario():
+            raise UserError(_("Solo un ajuste de inventario se verifica."))
+        self._verificar_invariantes()
+        return self._notificar(
+            _("Verificación terminada"),
+            _("Resultado: %s. El detalle queda en el informe del batch.")
+            % dict(self._fields["check_state"].selection)[self.check_state])
+
+    def _inv_linea_base_wms(self):
+        """{tabla: max(id)} de las tablas por donde SALE algo hacia el WMS.
+
+        Se guarda al arrancar la aplicación para que el invariante pueda exigir
+        que no haya aparecido ni una fila nueva. No alcanza con mirar la
+        configuración: `wis.sync.queue._encolar` escribe sin consultar si la
+        comunicación está habilitada, así que la cola puede llenarse igual.
+        """
+        cr = self.env.cr
+        base = {}
+        for tabla in TABLAS_WMS_SALIENTES:
+            cr.execute("SELECT to_regclass(%s)", (tabla,))
+            if not cr.fetchone()[0]:
+                continue
+            cr.execute("SELECT coalesce(max(id), 0) FROM %s" % tabla)
+            base[tabla] = cr.fetchone()[0]
+        return base
+
+    def _verificar_invariantes(self):
+        """Set de invariantes sobre el 100% de lo generado por este ajuste.
+
+        No es un muestreo: cada consulta recorre todas las filas del ajuste y
+        devuelve la cantidad de violaciones y un ejemplo. Si alguna falla, el
+        batch queda con `check_state = 'fallo'` y el detalle en `check_report`.
+
+        Corre dos veces: al terminar la aplicación (los invariantes 1 a 4, 6 y 7)
+        y otra vez al terminar la publicación (ahí suman el 5 y el 8).
+        """
+        self.ensure_one()
+        cr = self.env.cr
+        t = self._staging_name()
+        publicado = self.state == "posted" or self.post_done
+        lineas, violaciones = [], 0
+
+        def revisar(titulo, sql, params=None, ejemplo_sql=None):
+            nonlocal violaciones
+            cr.execute(sql, params or {})
+            n = cr.fetchone()[0] or 0
+            violaciones += n
+            detalle = ""
+            if n and ejemplo_sql:
+                cr.execute(ejemplo_sql, params or {})
+                filas = cr.fetchall()[:3]
+                detalle = " | ejemplos: %s" % ", ".join(str(f) for f in filas)
+            lineas.append("%s %s: %d violaciones%s"
+                          % ("OK  " if not n else "FALLA", titulo, n, detalle))
+
+        # 1. La cantidad del quant es igual al contado, en todas las celdas.
+        revisar("1. quant.quantity = contado del archivo", """
+            SELECT count(*) FROM {t} s
+              JOIN stock_quant q ON q.id = s.quant_id
+             WHERE s.apply_resultado IN ('aplicado', 'sin_diferencia')
+               AND round(q.quantity::numeric, 4) <> round(s.cantidad::numeric, 4)
+        """.format(t=t), ejemplo_sql="""
+            SELECT s.row_num, s.product_id, s.location_id, q.quantity, s.cantidad
+              FROM {t} s JOIN stock_quant q ON q.id = s.quant_id
+             WHERE s.apply_resultado IN ('aplicado', 'sin_diferencia')
+               AND round(q.quantity::numeric, 4) <> round(s.cantidad::numeric, 4) LIMIT 3
+        """.format(t=t))
+
+        # 2. Cada celda aplicada tiene exactamente un movimiento done con su línea.
+        revisar("2. una celda aplicada = un movimiento done con su línea", """
+            SELECT count(*) FROM (
+                SELECT s.row_num,
+                       (SELECT count(*) FROM stock_move m
+                         WHERE m.is_inventory AND m.state = 'done'
+                           AND m.product_id = s.product_id
+                           AND (m.location_id = s.location_id OR m.location_dest_id = s.location_id)
+                           AND m.create_date >= %(desde)s) AS moves
+                  FROM {t} s WHERE s.apply_resultado = 'aplicado') x
+             WHERE moves = 0
+        """.format(t=t), {"desde": self.apply_started_at})
+
+        # 3. Capas: valor de una entrada = cantidad × costo, y remaining coherente.
+        revisar("3a. entrada: value = cantidad × costo", """
+            SELECT count(*) FROM stock_valuation_layer l
+              JOIN stock_move m ON m.id = l.stock_move_id
+              JOIN ir_property ip ON ip.name = 'standard_price'
+                   AND ip.company_id = l.company_id
+                   AND ip.res_id = 'product.product,' || l.product_id
+              JOIN res_company c ON c.id = l.company_id
+              JOIN res_currency cur ON cur.id = c.currency_id
+             WHERE m.is_inventory AND l.create_date >= %(desde)s AND l.quantity > 0
+               AND round(l.value::numeric, cur.decimal_places)
+                   <> round((l.quantity * ip.value_float)::numeric, cur.decimal_places)
+        """, {"desde": self.apply_started_at})
+        revisar("3b. ninguna capa con remaining_qty > cantidad", """
+            SELECT count(*) FROM stock_valuation_layer l
+              JOIN stock_move m ON m.id = l.stock_move_id
+             WHERE m.is_inventory AND l.create_date >= %(desde)s
+               AND l.quantity > 0 AND l.remaining_qty > l.quantity
+        """, {"desde": self.apply_started_at})
+        revisar("3c. remaining_value NULL o 0 en las salidas", """
+            SELECT count(*) FROM stock_valuation_layer l
+              JOIN stock_move m ON m.id = l.stock_move_id
+             WHERE m.is_inventory AND l.create_date >= %(desde)s
+               AND l.quantity < 0 AND coalesce(l.remaining_value, 0) <> 0
+        """, {"desde": self.apply_started_at})
+
+        # 4. Cada capa con valor tiene asiento, balanceado y por su importe.
+        revisar("4a. capa con valor sin asiento", """
+            SELECT count(*) FROM stock_valuation_layer l
+              JOIN stock_move m ON m.id = l.stock_move_id
+              JOIN res_company c ON c.id = l.company_id
+              JOIN res_currency cur ON cur.id = c.currency_id
+             WHERE m.is_inventory AND l.create_date >= %(desde)s
+               AND round(l.value::numeric, cur.decimal_places) <> 0
+               AND l.account_move_id IS NULL
+        """, {"desde": self.apply_started_at})
+        revisar("4b. asiento desbalanceado", """
+            SELECT count(*) FROM (
+                SELECT l.move_id
+                  FROM account_move_line l
+                  JOIN account_move am ON am.id = l.move_id
+                  JOIN stock_move m ON m.id = am.stock_move_id
+                  JOIN res_company c ON c.id = am.company_id
+                  JOIN res_currency cur ON cur.id = c.currency_id
+                 WHERE m.is_inventory AND am.create_date >= %(desde)s
+                 GROUP BY l.move_id, cur.decimal_places
+                HAVING round(sum(l.balance)::numeric, cur.decimal_places) <> 0) x
+        """, {"desde": self.apply_started_at})
+        revisar("4c. importe del asiento distinto del valor de su capa", """
+            SELECT count(*) FROM stock_valuation_layer l
+              JOIN account_move am ON am.id = l.account_move_id
+              JOIN stock_move m ON m.id = am.stock_move_id
+              JOIN res_company c ON c.id = am.company_id
+              JOIN res_currency cur ON cur.id = c.currency_id
+             WHERE m.is_inventory AND am.create_date >= %(desde)s
+               AND round(abs(l.value)::numeric, cur.decimal_places) <> (
+                   SELECT round(sum(x.debit)::numeric, cur.decimal_places)
+                     FROM account_move_line x WHERE x.move_id = am.id)
+        """, {"desde": self.apply_started_at})
+        revisar("4d. cuentas distintas de las de la categoría del producto", """
+            SELECT count(*) FROM account_move_line l
+              JOIN account_move am ON am.id = l.move_id
+              JOIN stock_move m ON m.id = am.stock_move_id
+              JOIN product_product pp ON pp.id = l.product_id
+              JOIN product_template pt ON pt.id = pp.product_tmpl_id
+              LEFT JOIN ir_property pval ON pval.name = 'property_stock_valuation_account_id'
+                    AND pval.res_id = 'product.category,' || pt.categ_id
+                    AND pval.company_id = am.company_id
+              LEFT JOIN ir_property pout ON pout.name = 'property_stock_account_output_categ_id'
+                    AND pout.res_id = 'product.category,' || pt.categ_id
+                    AND pout.company_id = am.company_id
+             WHERE m.is_inventory AND am.create_date >= %(desde)s
+               AND l.account_id NOT IN (
+                   split_part(pval.value_reference, ',', 2)::int,
+                   split_part(pout.value_reference, ',', 2)::int)
+        """, {"desde": self.apply_started_at})
+
+        # 6. Sin quants duplicados, sin conteos pendientes, sin asientos huérfanos.
+        revisar("6a. par producto/ubicación con más de un quant", """
+            SELECT count(*) FROM (
+                SELECT q.product_id, q.location_id FROM stock_quant q
+                  JOIN (SELECT DISTINCT product_id, location_id FROM {t}
+                         WHERE apply_seq IS NOT NULL) s
+                    ON s.product_id = q.product_id AND s.location_id = q.location_id
+                 WHERE q.lot_id IS NULL AND q.package_id IS NULL AND q.owner_id IS NULL
+                 GROUP BY 1, 2 HAVING count(*) > 1) x
+        """.format(t=t))
+        revisar("6b. conteo pendiente sin aplicar", """
+            SELECT count(*) FROM {t} s
+              JOIN stock_quant q ON q.id = s.quant_id
+             WHERE s.apply_resultado IN ('aplicado', 'sin_diferencia')
+               AND q.inventory_quantity_set
+        """.format(t=t))
+
+        # 7. El WMS: no salió nada hacia afuera durante la corrida.
+        base = self.env["ir.config_parameter"].sudo().get_param(
+            "forum_partner_import.wms_base.%d" % self.id)
+        if base:
+            for parte in base.split(","):
+                tabla, _sep, tope = parte.partition("=")
+                if not _sep:
+                    continue
+                revisar("7. sin envíos nuevos al WMS en %s" % tabla,
+                        "SELECT count(*) FROM %s WHERE id > %%(tope)s" % tabla,
+                        {"tope": int(tope)})
+        else:
+            lineas.append("--   7. WMS: sin línea base registrada (batch anterior a esta versión)")
+
+        # 5 y 8: solo tienen sentido con los asientos ya publicados.
+        if publicado:
+            revisar("5a. asientos del ajuste que quedaron en borrador", """
+                SELECT count(*) FROM account_move am
+                  JOIN stock_move m ON m.id = am.stock_move_id
+                 WHERE m.is_inventory AND am.create_date >= %(desde)s AND am.state = 'draft'
+            """, {"desde": self.apply_started_at})
+            # Duplicados y huecos se miran sobre TODO el diario en el rango del
+            # ajuste, no solo sobre los asientos del ajuste: el diario puede
+            # tener asientos ajenos intercalados (en la copia había 41 previos
+            # con el mismo prefijo), y compararlos solo entre ellos daba huecos
+            # que no existen.
+            revisar("5b. numeración del diario duplicada en el rango del ajuste", """
+                SELECT count(*) FROM (
+                    SELECT sequence_prefix, sequence_number
+                      FROM account_move
+                     WHERE state = 'posted' AND sequence_prefix IN (
+                           SELECT DISTINCT am.sequence_prefix FROM account_move am
+                             JOIN stock_move m ON m.id = am.stock_move_id
+                            WHERE m.is_inventory AND am.create_date >= %(desde)s)
+                     GROUP BY 1, 2 HAVING count(*) > 1) x
+            """, {"desde": self.apply_started_at})
+            revisar("5c. huecos en la numeración del diario en el rango del ajuste", """
+                SELECT count(*) FROM (
+                    SELECT sequence_number - lag(sequence_number) OVER (
+                               PARTITION BY sequence_prefix ORDER BY sequence_number) AS salto
+                      FROM account_move
+                     WHERE state = 'posted'
+                       AND (sequence_prefix, sequence_number) IN (
+                           SELECT am.sequence_prefix, am.sequence_number FROM account_move am
+                            WHERE am.state = 'posted' AND am.sequence_prefix IN (
+                                  SELECT DISTINCT a2.sequence_prefix FROM account_move a2
+                                    JOIN stock_move m ON m.id = a2.stock_move_id
+                                   WHERE m.is_inventory AND a2.create_date >= %(desde)s)
+                             AND am.sequence_number BETWEEN (
+                                   SELECT min(a3.sequence_number) FROM account_move a3
+                                     JOIN stock_move m3 ON m3.id = a3.stock_move_id
+                                    WHERE m3.is_inventory AND a3.create_date >= %(desde)s
+                                      AND a3.sequence_prefix = am.sequence_prefix) AND (
+                                   SELECT max(a4.sequence_number) FROM account_move a4
+                                     JOIN stock_move m4 ON m4.id = a4.stock_move_id
+                                    WHERE m4.is_inventory AND a4.create_date >= %(desde)s
+                                      AND a4.sequence_prefix = am.sequence_prefix))
+                ) x WHERE salto IS NOT NULL AND salto <> 1
+            """, {"desde": self.apply_started_at})
+            revisar("8. suma del diario distinta de la suma de las capas", """
+                SELECT count(*) FROM (
+                    SELECT round(sum(l.debit)::numeric, 2) AS diario,
+                           (SELECT round(sum(abs(sl.value))::numeric, 2)
+                              FROM stock_valuation_layer sl
+                              JOIN stock_move sm ON sm.id = sl.stock_move_id
+                             WHERE sm.is_inventory AND sl.create_date >= %(desde)s
+                               AND sl.account_move_id IS NOT NULL) AS capas
+                      FROM account_move_line l
+                      JOIN account_move am ON am.id = l.move_id
+                      JOIN stock_move m ON m.id = am.stock_move_id
+                     WHERE m.is_inventory AND am.create_date >= %(desde)s
+                ) x WHERE diario IS DISTINCT FROM capas
+            """, {"desde": self.apply_started_at})
+
+        informe = "\n".join(lineas)
+        self.write({
+            "check_state": "ok" if not violaciones else "fallo",
+            "check_report": informe,
+            "check_at": fields.Datetime.now(),
+        })
+        self._log("Verificación por invariantes: %s (%d violaciones).\n%s"
+                  % ("todo verde" if not violaciones else "CON VIOLACIONES",
+                     violaciones, informe))
+        return violaciones
+
+    # ==================================================================
     # Fase 3: publicación de los asientos (por ORM, deliberadamente)
     # ==================================================================
     def action_publicar_asientos(self):
@@ -1254,6 +1547,14 @@ class ForumImportBatchInventarioApply(models.Model):
         self.write({"state": "posted", "post_ended_at": fields.Datetime.now(),
                     "post_step": False})
         self._log("Asientos publicados: %d. Errores: %d." % (self.post_done, self.post_errors))
+        self.env.cr.commit()
+        # Segunda pasada de invariantes: ahora suman los de la publicación.
+        try:
+            self._verificar_invariantes()
+        except Exception as e:
+            self.env.cr.rollback()
+            self._log("La verificación por invariantes falló: %s" % e)
+            _logger.exception("[forum_partner_import] verificación posterior a publicar")
         self.env.cr.commit()
 
     def _apl_asientos(self, params):
@@ -1942,6 +2243,13 @@ class ForumImportBatchInventarioApply(models.Model):
             return
         self.write({"state": "applied", "apply_ended_at": fields.Datetime.now(), "apply_step": False})
         self.env.registry.clear_cache()
+        # Primera pasada de invariantes, sobre el 100% de lo aplicado.
+        try:
+            self._verificar_invariantes()
+        except Exception as e:
+            self.env.cr.rollback()
+            self._log("La verificación por invariantes falló: %s" % e)
+            _logger.exception("[forum_partner_import] verificación posterior al apply")
         self._log("Ajuste aplicado. Quants ajustados=%d Sin diferencia=%d Errores=%d | "
                   "vía ORM: %d celdas de %d productos | recálculos finales de %d productos en %.1fs."
                   % (self.applied_count, self.apply_no_diff, self.apply_errors,

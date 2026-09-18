@@ -23,10 +23,17 @@
                     string="3. Aplicar ajuste por tandas"
                     invisible="import_type != 'inventario' or state != 'done'"
                     confirm="Se crean los movimientos de inventario, la valuación y los asientos de cada quant con diferencia, por tandas en segundo plano. Correrlo DE NOCHE con las sucursales cerradas: cada tanda bloquea los quants que ajusta y compite con el POS. La cantidad final queda igual al contado, aunque se haya vendido algo después de la carga. ¿Continuar?"/>
+            <button name="action_publicar_asientos" type="object" class="btn-primary"
+                    string="4. Publicar asientos"
+                    invisible="import_type != 'inventario' or state != 'applied'"
+                    confirm="Se publican por tandas los asientos que la aplicación dejó en borrador. La numeración del diario la asigna Odoo, correlativa. Antes de arrancar se verifica que exista la cotización de la moneda secundaria para la fecha de los asientos. ¿Continuar?"/>
+            <button name="action_verificar_invariantes" type="object" class="btn-secondary"
+                    string="Verificar invariantes"
+                    invisible="import_type != 'inventario' or state not in ('applied', 'posted', 'error', 'cancel')"/>
             <button name="action_reanudar" type="object" class="btn-primary"
                     string="Reanudar" invisible="state not in ('cancel', 'error')"/>
             <button name="action_cancelar" type="object" class="btn-secondary"
-                    string="Cancelar procesamiento" invisible="state not in ('processing', 'applying')"/>
+                    string="Cancelar procesamiento" invisible="state not in ('processing', 'applying', 'posting')"/>
             <button name="action_backup_tarjetas" type="object" class="btn-secondary"
                     string="Generar backup ahora"
                     invisible="import_type != 'clientes' or state in ('done', 'cancel')"/>
@@ -54,7 +61,7 @@
                    statusbar_visible="draft,ready,processing,done"
                    invisible="import_type == 'inventario'"/>
             <field name="state" widget="statusbar"
-                   statusbar_visible="draft,ready,processing,done,applying,applied"
+                   statusbar_visible="draft,ready,processing,done,applying,applied,posting,posted"
                    invisible="import_type != 'inventario'"/>
           </header>
           <sheet>
@@ -114,6 +121,7 @@
                        readonly="state in ('applying', 'applied')"
                        placeholder="Vacía: la fecha del apply"/>
                 <field name="apply_batch_size" readonly="state == 'applying'"/>
+                <field name="post_batch_size" readonly="state == 'posting'"/>
               </group>
               <group>
                 <field name="batch_size" readonly="state == 'processing'"/>
@@ -156,6 +164,13 @@
               <field name="apply_layers_valued" invisible="1"/>
               <field name="apply_entries" invisible="1"/>
               <field name="apply_step" invisible="1"/>
+              <field name="post_total" invisible="1"/>
+              <field name="post_done" invisible="1"/>
+              <field name="post_errors" invisible="1"/>
+              <field name="post_step" invisible="1"/>
+              <field name="post_started_at" invisible="1"/>
+              <field name="post_ended_at" invisible="1"/>
+              <field name="check_state" invisible="1"/>
               <field name="apply_started_at" invisible="1"/>
               <field name="apply_ended_at" invisible="1"/>
               <field name="started_at" invisible="1"/>
@@ -164,6 +179,14 @@
               <field name="loading_steps_total" invisible="1"/>
               <field name="loading_phase" invisible="1"/>
               <field name="loading_started_at" invisible="1"/>
+            </group>
+
+            <group string="Verificación por invariantes"
+                   invisible="import_type != 'inventario' or check_state == 'pendiente'">
+              <field name="check_state" readonly="1"/>
+              <field name="check_at" readonly="1"/>
+              <field name="check_report" readonly="1" nolabel="1" colspan="2"
+                     widget="text" class="font-monospace small"/>
             </group>
 
             <group string="Detalle" invisible="state == 'draft'">

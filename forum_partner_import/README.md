@@ -655,7 +655,7 @@ con capa negativa— y se registró **todo** lo que la transacción escribió
 | sentido | diferencia > 0: ubicación de ajuste de inventario → existencias; si no, al revés |
 | quant contado | `quantity += diferencia`; conteo limpio; `inventory_date` = próxima fecha de inventario de la ubicación; `reason`/`user_id` en NULL. `in_date`: en una entrada, el más viejo entre el suyo (si tenía stock) y ahora; en una salida, el suyo (si tenía stock) o ahora |
 | quant de la ubicación de ajuste | `quantity -= diferencia`; `in_date` de la última línea del producto (orden de id). Si no existe se crea: su `inventory_diff_quantity` es −(cantidad final) y su `unit_value_report` queda NULL |
-| `stock.valuation.layer` | una por movimiento con cantidad, **aunque valga 0**: primero todas las entradas, después las salidas, que consumen FIFO (`create_date, id`) las capas con saldo, incluidas las recién creadas. Salida cubierta: `remaining_qty 0`, `remaining_value NULL`. tchistorico la guarda con `moneda_reporte_id` y sus campos en 0 |
+| `stock.valuation.layer` | una por movimiento con cantidad, **aunque valga 0**: primero todas las entradas, después las salidas, que consumen FIFO (`create_date, id`) las capas con saldo, incluidas las recién creadas. Salida cubierta: `remaining_qty 0`, `remaining_value NULL` |
 | ubicación | `last_inventory_date` = hoy |
 | cascadas | `value_report` (tchistorico) en **todos** los quants del producto, `ultimo_costo_mr` del producto y la plantilla, `qty_to_order` de los puntos de reorden |
 
@@ -663,45 +663,170 @@ Lo que **no** hace, y se verificó: `_trigger_assign` (reservar movimientos en
 espera) solo lo llama el `_action_done` del picking; los movimientos de
 inventario no tienen picking.
 
+#### La disección de la valuación con valor y de los asientos
+
+Para el escenario de saldos iniciales se disecó además lo que el core genera
+**cuando la capa tiene valor**, leyendo `stock_account` caso por caso y
+comparando contra el ORM sobre la copia:
+
+| qué | detalle |
+|---|---|
+| capa de **entrada** | `value` = `cantidad × standard_price` redondeado a la moneda de la compañía (`_prepare_in_svl_vals`). El costo sale de `standard_price` porque un movimiento de inventario nace sin `price_unit` y `_get_price_unit` cae ahí. `remaining_qty` = cantidad, `remaining_value` = su propio valor |
+| capa de **salida** (FIFO) | `value` = **−Σ de lo tomado de cada capa candidata**, con **cada toma redondeada por separado** (`currency.round(value_taken_on_candidate)` dentro del bucle de `_run_fifo`); `unit_cost` = `tmp_value / cantidad`, **no** el costo del producto. El costo de cada candidata es `remaining_value / remaining_qty`, no su `unit_cost`. Orden de consumo: `create_date, id` (el `_order` del modelo, que es el que usa `_get_fifo_candidates`) |
+| candidatas consumidas | se les descuenta `remaining_qty` **y** `remaining_value` (`candidate_vals` de `_run_fifo`) |
+| **stock negativo** | si las candidatas no alcanzan: `remaining_qty` = −faltante y el faltante se valúa al `last_fifo_price`, que es el costo de la **última candidata mirada aunque valga 0** (en Python `0.0` es falsy, así que ahí sí actúa el `or standard_price`) |
+| `remaining_value` de una salida | **NULL siempre**, también con faltante: ni `_prepare_out_svl_vals` ni `_run_fifo` escriben ese campo (la rama de faltante devuelve `remaining_qty`, `value` y `unit_cost`) |
+| tchistorico | con valor, su `create()` calcula `cotizacionDia`, `valorMonedaSecundaria`, `valorRestante`, `valorUnitario`, `moneda_reporte_id`, `unitCostesDestinoInc` (= `value/cantidad` en una entrada, `value` pelado en una salida), `unitCostesDestinoIncMR`, `valorizadoCosteDestino`, `valorizadoCosteDestinoMR`; y `ucmr` y `unit_cost_report` se asignan **siempre**, incluso sin cotización (quedan en 0) |
+| `account.move` | **uno por capa** cuyo producto valúa en tiempo real y cuyo valor no es cero (`_validate_accounting_entries`), `move_type='entry'`, en el diario de stock de la categoría, `ref` = nombre del movimiento, `stock_move_id` al movimiento, sin partner (`_get_partner_id_for_valuation_lines` sale del picking) |
+| `account.move.line` | dos líneas por asiento, `debit`/`credit` por el importe absoluto de la capa, `quantity` con el signo de la capa en **las dos**, `display_type='product'`, `sequence` 100. En una entrada debita valuación y acredita la contrapartida; en una salida al revés. La contrapartida de una ubicación de ajuste es `stock_output` de la categoría salvo que la ubicación tenga la suya (`_get_dest_account`) |
+| numeración | el `name` y el `sequence_prefix/number` los asigna el ORM **al publicar**, no al crear |
+
 ### Réplica SQL + híbrido ORM
 
 Por cada tanda (default **50.000 celdas**, una por corrida del cron):
 
 1. `LOCK TABLE stock_quant` y `stock_valuation_layer` en `SHARE ROW EXCLUSIVE`
-   mientras dura la tanda (~16 s): nadie crea ni mueve quants o capas mientras el
-   SQL decide sobre ellos.
+   mientras dura la tanda: nadie crea ni mueve quants o capas mientras el SQL
+   decide sobre ellos. **Con la valuación adentro la tanda pasó de ~16 s a
+   ~41 s** (ver *Cuánto tarda* y *Requisitos operativos*).
 2. **Clasificación por producto.** Va por el ORM, con todas sus celdas de la
-   tanda, el producto que tenga: costo distinto de 0, capas con valor, capas
-   negativas (vacuum), costo que no sea FIFO, seguimiento por lote, reservas o
-   líneas pendientes en la ubicación (`_free_reservation`), par sin quant o con
-   quants duplicados. **FIFO se lleva por producto**, así que los dos caminos
-   nunca comparten estado. Nada de asientos por SQL.
+   tanda, solo el producto que tenga: **capas negativas preexistentes** (las
+   corrige el `_fifo_vacuum`, que el SQL no replica), **reservas** o **líneas
+   pendientes** en la ubicación (`_free_reservation`), **costeo que no sea
+   FIFO**, **seguimiento por lote**, par sin quant o con quants duplicados.
+
+   **Tener costo ya NO manda al ORM**, y es el cambio de fondo de esta versión:
+   en el escenario de saldos iniciales *todos* los productos tienen costo, así
+   que con el criterio anterior caía el **100 %** de las celdas al camino lento
+   (medido: 50.000 de 50.000 en una tanda, 30-49 ms por celda, 8-12 h para las
+   918.061). Ahora caen **6.404 celdas de 918.061: 0,7 %**.
 3. **SQL** para el resto: `stock_move`, `stock_move_line`, quants, quant de
-   ajuste, capas, consumo FIFO y ubicación, con la diferencia recalculada contra
-   la cantidad de ese momento. Los ids salen de las secuencias en el orden del
-   ORM. Los defaults de cada modelo se le piden a `default_get` (entra lo que
-   agregue cualquier módulo) y los numéricos se guardan con la escala del ORM
-   (`6.00`, no `6`). Como `Field.write`, un campo no se reescribe si el valor no
-   cambia.
-4. **ORM** para los valorizados: `_apply_inventory` de la tanda; si falla,
-   quant por quant con savepoint. El flush va con el entorno del responsable (el
-   del savepoint usaría el del cron y dejaría otro `write_uid`).
+   ajuste, **capas con valor**, **consumo FIFO**, **asientos en borrador** y
+   ubicación, con la diferencia recalculada contra la cantidad de ese momento.
 
-En la base de prueba: **134 productos / 3.154 celdas por ORM** de 904.061 (los 69
-con costo, más los que tienen capas negativas, reservas o líneas pendientes).
-Si en el dump fresco de producción ese número explota, se rediscute antes de la
-corrida real.
+#### Las capas con valor
 
-**Recálculos finales**, una sola vez al terminar las tandas, sobre los productos
-aplicados por SQL (el widget muestra la etapa):
+- **Entrada:** `cantidad × costo`, redondeado a la moneda de la compañía, como
+  `_prepare_in_svl_vals`. El costo es el `standard_price` del producto en su
+  compañía: un movimiento de inventario nace sin `price_unit`, así que
+  `_get_price_unit` cae ahí.
+- **Salida:** el reparto FIFO. Cada capa candidata aporta a
+  `remaining_value / remaining_qty` —su costo real, no su `unit_cost`— y **cada
+  toma se redondea por separado**, como el `currency.round(value_taken_on_candidate)`
+  de adentro del bucle de `_run_fifo`. El `unit_cost` de la capa de salida es
+  `tmp_value / cantidad`, no el costo del producto.
+- **Stock negativo:** lo que las capas con saldo no cubren se valúa al
+  `last_fifo_price`, que es el costo de la última candidata mirada **aunque
+  valga 0** (en Python `0.0` es falsy y ahí sí actúa el `or standard_price`).
+- El `remaining_value` de una capa de **salida** queda **NULL siempre**, también
+  con faltante: ni `_prepare_out_svl_vals` ni `_run_fifo` escriben ese campo.
+- El INSERT de capas va en **dos pasos, entradas y después salidas**, porque el
+  ORM valúa primero todas las entradas del lote y **las capas recién creadas son
+  candidatas del FIFO de las salidas de la misma tanda**. Insertarlas juntas
+  daba valores distintos.
+- El consumo descuenta `remaining_qty` **y** `remaining_value` de las
+  candidatas (con capas en cero el segundo no hacía falta).
+- Los campos que **tchistorico** calcula en su `create()` se replican con la
+  misma fórmula, porque el INSERT por SQL no pasa por ahí: `cotizacionDia`,
+  `valorMonedaSecundaria`, `valorRestante`, `valorUnitario`, `moneda_reporte_id`,
+  `unitCostesDestinoInc`, `unitCostesDestinoIncMR`, `valorizadoCosteDestino`,
+  `valorizadoCosteDestinoMR`, `ucmr` y `unit_cost_report`, incluida su rama sin
+  cotización (todo en 0 y la moneda en NULL). La cotización se calcula como
+  `tasa(moneda de reporte) / tasa(moneda de la compañía)`, que es lo que hace
+  `_get_conversion_rate`.
 
-- `value_report` / `unit_value_report` de tchistorico: **por SQL**, con la misma
-  fórmula del compute (suma de `valorRestante` y `remaining_qty` de las capas del
-  producto con valorUnitario, valorRestante y remaining_qty positivos, redondeada
-  a la moneda de reportes). Se eligió SQL porque la fórmula es exacta y por el
-  ORM serían ~850.000 búsquedas. tchistorico no se tocó.
-- `ultimo_costo_mr` de producto y plantilla, y `qty_to_order` de los puntos de
-  reorden: **por el ORM** (`add_to_compute` + flush), por tramos con commit.
+#### Los asientos, en borrador
+
+Un asiento por capa con valor, con el mismo filtro que
+`_validate_accounting_entries`: producto con valuación **en tiempo real** y valor
+distinto de cero. Dos líneas que se cancelan, cuentas y diario de la categoría
+del producto (`_get_accounting_data_for_valuation`); en una entrada debita
+valuación y acredita la contrapartida, en una salida al revés. Sin partner:
+`_get_partner_id_for_valuation_lines` sale del picking y un movimiento de
+inventario no tiene.
+
+Quedan **en borrador, sin `name` ni numeración**: eso lo asigna el ORM al
+publicar. Si un producto que valúa en tiempo real no tiene cuentas o diario, la
+tanda **corta con `UserError`** en vez de dejar capas con valor sin asiento, que
+es lo que hace el ORM.
+
+En `account.move.line` casi todo lo que importa es compute/related stored
+(`account_id`, `balance`, `debit`, `credit`, `date`, `name`, `quantity`,
+`display_type`…), así que va **explícito**; en `account.move` los 95 campos
+restantes los cubre `default_get`, para que entre lo que agregue cualquier módulo
+instalado (los `cfe_*` de la localización, `extract_state`, etc.).
+
+4. **ORM** para los casos especiales: `_apply_inventory` de la tanda; si falla,
+   quant por quant con savepoint. **Todo el camino ORM va con el guard del WMS**
+   (ver *Requisitos operativos*).
+
+### Fase 3: publicación de los asientos
+
+Publicar va **por el ORM y no por SQL, a propósito**: la numeración del diario es
+correlativa legal y el balanceo y los hooks los tiene que firmar Odoo. La fase
+no hace nada más que `action_post` por tandas, con puntero, commit por tanda,
+cancelar/reanudar y reintento por asiento con savepoint.
+
+**El tamaño de tanda es configurable y su default, 150, es el óptimo MEDIDO.**
+Agrandar la tanda **empeora** el total, que es lo contrario de lo que uno espera:
+el costo por asiento de `action_post` crece con el tamaño del lote porque
+`_check_balanced` y los recomputes recorren todo el conjunto en memoria.
+
+| asientos por tanda | ms por asiento | extrapolado a 834k |
+|---|---|---|
+| 25 | 7,91 | 121 min |
+| 50 | 6,43 | 98 min |
+| 100 | 5,36 | 82 min |
+| **150** | **4,95** | **76 min** |
+| 200 | 5,34 | 82 min |
+| 300 | 6,07 | 93 min |
+| 2.000 | 11,53 | 176 min |
+
+**No subirlo sin volver a medir.** Un "5.000 para que vaya más rápido" duplica
+el tiempo.
+
+Antes de arrancar, la fase **valida que exista la cotización de la moneda
+secundaria para la fecha exacta de los asientos** y frena con el detalle si
+falta, en vez de fallar a mitad de tanda (ver *Requisitos operativos*).
+
+**Agrupar asientos** —uno por producto o por categoría en vez de uno por capa—
+bajaría mucho el tiempo, pero **cambia lo que ve el contador** y no se
+implementó: queda como opción futura, sujeta a decisión del cliente.
+
+### Verificación exhaustiva por invariantes
+
+Al terminar la aplicación, y otra vez al terminar la publicación, el módulo corre
+por SQL un set de invariantes **sobre el 100 % de lo generado** —no un muestreo—
+y guarda el resultado en el batch (`check_state`, `check_report`). Si alguno
+falla, el informe lista las violaciones con ejemplos.
+
+| # | Invariante |
+|---|---|
+| 1 | `quant.quantity` = contado del archivo, en todas las celdas aplicadas |
+| 2 | cada celda aplicada tiene su movimiento `done` con su línea |
+| 3a | entrada: `value` = cantidad × costo |
+| 3b | ninguna capa con `remaining_qty` > cantidad |
+| 3c | `remaining_value` NULL o 0 en las salidas |
+| 4a | ninguna capa con valor sin asiento |
+| 4b | ningún asiento desbalanceado (Σdébitos = Σcréditos) |
+| 4c | el importe del asiento es el valor de su capa |
+| 4d | las cuentas son las de la categoría del producto |
+| 5a | ningún asiento del ajuste quedó en borrador (tras publicar) |
+| 5b | ninguna numeración duplicada en el rango del ajuste |
+| 5c | ningún hueco en la numeración del diario en ese rango |
+| 6a | ningún par producto/ubicación con más de un quant |
+| 6b | ningún conteo pendiente sin aplicar |
+| 7 | **ningún envío nuevo al WMS** en `product_wms_log`, `wis_sync_queue` ni `wms_integracion_log` |
+| 8 | Σ del diario = Σ de las capas |
+
+El 5b y el 5c se miran sobre **todo el diario en el rango del ajuste**, no solo
+sobre los asientos del ajuste: el diario puede tener asientos ajenos
+intercalados y compararlos solo entre ellos daba huecos inexistentes.
+
+El invariante 7 se apoya en una **línea base** de esas tres tablas que se guarda
+al arrancar la aplicación: no alcanza con mirar la configuración, porque
+`wis.sync.queue._encolar` escribe sin consultar si la comunicación está
+habilitada.
 
 ### Paridad con el ORM (criterio de aceptación)
 
@@ -753,13 +878,23 @@ Sobre la copia aplicada por SQL:
 
 ### Operación
 
-**Cancelar** durante la aplicación es un *pedido*: la tanda en curso termina y
-lo ya aplicado queda (no escribe la fila del batch: la tanda en curso la escribe
-al terminar y el choque hacía fallar su commit). **Reanudar** retoma desde el
-puntero. Un choque de concurrencia **reintenta la tanda** hasta 3 veces. Si el
-servidor se cae a mitad de tanda, esa tanda se revierte y el cron la retoma.
-Un batch arrancado con una versión anterior del módulo se puede reanudar: la
-tanda prepara sola las columnas que le falten al staging.
+**Cancelar** durante la aplicación **o la publicación** es un *pedido*: la tanda
+en curso termina y lo ya hecho queda (no escribe la fila del batch: la tanda en
+curso la escribe al terminar y el choque hacía fallar su commit). **Reanudar**
+retoma desde el puntero; en la publicación recuenta los borradores pendientes,
+así que lo ya publicado no vuelve a pasar. Un choque de concurrencia **reintenta
+la tanda** hasta 3 veces. Si el servidor se cae a mitad de tanda, esa tanda se
+revierte y el cron la retoma. Un batch arrancado con una versión anterior del
+módulo se puede reanudar: la tanda prepara sola las columnas que le falten al
+staging.
+
+En la publicación, además, **un asiento que no publica no frena la corrida**: se
+reintenta solo y, si vuelve a fallar, queda en borrador con el motivo en el log
+del batch y sigue la tanda. El invariante 5a avisa si al final quedó alguno.
+
+Los tres botones van en orden —**2. Cargar conteo**, **3. Aplicar ajuste**,
+**4. Publicar asientos**— y hay un cuarto, **Verificar invariantes**, que corre
+el set a pedido sobre lo ya generado.
 
 ### Fecha contable
 
@@ -770,13 +905,20 @@ decide el contador del cliente antes de producción.**
 
 ### Asientos
 
-Cada movimiento con valor en una categoría con valuación automática genera **un
-asiento por quant**, en el diario de stock. En la base de prueba casi ningún
-producto tiene costo (69 de 23.541), así que casi no hay asientos; con costos
-cargados pueden ser cientos de miles. **Pendiente de confirmación del cliente.**
-`aml_secondary_currency` exige tipo de cambio de la moneda secundaria para la
-fecha del asiento: en producción lo carga el cron del BCU; en la copia de prueba
-hubo que cargar el del día a mano.
+Cada capa con valor en una categoría con valuación automática genera **un asiento
+en el diario de stock**. En el escenario de saldos iniciales, con costo en los
+23.541 productos, son **828.541 asientos** y ~1,66 millones de líneas: el SQL los
+crea **en borrador** durante la aplicación y la **fase 3** los publica por el ORM
+en tandas de 150.
+
+Que sean uno por capa es lo que hace el core. **Agruparlos** —uno por producto o
+por categoría— bajaría bastante el tiempo de publicación, pero **cambia lo que ve
+el contador**: queda como opción futura, sujeta a decisión del cliente, y no está
+implementado.
+
+`aml_secondary_currency` exige tipo de cambio de la moneda secundaria **para la
+fecha exacta** del asiento, así que la fase 3 lo valida antes de arrancar (ver
+*Requisitos operativos* y `FINDINGS.md`).
 
 ### Cuánto tarda
 
@@ -800,18 +942,52 @@ tal cual, 17 ms sin ese recompute). El motor SQL lo hace una sola vez al final.
 
 - **De noche, con las sucursales cerradas y el POS sin operar.** Cada tanda de la
   aplicación toma `LOCK TABLE` sobre `stock_quant` y `stock_valuation_layer` en
-  modo SHARE ROW EXCLUSIVE y lo mantiene **~16 s, toda la tanda**. Mientras dura,
-  **ninguna caja puede cerrar una venta ni nadie puede recibir mercadería**: esas
-  operaciones quedan esperando el lock. Son 19 tandas seguidas para las ~918.000
-  celdas, así que en la práctica el sistema está tomado los ~4 minutos que duran
-  las tandas (más ~1,5 min de recálculos finales, esos sin lock).
-- **Carga y aplicación en la misma ventana.** La aplicación deja la cantidad
-  final igual al contado. **Limitación explícita:** lo que se venda entre el
-  conteo físico y la aplicación queda absorbido por el ajuste.
-- **Dump verificado antes de aplicar** (mismo procedimiento que en clientes). La
-  aplicación crea movimientos, valuación y asientos: la vuelta atrás real es
-  restaurar el dump.
-- **Responsable del conteo** administrador de inventario.
+  modo SHARE ROW EXCLUSIVE y lo mantiene **toda la tanda**. Con la valuación y
+  los asientos adentro, una tanda de 50.000 celdas tarda **~41 s** (antes ~16 s):
+  son **19 tandas seguidas, ~13 minutos** en los que **ninguna caja puede cerrar
+  una venta ni nadie puede recibir mercadería** — esas operaciones quedan
+  esperando el lock. La publicación de los asientos **no toma ese lock**: puede
+  correr después, incluso con el sistema en uso.
+
+- 🔴 **Cotización de la moneda secundaria, de la fecha EXACTA.** Las compañías de
+  FORUM tienen `secondary_currency_id` (USD), y la copia de
+  `aml_secondary_currency` que gana por orden del `addons_path` es la de
+  `general_primate`, que busca la cotización con **la fecha exacta del asiento**
+  —sin caer a la última anterior— y levanta `UserError` desde el `_post()`. O sea
+  que **sin la cotización del día, la publicación no arranca**. El módulo lo
+  valida antes de empezar y frena con la lista de fechas que faltan; en
+  producción la carga el cron del BCU, pero hay que **verificarlo antes de la
+  corrida**. El detalle de las dos copias del módulo está en `FINDINGS.md`.
+
+- 🔴 **El camino ORM sale hacia el WMS. Riesgo de producción.**
+  `integracion_wis` engancha el `write` de `product.product` y
+  `product.template` y, si la comunicación está activa, hace **un request HTTP
+  por producto**. El apply por ORM lo dispara por **dos vías**:
+
+  1. `_run_fifo` escribe el `standard_price` del producto al consumir capas
+     → `Product.write` → `enviarWS()`;
+  2. mover stock reactiva pickings en espera → `_action_assign` →
+     `insertarPedidos`.
+
+  Se detectó en la copia porque las credenciales eran inválidas
+  (`invalid_client`); **con credenciales válidas habría mandado datos de
+  verdad**. Todos los caminos ORM del módulo corren con el guard
+  `_avoid_wms=True` (y `skip_wms_integration`), **el camino SQL no lo dispara**,
+  y el invariante 7 audita contra `product_wms_log`, `wis_sync_queue` y
+  `wms_integracion_log` que no haya salido ni una fila. Aun así, para la corrida
+  real conviene **desactivar la comunicación** del módulo desde su
+  configuración: el guard es del código, la compuerta es de datos.
+
+- **Fecha contable:** si `inventory_accounting_date` está vacía, los movimientos
+  y los asientos llevan la fecha en que se aplica. La define el contador del
+  cliente.
+
+- **El apply y la publicación son reanudables.** Cancelar es un *pedido*: la
+  tanda en curso termina y lo ya hecho queda. Reanudar retoma desde el puntero
+  (la publicación recuenta los borradores pendientes, así que lo ya publicado no
+  vuelve a pasar). Un choque de concurrencia reintenta la tanda hasta 3 veces, y
+  un asiento que no publica se reintenta solo y queda en borrador con el motivo
+  en el log, sin frenar la corrida.
 
 ## Alcance explícito del ajuste
 
