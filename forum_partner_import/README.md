@@ -1003,16 +1003,67 @@ Lo que **no** toca, a propósito:
   Diferencias", los almacenes de otras compañías: nada de eso se ajusta.
 - **Celdas vacías** — esa sucursal no se toca para ese producto.
 
+Y lo que el **camino SQL** no replica, y por eso se deriva al ORM en vez de
+aproximarlo:
+
+- **Costeo que no sea FIFO** (AVCO, estándar). El SQL replica FIFO, que es lo que
+  usan las 94 categorías del archivo; AVCO tiene además la corrección de
+  redondeo del `standard_price` y no hay ni un caso en la base para verificarlo,
+  así que esos productos van por `_apply_inventory`. Si en producción aparecen
+  categorías AVCO, **conviene medir cuántas celdas son antes de la corrida**.
+- **Capas negativas preexistentes**: las corrige el `_fifo_vacuum`, que crea
+  capas de ajuste y sus asientos. No se replica.
+- **Reservas y líneas pendientes** en la ubicación (`_free_reservation`).
+- **Seguimiento por lote/serie** y pares con quants duplicados.
+
+Tampoco se implementó, y queda como decisión del cliente: **agrupar los
+asientos** (uno por producto o por categoría en vez de uno por capa). Bajaría el
+tiempo de publicación, pero cambia lo que ve el contador.
+
 ## Checklist pre-producción
 
 1. **Dump verificado** (ver el de clientes).
 2. `python3 -c "import openpyxl"` en el entorno del servidor.
 3. `shasum -a 256 forum_partner_import/data/ajuste_inventario_20260912.xlsx`
    contra la huella de arriba.
-4. Tipo de cambio de la moneda secundaria cargado para la fecha contable.
-5. Después de cargar el staging, revisar el log y el export: IDs no encontrados
+4. 🔴 **Tipo de cambio de la moneda secundaria cargado para la fecha EXACTA de
+   los asientos.** No vale la del día anterior: la copia de
+   `aml_secondary_currency` que corre exige coincidencia exacta. El módulo lo
+   valida antes de publicar y frena, pero conviene verificarlo antes:
+
+   ```sql
+   SELECT name FROM res_currency_rate
+    WHERE currency_id = (SELECT secondary_currency_id FROM res_company WHERE id = 1)
+      AND name = CURRENT_DATE;   -- tiene que devolver una fila
+   ```
+
+5. 🔴 **Comunicación con el WMS desactivada** durante la corrida (la compuerta
+   de `integracion_wis`, además del guard del código):
+
+   ```sql
+   SELECT comunicacion_activa FROM integracion_wis_integracion_wis;  -- false
+   ```
+
+6. **Cuentas y diario de stock en TODAS las categorías** de los productos del
+   archivo, si van a valuar en tiempo real. Ojo: una propiedad puede existir con
+   el valor **vacío**, y entonces el producto queda sin cuenta aunque la fila
+   esté; la aplicación corta con `UserError` si pasa:
+
+   ```sql
+   SELECT count(*) FROM ir_property
+    WHERE name = 'property_stock_valuation_account_id'
+      AND (value_reference IS NULL OR value_reference NOT LIKE 'account.account,%');
+   ```
+
+7. Después de cargar el staging, revisar el log y el export: IDs no encontrados
    (en producción deberían ser 0), ubicaciones por compañía, no almacenables.
-6. Confirmar con el contador la fecha contable y los asientos.
-7. Mirar en el log de la primera tanda cuántos productos van por el ORM
+8. Confirmar con el contador la fecha contable y los asientos.
+9. Mirar en el log de la primera tanda cuántos productos van por el ORM
    (`clasificación (N productos vía ORM)`): si en producción son muchos más que en
    la prueba, rediscutir antes de seguir. El widget muestra ritmo y ETA.
+10. **Al terminar la aplicación, leer el informe de invariantes** en el batch
+    (`Verificación`). Si dice *con violaciones*, **no publicar**: el detalle
+    lista qué falló y con qué ejemplos.
+11. **Publicar los asientos** (botón 4) y volver a leer el informe: ahí suman los
+    invariantes de la publicación (nada en borrador, numeración sin huecos ni
+    duplicados, suma del diario igual a la suma de las capas).
