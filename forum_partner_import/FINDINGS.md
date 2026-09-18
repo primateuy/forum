@@ -265,3 +265,82 @@ fallar a mitad de tanda.
    está. Es lo menos invasivo, pero deja las dos copias vivas.
 
 La 1 es la correcta a largo plazo; la 3, la de menor riesgo inmediato.
+
+## Defecto propio: el invariante 5c era inviable a escala (corregido)
+
+La primera versión del control de **huecos en la numeración** del diario usaba una
+ventana:
+
+```sql
+SELECT sequence_number - lag(sequence_number) OVER (
+           PARTITION BY sequence_prefix ORDER BY sequence_number)
+  FROM account_move WHERE state = 'posted' AND (sequence_prefix, sequence_number) IN (...)
+```
+
+y dentro de ese `IN` acotaba el rango del ajuste con **dos subconsultas
+correlacionadas** por `am.sequence_prefix` (el `min` y el `max`). Correlacionadas
+significa que se reevalúan por fila candidata, y la ventana recorría
+`account_move` entera.
+
+**Medido sobre la base del peor caso (829.000 asientos): más de 1 h 40 min en ese
+único control, con 161 MB de temporales en disco y sin haber terminado.** La fase
+de verificación completa habría costado más que la publicación entera (3 h 29 min),
+que es tanto como no tenerla: nadie la corre en producción.
+
+**Por qué era innecesario.** Para detectar huecos no hace falta comparar cada
+número con el anterior. Si en el rango no falta ninguno, entonces
+`count(distinct sequence_number) = max - min + 1`. Son dos agregados que se
+apoyan en `account_move_sequence_index`, que **ya existe en el core**
+(`journal_id, sequence_prefix DESC, sequence_number DESC, name`). El rango del
+ajuste se resuelve **una sola vez** en un CTE en vez de por fila.
+
+Se conservan las dos propiedades que el control tenía que tener: mira **todo el
+diario dentro del rango** (los asientos ajenos intercalados no son huecos) y
+**acota al rango del ajuste** por prefijo (no reporta huecos anteriores).
+
+Cambia la unidad del contador —el viejo contaba *saltos*, el nuevo cuenta
+*prefijos con huecos*— y en los dos el valor esperado es **0**.
+
+### La lección de método, que es la que importa
+El defecto no lo encontró ninguna prueba: lo encontró **mirar el proceso mientras
+corría**. Y estuvo a punto de no encontrarse, porque un proceso trabado en una
+consulta pesada se ve **idéntico** a uno colgado: 0 % de CPU y ni una línea de
+log. En una corrida anterior se mató por eso, perdiendo el informe. La forma de
+distinguirlos es preguntarle a la base, no mirar el proceso:
+
+```sql
+SELECT pid, state, wait_event_type, wait_event, now() - query_start AS hace
+  FROM pg_stat_activity WHERE datname = '<base>';
+```
+
+Dos trampas de esa vista, verificadas: **matar el cliente no cancela la consulta**
+(sigue corriendo y compitiendo; hace falta `pg_cancel_backend(pid)`), y **el texto
+de `query` viene truncado y alineado** en `track_activity_query_size`
+(`length(query) = 1023` en todas las filas), así que un patrón anclado al
+principio como `btrim(query) LIKE 'explain%'` **da falso hasta en las filas que sí
+son esa consulta**. Filtrar por `%...%` o por pid.
+
+### Verificado fabricando el defecto, y los dos criterios NO son equivalentes
+
+El 5c nuevo se probó **fabricando las violaciones**, no comprobando que diga «0»
+sobre datos sanos: dos controles que miran una base sin huecos dicen los dos «0»
+aunque uno esté roto y no mire nada. Sobre tres prefijos de juguete —uno sano
+(1..10), uno al que le faltan el 5 y el 8, y uno con el 7 duplicado—:
+
+| criterio | `SANO` | `ROTO` | `DUPL` |
+|---|---|---|---|
+| **5c nuevo** (agregados) | — | **detecta, faltan 2** | — |
+| 5c viejo (ventana `lag`) | — | detecta, 2 saltos | **detecta, 1 salto** |
+| 5b (duplicados) | — | — | **detecta el 7** |
+
+O sea: el 5c **viejo mezclaba huecos con duplicados**. Dos filas con el mismo
+número producen un salto de 0, que no es `1`, y el control lo contaba como hueco
+—duplicando el reporte de algo que el **5b** ya controla por separado—. El nuevo
+separa las dos cosas: 5b duplicados, 5c faltantes.
+
+**Consecuencia:** los dos criterios no dan el mismo número fila por fila, y el
+esperado sigue siendo **0 en ambos** sobre un diario correlativo sano. El nuevo es
+el correcto, no sólo el rápido.
+
+Como efecto colateral útil, el nuevo informa **cuántos números faltan** por
+prefijo (`esperados - presentes`), que es más accionable que una cuenta de saltos.

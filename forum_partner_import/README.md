@@ -813,7 +813,7 @@ falla, el informe lista las violaciones con ejemplos.
 | 4d | las cuentas son las de la categoría del producto |
 | 5a | ningún asiento del ajuste quedó en borrador (tras publicar) |
 | 5b | ninguna numeración duplicada en el rango del ajuste |
-| 5c | ningún hueco en la numeración del diario en ese rango |
+| 5c | ningún hueco en la numeración del diario en ese rango (`count(distinct) = max - min + 1`, sin ventana) |
 | 6a | ningún par producto/ubicación con más de un quant |
 | 6b | ningún conteo pendiente sin aplicar |
 | 7 | **ningún envío nuevo al WMS** en `product_wms_log`, `wis_sync_queue` ni `wms_integracion_log` |
@@ -823,10 +823,24 @@ El 5b y el 5c se miran sobre **todo el diario en el rango del ajuste**, no solo
 sobre los asientos del ajuste: el diario puede tener asientos ajenos
 intercalados y compararlos solo entre ellos daba huecos inexistentes.
 
-El invariante 7 se apoya en una **línea base** de esas tres tablas que se guarda
-al arrancar la aplicación: no alcanza con mirar la configuración, porque
-`wis.sync.queue._encolar` escribe sin consultar si la comunicación está
-habilitada.
+> **La segunda pasada corre en 25,6 s** sobre el peor caso completo (829.000
+> asientos, 849.262 capas): los 19 controles, sin muestreo.
+>
+> 🔴 **No siempre fue así, y la historia importa.** La primera versión del 5c
+> usaba una ventana `lag()` sobre `account_move` entera y calculaba el rango con
+> subconsultas **correlacionadas** por prefijo. Medido: **9 h 11 min sin
+> terminar**, con 161 MB de temporales en disco. No era «lento»: era inviable, y
+> hacía que la fase de verificación costase más que todo lo verificado. Se
+> reescribió con dos agregados (`count(distinct) = max - min + 1`) apoyados en
+> `account_move_sequence_index`, que ya existe en el core, y el rango se resuelve
+> una vez en un CTE. Ver `FINDINGS.md`.
+>
+> **Se verificó fabricando el defecto, no comprobando que diga «0».** Dos
+> controles sobre un diario sano dicen los dos «0» aunque uno esté roto. Sobre
+> prefijos de juguete —uno sano, uno sin el 5 y el 8, uno con el 7 duplicado— el
+> 5c nuevo detecta solo el roto e informa **cuántos números faltan**. De paso
+> apareció que el viejo marcaba también el duplicado, pisando al 5b: los dos
+> criterios **no** son equivalentes, y el nuevo es el correcto además del rápido.
 
 ### Paridad con el ORM (criterio de aceptación)
 
@@ -989,10 +1003,18 @@ fecha exacta** del asiento, así que la fase 3 lo valida antes de arrancar (ver
 
 ### Cuánto tarda
 
+> 🔴 **Estos números son de un PEOR CASO FABRICADO, no de producción.** Para
+> medirlos se le cargó costo y categoría en tiempo real a **los 23.541 productos**
+> del archivo, o sea el 100 %, que es el escenario de *saldos iniciales*. En una
+> base real, cuantos menos productos valoricen, menos capas con valor y menos
+> asientos hay, y los dos tiempos bajan. **El número que vale para comprometer
+> una ventana es el del ensayo sobre el dump fresco de producción**, y el primer
+> dato a mirar ahí es cuántos productos valorizan y cuántos caen al camino ORM.
+
 Medido sobre `o17_inv_med` (copia con el peor caso: los 23.541 productos del
 archivo con costo y categoría en tiempo real).
 
-**Fase 2, aplicación: 12 min 30 s** para las **918.061 celdas**, 19 tandas de
+**Fase 2, aplicación: 12 min 01 s** para las **918.061 celdas**, 19 tandas de
 50.000, **0 errores**. Genera 834.945 quants ajustados, 827.657 capas con valor y
 **827.657 asientos en borrador**. Solo **1.065 celdas (0,12 %)** van por el
 camino ORM. Después: **stock = contado en las 835.309 celdas** y el cuadre
@@ -1001,8 +1023,24 @@ contable exacto (asientos 11.575.520.446,68 = suma de |valor| de las capas).
 Por tanda de 50.000: ~41 s. Con la valuación y los asientos adentro, la tanda
 pasó de ~16 s (versión sin valuar) a ~41 s.
 
-**Fase 3, publicación: ~3 horas** para los 827.657 asientos, a **13,35 ms por
-asiento**.
+**Fase 3, publicación: 3 h 21 min 10 s** para **817.007 asientos, 0 errores**, a
+**14,77 ms por asiento** (12.071 s / 817.007), con el lote en 500.
+
+> 🔴 **Dos tiempos, y hay que saber cuál se usa.** El reloj de la fase marca
+> **3 h 29 min** (01:21:28 → 04:50:36) porque esa noche la publicación se arrancó
+> con el lote en **150**, se canceló a los 8 minutos y se reanudó con **500**. Los
+> **3 h 21 min** son la corrida limpia de punta a punta con lote 500, y es el
+> número que vale para planificar; los 3 h 29 min incluyen un arranque abortado.
+>
+> Y el **14,77 ms** sale de dividir los 12.071 s de ese tramo por sus 817.007
+> asientos. Un cálculo intermedio dio 15,16 ms mezclando el numerador de la fase
+> completa (12.548 s, con el falso arranque adentro) con un divisor de 827.657:
+> numerador de una corrida y denominador de otra. **El correcto es 14,77.**
+>
+> Para separar los dos tramos **no sirve `write_date`**: cualquier escritura
+> posterior lo mueve, y agrupar por él mete asientos preexistentes de la base
+> (dio «10 días» y «75.898 ms/asiento»). Los tramos se separan por el log del
+> batch, que registra cada arranque con su tamaño de tanda.
 
 🔴 **Una corrección importante sobre este número.** La primera medición dio
 4,95 ms/asiento y se hizo **sobre una tabla con 200 asientos**: no se sostiene a

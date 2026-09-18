@@ -1331,29 +1331,44 @@ class ForumImportBatchInventarioApply(models.Model):
                             WHERE m.is_inventory AND am.create_date >= %(desde)s)
                      GROUP BY 1, 2 HAVING count(*) > 1) x
             """, {"desde": self.apply_started_at})
-            revisar("5c. huecos en la numeración del diario en el rango del ajuste", """
-                SELECT count(*) FROM (
-                    SELECT sequence_number - lag(sequence_number) OVER (
-                               PARTITION BY sequence_prefix ORDER BY sequence_number) AS salto
-                      FROM account_move
-                     WHERE state = 'posted'
-                       AND (sequence_prefix, sequence_number) IN (
-                           SELECT am.sequence_prefix, am.sequence_number FROM account_move am
-                            WHERE am.state = 'posted' AND am.sequence_prefix IN (
-                                  SELECT DISTINCT a2.sequence_prefix FROM account_move a2
-                                    JOIN stock_move m ON m.id = a2.stock_move_id
-                                   WHERE m.is_inventory AND a2.create_date >= %(desde)s)
-                             AND am.sequence_number BETWEEN (
-                                   SELECT min(a3.sequence_number) FROM account_move a3
-                                     JOIN stock_move m3 ON m3.id = a3.stock_move_id
-                                    WHERE m3.is_inventory AND a3.create_date >= %(desde)s
-                                      AND a3.sequence_prefix = am.sequence_prefix) AND (
-                                   SELECT max(a4.sequence_number) FROM account_move a4
-                                     JOIN stock_move m4 ON m4.id = a4.stock_move_id
-                                    WHERE m4.is_inventory AND a4.create_date >= %(desde)s
-                                      AND a4.sequence_prefix = am.sequence_prefix))
-                ) x WHERE salto IS NOT NULL AND salto <> 1
-            """, {"desde": self.apply_started_at})
+            # 5c. Huecos en la numeración. Sin ventana y a propósito: la versión
+            # con `lag()` recorría `account_move` entera y calculaba el rango con
+            # subconsultas CORRELACIONADAS por prefijo (se reevalúan por fila),
+            # lo que medido sobre 829k asientos pasaba de 1 h 40 min volcando
+            # 161 MB a disco. Si en el rango no falta ningún número, entonces
+            # `count(distinct) = max - min + 1`: son dos agregados sobre
+            # `account_move_sequence_index`, que ya existe en el core
+            # (journal_id, sequence_prefix DESC, sequence_number DESC, name).
+            # El rango del ajuste se resuelve UNA vez en el CTE.
+            # Sigue mirando TODO el diario dentro del rango (no solo los asientos
+            # del ajuste): los asientos ajenos intercalados no son huecos.
+            # Nota: el viejo contaba saltos y este cuenta prefijos con huecos; el
+            # valor esperado es 0 en los dos.
+            rango_5c = """
+                WITH rango AS (
+                    SELECT am.sequence_prefix AS pref,
+                           min(am.sequence_number) AS desde_n,
+                           max(am.sequence_number) AS hasta_n
+                      FROM account_move am
+                      JOIN stock_move m ON m.id = am.stock_move_id
+                     WHERE m.is_inventory AND am.create_date >= %(desde)s
+                       AND am.state = 'posted' AND am.sequence_prefix IS NOT NULL
+                     GROUP BY am.sequence_prefix)
+                SELECT r.pref, r.desde_n, r.hasta_n,
+                       count(DISTINCT a.sequence_number) AS presentes,
+                       (r.hasta_n - r.desde_n + 1) AS esperados
+                  FROM rango r
+                  JOIN account_move a
+                    ON a.sequence_prefix = r.pref
+                   AND a.sequence_number BETWEEN r.desde_n AND r.hasta_n
+                   AND a.state = 'posted'
+                 GROUP BY r.pref, r.desde_n, r.hasta_n
+                HAVING count(DISTINCT a.sequence_number) <> (r.hasta_n - r.desde_n + 1)
+            """
+            revisar("5c. huecos en la numeración del diario en el rango del ajuste",
+                    "SELECT count(*) FROM (%s) x" % rango_5c,
+                    {"desde": self.apply_started_at},
+                    ejemplo_sql="%s LIMIT 3" % rango_5c)
             revisar("8. suma del diario distinta de la suma de las capas", """
                 SELECT count(*) FROM (
                     SELECT round(sum(l.debit)::numeric, 2) AS diario,
@@ -1415,10 +1430,15 @@ class ForumImportBatchInventarioApply(models.Model):
         self.env["ir.config_parameter"].sudo().set_param(
             self.PARAM_RANGO_ASIENTOS % self.id, "%d-%d" % (desde, hasta))
         vals = {"state": "posting", "current_phase": "post", "post_ended_at": False,
-                "post_step": False, "post_total": total}
+                "post_step": False}
         if not self.post_started_at:
-            vals.update({"post_done": 0, "post_errors": 0,
+            vals.update({"post_total": total, "post_done": 0, "post_errors": 0,
                          "post_started_at": fields.Datetime.now()})
+        else:
+            # Retomando: el total es lo ya publicado MÁS lo que queda. Con solo
+            # los pendientes, `post_done` (que conserva lo de la corrida
+            # anterior) pasaba el total y la pantalla mostraba 101,3 %.
+            vals["post_total"] = self.post_done + total
         self.write(vals)
         self._log("Publicación iniciada. %d asientos en borrador, tandas de %d."
                   % (total, self.post_batch_size))
