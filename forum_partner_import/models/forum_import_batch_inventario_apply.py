@@ -1177,18 +1177,36 @@ class ForumImportBatchInventarioApply(models.Model):
         """.format(t=t), {"desde": self.apply_started_at})
 
         # 3. Capas: valor de una entrada = cantidad × costo, y remaining coherente.
-        revisar("3a. entrada: value = cantidad × costo", """
+        # 3a. Consistencia interna de la capa: su valor es su cantidad por su
+        #     costo unitario. NO se compara contra el `standard_price` del
+        #     producto, porque `_run_fifo` lo REESCRIBE durante la corrida
+        #     (`product.standard_price = value_svl / quantity_svl`) en los
+        #     productos que pasan por el camino ORM: la capa quedó bien con el
+        #     costo de su momento y el de la propiedad ya es otro. Comparar
+        #     contra la propiedad daba 374 falsos positivos en 17 productos que
+        #     habían pasado por los dos caminos.
+        revisar("3a. capa: value = cantidad × unit_cost", """
+            SELECT count(*) FROM stock_valuation_layer l
+              JOIN stock_move m ON m.id = l.stock_move_id
+              JOIN res_company c ON c.id = l.company_id
+              JOIN res_currency cur ON cur.id = c.currency_id
+             WHERE m.is_inventory AND l.create_date >= %(desde)s AND l.quantity > 0
+               AND round(l.value::numeric, cur.decimal_places)
+                   <> round((l.quantity * l.unit_cost)::numeric, cur.decimal_places)
+        """, {"desde": self.apply_started_at})
+        # 3a bis. Y para las capas que hizo el SQL —donde el costo no se
+        #     reescribe— sí se exige que el unit_cost sea el del producto.
+        revisar("3a bis. capa por SQL: unit_cost = standard_price del producto", """
             SELECT count(*) FROM stock_valuation_layer l
               JOIN stock_move m ON m.id = l.stock_move_id
               JOIN ir_property ip ON ip.name = 'standard_price'
                    AND ip.company_id = l.company_id
                    AND ip.res_id = 'product.product,' || l.product_id
-              JOIN res_company c ON c.id = l.company_id
-              JOIN res_currency cur ON cur.id = c.currency_id
              WHERE m.is_inventory AND l.create_date >= %(desde)s AND l.quantity > 0
-               AND round(l.value::numeric, cur.decimal_places)
-                   <> round((l.quantity * ip.value_float)::numeric, cur.decimal_places)
-        """, {"desde": self.apply_started_at})
+               AND l.product_id NOT IN (SELECT DISTINCT product_id FROM {t}
+                                         WHERE apply_via = 'orm' AND product_id IS NOT NULL)
+               AND round(l.unit_cost::numeric, 2) <> round(ip.value_float::numeric, 2)
+        """.format(t=t), {"desde": self.apply_started_at})
         revisar("3b. ninguna capa con remaining_qty > cantidad", """
             SELECT count(*) FROM stock_valuation_layer l
               JOIN stock_move m ON m.id = l.stock_move_id
