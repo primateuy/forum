@@ -75,12 +75,16 @@ SVL_TCHISTORICO_CON_VALOR = ("cotizacionDia", "valorMonedaSecundaria", "valorRes
                              "valorizadoCosteDestinoMR", "ucmr", "unit_cost_report")
 
 # --- Publicación de los asientos (fase 3) -----------------------------------
-# Asientos por tanda de publicación. 150 es el óptimo MEDIDO, no una intuición:
-# el costo por asiento de `action_post` sube con el tamaño de la tanda
-# (_check_balanced y los recomputes recorren todo el conjunto), así que agrandar
-# la tanda EMPEORA el total. Medido en o17_inv_med: 25→7,9 ms, 50→6,4, 100→5,4,
-# 150→4,95, 200→5,3, 300→6,1, 2000→11,5 ms por asiento. Ver el README.
-LOTE_PUBLICACION = 150
+# Asientos por tanda. Medido sobre la tabla LLENA (817.007 borradores, 1,66 M de
+# líneas), que es el escenario real: 150→15,05 ms por asiento, 500→13,82,
+# 1.000→14,28, 2.000→14,21. La curva es casi PLANA y 500 es el mejor.
+#
+# Sobre una tabla con 200 asientos la misma medición daba 4,95 ms y parecía que
+# agrandar la tanda empeoraba; a escala eso no se sostiene. Lo que domina es el
+# `action_post` en sí (12,4 ms de los 14,9), no el tamaño del lote: la
+# numeración del diario pesa los otros 2,5 ms. **Si se vuelve a medir, tiene que
+# ser con la tabla en volumen real.**
+LOTE_PUBLICACION = 500
 # Veces que se reintenta un asiento suelto que falló al publicar.
 REINTENTOS_ASIENTO = 2
 
@@ -172,11 +176,14 @@ class ForumImportBatchInventarioApply(models.Model):
     # ------------------------------------------------------------------
     post_batch_size = fields.Integer(
         string="Asientos por tanda de publicación", default=LOTE_PUBLICACION, required=True,
-        help="150 es el óptimo MEDIDO. Agrandar la tanda EMPEORA el total: el "
-             "costo por asiento de action_post crece con el tamaño del lote "
-             "(_check_balanced y los recomputes recorren todo el conjunto). "
-             "Medido: 25→7,9 ms, 100→5,4, 150→4,95, 300→6,1, 2000→11,5 ms por "
-             "asiento. No subirlo sin volver a medir.",
+        help="Con la tabla de asientos LLENA el costo por asiento es casi plano "
+             "entre 150 y 2.000: medido sobre 817.007 borradores, 150→15,05 ms, "
+             "500→13,82, 1.000→14,28, 2.000→14,21. El default 500 es el mejor "
+             "medido, y lo que domina no es el tamaño de la tanda sino el "
+             "action_post en sí (12,4 ms de los 14,9; la numeración del diario "
+             "pesa los otros 2,5). Sobre una tabla vacía daba 4,95 ms y ese "
+             "número NO se sostiene a escala: si se vuelve a medir, hacerlo con "
+             "la tabla en volumen real.",
     )
     post_total = fields.Integer(string="Asientos a publicar", readonly=True, copy=False)
     post_done = fields.Integer(string="Asientos publicados", readonly=True, copy=False)
@@ -1393,9 +1400,20 @@ class ForumImportBatchInventarioApply(models.Model):
 
         self._pub_validar_cotizaciones()
         self._apl_cancelacion_pedida()
-        total = self._pub_pendientes_count()
+        # Rango de ids de los asientos a publicar, para que las tandas no tengan
+        # que traversar `stock_move_id.is_inventory` (7,1 ms contra 0,7 ms por
+        # tanda, medido sobre 817.007 borradores). Se guarda una sola vez.
+        self.env.cr.execute("""
+            SELECT min(am.id), max(am.id), count(*)
+              FROM account_move am
+              JOIN stock_move m ON m.id = am.stock_move_id
+             WHERE m.is_inventory AND am.state = 'draft'
+        """)
+        desde, hasta, total = self.env.cr.fetchone()
         if not total:
             raise UserError(_("No hay asientos en borrador de este ajuste para publicar."))
+        self.env["ir.config_parameter"].sudo().set_param(
+            self.PARAM_RANGO_ASIENTOS % self.id, "%d-%d" % (desde, hasta))
         vals = {"state": "posting", "current_phase": "post", "post_ended_at": False,
                 "post_step": False, "post_total": total}
         if not self.post_started_at:
@@ -1408,13 +1426,32 @@ class ForumImportBatchInventarioApply(models.Model):
         self._encolar_cron()
         return True
 
-    def _pub_dominio_borrador(self):
+    PARAM_RANGO_ASIENTOS = "forum_partner_import.rango_asientos.%d"
+
+    def _pub_dominio_borrador(self, rango=True):
         """Asientos en borrador generados por la aplicación de ESTE batch.
 
         Se identifican por el movimiento de inventario que los originó: el SQL
         les puso `stock_move_id`, igual que el ORM.
+
+        Con `rango`, y si la publicación ya guardó el rango de ids, se usa ese
+        rango en lugar de traversar `stock_move_id.is_inventory`. La diferencia
+        no es cosmética: **medido sobre 817.007 borradores, la búsqueda de una
+        tanda pasa de 7,1 ms a 0,7 ms**, porque el traversal resuelve una
+        subconsulta sobre los 847.000 movimientos de inventario en cada tanda.
         """
         self.ensure_one()
+        if rango:
+            guardado = self.env["ir.config_parameter"].sudo().get_param(
+                self.PARAM_RANGO_ASIENTOS % self.id)
+            if guardado:
+                desde, _sep, hasta = guardado.partition("-")
+                return [
+                    ("state", "=", "draft"),
+                    ("stock_move_id", "!=", False),
+                    ("id", ">=", int(desde)),
+                    ("id", "<=", int(hasta)),
+                ]
         return [
             ("state", "=", "draft"),
             ("stock_move_id", "!=", False),
@@ -1527,7 +1564,12 @@ class ForumImportBatchInventarioApply(models.Model):
             "(%.1f ms/asiento) | publicados=%d errores=%d",
             self.id, len(asientos), time.time() - t0,
             1000.0 * (time.time() - t0) / len(asientos), publicados, errores)
-        return self._pub_pendientes_count()
+        # Quedan pendientes si la búsqueda llenó la tanda. NO se recuenta: un
+        # `search_count` sobre los borradores cuesta 142 ms (48 ms con el rango)
+        # y multiplicado por las miles de tandas eran ~13 minutos de puro
+        # conteo. La alternativa `search(limit=1)` es peor todavía: medida en
+        # 241 ms, porque sin `order` el planner elige mal.
+        return len(asientos) if len(asientos) == self.post_batch_size else 0
 
     def _pub_postear(self, asientos):
         """`action_post` de la tanda; si falla, asiento por asiento.
