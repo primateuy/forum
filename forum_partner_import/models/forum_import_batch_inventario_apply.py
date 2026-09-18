@@ -2005,8 +2005,14 @@ class ForumImportBatchInventarioApply(models.Model):
             # el módulo hace `vals['ucmr'] = unit_cost * vals.get('cotizacionDia', 1.0)`
             # fuera del if, y con cotizacionDia en 0 el producto queda en 0.
             "ucmr": ("ucmr", "(%s) * coalesce(a.cotiz, 0)" % costo),
+            # `unit_cost_report` es el único CALCULADO de tchistorico, y el ORM
+            # lo computa DESPUÉS de guardar `cotizacionDia`, o sea desde el
+            # valor ya redondeado a sus 6 decimales, no desde la tasa completa.
+            # La diferencia es visible: 3556 × 0,025083 = 89,195148 → 89,20,
+            # mientras 3556 × 0,025082773… = 89,19434 → 89,19. La paridad contra
+            # la gemela ORM lo detectó en 78 capas.
             "unit_cost_report": ("unit_cost_report",
-                                 "(%s) * coalesce(nullif(a.cotiz, 0), 1)" % costo),
+                                 "(%s) * coalesce(nullif(round(a.cotiz, 6), 0), 1)" % costo),
         }
         # Estos cuatro solo se asignan en las ramas CON cotización; en el `else`
         # el módulo no los toca, así que quedan NULL (no 0).
