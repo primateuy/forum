@@ -892,6 +892,30 @@ salidas y contado 0— da **idéntico campo a campo en las seis tablas**:
 Y un **detalle de rendimiento** que la paridad dejó medido: el mismo subconjunto
 tarda **1,5-1,8 s por SQL contra ~40 s por ORM**, unas 20-25 veces más.
 
+### Avance en vivo, verificado en las tres fases
+
+Las tres fases tienen su propia sección en el widget, con barra, porcentaje,
+cronómetro, ETA, ritmo y contadores. Verificado **con la pantalla abierta y sin
+recargar**, con Chromium headless, mientras la publicación real corría:
+
+- las **tres secciones** presentes (Carga · Aplicación · Publicación) y la barra
+  de estado en «Publicando asientos»;
+- la fase 3 avanzó **sola** de 163.650 a 169.650 asientos publicados: **14
+  muestras consecutivas, 14 textos distintos**;
+- la marca de no-recarga se mantuvo en las 14 muestras y al final: la página
+  **nunca se recargó**, el widget se actualiza por polling.
+
+**Un detalle de UI que apareció ahí y se corrigió:** el widget mostraba
+«Invariantes con violaciones» durante la publicación, arrastrando el resultado de
+la pasada **anterior** (la del apply). Mostrar eso mientras se publica hace que
+alguien frene una corrida sana, así que el estado de invariantes ahora se muestra
+sólo si la verificación es **posterior al arranque de la fase en curso**.
+
+Y una advertencia de método: **no conviene mirar la UI mientras se mide un
+tiempo que hay que reportar.** Con el servidor de la interfaz y el navegador
+corriendo, la publicación bajó de 13,17 a 13,83 ms por asiento y el ETA del
+widget osciló entre 1 h 26 y 2 h 43. Al apagarlos volvió a su ritmo.
+
 ### Verificación del después
 
 Sobre las dos gemelas, para comparar el estado resultante por los **dos**

@@ -51,7 +51,7 @@ const CAMPOS = [
     "apply_no_diff", "apply_errors", "apply_via_orm", "apply_step",
     "apply_layers_valued", "apply_entries",
     "post_total", "post_done", "post_errors", "post_step",
-    "post_started_at", "post_ended_at", "check_state",
+    "post_started_at", "post_ended_at", "check_state", "check_at",
     "apply_started_at", "apply_ended_at",
     "started_at", "ended_at",
     "loading_step", "loading_steps_total", "loading_phase", "loading_started_at",
@@ -59,6 +59,10 @@ const CAMPOS = [
 // Campos de fecha: el registro los entrega como luxon, el read como string.
 const CAMPOS_FECHA = [
     "started_at", "ended_at", "loading_started_at", "apply_started_at", "apply_ended_at",
+    // `post_*` y `check_at` van acá por lo mismo: el guard de la fase 3 compara
+    // `check_at` con `post_started_at`, y si uno llega como luxon (del registro)
+    // y el otro como string (del polling) la comparación no significa nada.
+    "post_started_at", "post_ended_at", "check_at",
 ];
 // Peso de la última muestra en el ritmo suavizado. Bajo = más estable.
 const ALFA = 0.3;
@@ -201,7 +205,12 @@ function fasePublicacionInventario(d) {
         { etiqueta: _t("A publicar"), valor: d.post_total, clase: "text-muted" },
         { etiqueta: _t("Errores"), valor: d.post_errors, error: true },
     ];
-    if (d.check_state && d.check_state !== "pendiente") {
+    // El estado de los invariantes se muestra SOLO si la verificación es
+    // posterior al arranque de esta fase. Si no, se está mostrando el resultado
+    // de la pasada anterior —la del apply— y decir "con violaciones" mientras se
+    // publica hace que alguien frene una corrida sana.
+    const verificado = d.check_at && d.post_started_at && d.check_at >= d.post_started_at;
+    if (verificado && d.check_state && d.check_state !== "pendiente") {
         contadores.push({
             etiqueta: _t("Invariantes"),
             valor: d.check_state === "ok" ? _t("todo verde") : _t("con violaciones"),
