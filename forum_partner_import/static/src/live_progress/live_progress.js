@@ -49,6 +49,7 @@ const CAMPOS = [
     "quants_created", "quants_updated", "quants_zero",
     "current_phase", "apply_total", "apply_processed", "applied_count",
     "apply_no_diff", "apply_errors", "apply_via_orm", "apply_step",
+    "apply_layers_valued", "apply_entries",
     "apply_started_at", "apply_ended_at",
     "started_at", "ended_at",
     "loading_step", "loading_steps_total", "loading_phase", "loading_started_at",
@@ -172,6 +173,10 @@ function faseAplicacionInventario(d) {
                 { etiqueta: _t("Sin diferencia"), valor: d.apply_no_diff, clase: "text-muted" },
                 { etiqueta: _t("Vía ORM"), valor: d.apply_via_orm, clase: "" },
                 { etiqueta: _t("Errores"), valor: d.apply_errors, error: true },
+            ],
+            [
+                { etiqueta: _t("Capas con valor"), valor: d.apply_layers_valued, clase: "" },
+                { etiqueta: _t("Asientos en borrador"), valor: d.apply_entries, clase: "" },
             ],
         ],
     };

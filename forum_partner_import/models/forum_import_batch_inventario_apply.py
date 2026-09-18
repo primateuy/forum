@@ -53,7 +53,7 @@ from .forum_import_batch_inventario import ACCIONES_QUANT
 _logger = logging.getLogger(__name__)
 
 # Pedido de cancelación. Vive fuera de la fila del batch a propósito: ver
-# `action_cancelar`.
+# `action_cancelar`. El mismo mecanismo sirve para la fase de publicación.
 PARAM_CANCELAR = "forum_partner_import.cancelar_aplicacion.%d"
 # Veces que se reintenta una tanda que chocó con otra transacción.
 REINTENTOS_TANDA = 3
@@ -66,6 +66,37 @@ PASO_RECALCULO = 2000
 SVL_TCHISTORICO_CERO = ("cotizacionDia", "valorMonedaSecundaria", "valorRestante",
                         "valorUnitario", "ucmr", "unit_cost_report")
 
+# Campos de tchistorico que su create() calcula cuando la capa SÍ tiene valor.
+# Se replican a mano porque el INSERT por SQL no pasa por ese create(): ver
+# `_apl_tchistorico`. El orden no importa; la lista sí, para no olvidarse uno.
+SVL_TCHISTORICO_CON_VALOR = ("cotizacionDia", "valorMonedaSecundaria", "valorRestante",
+                             "valorUnitario", "moneda_reporte_id", "unitCostesDestinoInc",
+                             "unitCostesDestinoIncMR", "valorizadoCosteDestino",
+                             "valorizadoCosteDestinoMR", "ucmr", "unit_cost_report")
+
+# --- Publicación de los asientos (fase 3) -----------------------------------
+# Asientos por tanda de publicación. 150 es el óptimo MEDIDO, no una intuición:
+# el costo por asiento de `action_post` sube con el tamaño de la tanda
+# (_check_balanced y los recomputes recorren todo el conjunto), así que agrandar
+# la tanda EMPEORA el total. Medido en o17_inv_med: 25→7,9 ms, 50→6,4, 100→5,4,
+# 150→4,95, 200→5,3, 300→6,1, 2000→11,5 ms por asiento. Ver el README.
+LOTE_PUBLICACION = 150
+# Veces que se reintenta un asiento suelto que falló al publicar.
+REINTENTOS_ASIENTO = 2
+
+# --- Guard del WMS ----------------------------------------------------------
+# `integracion_wis` engancha `write` de product.product y product.template y, si
+# la comunicación está activa, hace un request HTTP por producto. El apply por
+# ORM lo dispara por DOS vías: `_run_fifo` escribe `standard_price` del producto,
+# y mover stock reactiva pickings en espera (`_action_assign` → insertarPedidos).
+# Este contexto es el guard que el propio módulo respeta. Va en TODOS los
+# caminos ORM de la aplicación. Ver el README (riesgos de producción).
+CONTEXTO_SIN_WMS = {"_avoid_wms": True, "skip_wms_integration": True}
+# Tablas donde `integracion_wis` registra lo que SALE hacia el WMS. La fase de
+# invariantes exige delta 0 en las tres: si alguna creció, algo se escapó del
+# guard. Las de entrada (wis_webhook_log, wms_pedido_evento) no se auditan.
+TABLAS_WMS_SALIENTES = ("product_wms_log", "wis_sync_queue", "wms_integracion_log")
+
 
 class ForumImportBatchInventarioApply(models.Model):
     _inherit = "forum.import.batch"
@@ -75,11 +106,14 @@ class ForumImportBatchInventarioApply(models.Model):
             ("done",),
             ("applying", "Aplicando ajuste"),
             ("applied", "Ajuste aplicado"),
+            ("posting", "Publicando asientos"),
+            ("posted", "Asientos publicados"),
         ],
-        ondelete={"applying": "set default", "applied": "set default"},
+        ondelete={"applying": "set default", "applied": "set default",
+                  "posting": "set default", "posted": "set default"},
     )
     current_phase = fields.Selection(
-        [("carga", "Carga"), ("apply", "Aplicación")],
+        [("carga", "Carga"), ("apply", "Aplicación"), ("post", "Publicación")],
         string="Fase", default="carga", required=True, readonly=True, copy=False,
         help="En qué fase está el batch. Decide qué retoma 'Reanudar' después de "
              "un error o una cancelación.",
@@ -119,9 +153,53 @@ class ForumImportBatchInventarioApply(models.Model):
              "se aplican con _apply_inventory.",
     )
     apply_errors = fields.Integer(string="Errores al aplicar", readonly=True, copy=False)
+    apply_layers_valued = fields.Integer(
+        string="Capas con valor", readonly=True, copy=False,
+        help="Capas de valuación con valor distinto de cero creadas por la "
+             "aplicación. Cada una genera un asiento.",
+    )
+    apply_entries = fields.Integer(
+        string="Asientos en borrador", readonly=True, copy=False,
+        help="Asientos de valuación que la aplicación creó en borrador. Los "
+             "publica la fase 3 por el ORM, que asigna la numeración del diario.",
+    )
     apply_step = fields.Char(string="Etapa de la aplicación", readonly=True, copy=False)
     apply_started_at = fields.Datetime(string="Inicio de la aplicación", readonly=True, copy=False)
     apply_ended_at = fields.Datetime(string="Fin de la aplicación", readonly=True, copy=False)
+
+    # ------------------------------------------------------------------
+    # Fase 3: publicación de los asientos (por ORM, a propósito)
+    # ------------------------------------------------------------------
+    post_batch_size = fields.Integer(
+        string="Asientos por tanda de publicación", default=LOTE_PUBLICACION, required=True,
+        help="150 es el óptimo MEDIDO. Agrandar la tanda EMPEORA el total: el "
+             "costo por asiento de action_post crece con el tamaño del lote "
+             "(_check_balanced y los recomputes recorren todo el conjunto). "
+             "Medido: 25→7,9 ms, 100→5,4, 150→4,95, 300→6,1, 2000→11,5 ms por "
+             "asiento. No subirlo sin volver a medir.",
+    )
+    post_total = fields.Integer(string="Asientos a publicar", readonly=True, copy=False)
+    post_done = fields.Integer(string="Asientos publicados", readonly=True, copy=False)
+    post_errors = fields.Integer(string="Asientos con error", readonly=True, copy=False)
+    post_step = fields.Char(string="Etapa de la publicación", readonly=True, copy=False)
+    post_started_at = fields.Datetime(string="Inicio de la publicación", readonly=True, copy=False)
+    post_ended_at = fields.Datetime(string="Fin de la publicación", readonly=True, copy=False)
+
+    # ------------------------------------------------------------------
+    # Verificación por invariantes
+    # ------------------------------------------------------------------
+    check_state = fields.Selection(
+        [("pendiente", "Pendiente"), ("ok", "Todo verde"), ("fallo", "Con violaciones")],
+        string="Verificación", default="pendiente", readonly=True, copy=False,
+        help="Resultado del set de invariantes que se corre sobre el 100% de lo "
+             "generado, al terminar la aplicación y otra vez al terminar la "
+             "publicación.",
+    )
+    check_report = fields.Text(
+        string="Informe de invariantes", readonly=True, copy=False,
+        help="Una línea por invariante, con el número de violaciones y el detalle.",
+    )
+    check_at = fields.Datetime(string="Última verificación", readonly=True, copy=False)
 
     # ==================================================================
     # Despacho desde el modelo base y la carga
@@ -327,6 +405,8 @@ class ForumImportBatchInventarioApply(models.Model):
             "apply_no_diff": self.apply_no_diff + cuenta["sin_diferencia"],
             "apply_errors": self.apply_errors + cuenta["error"],
             "apply_via_orm": self.apply_via_orm + cuenta["orm"],
+            "apply_layers_valued": self.apply_layers_valued + cuenta["capas_valor"],
+            "apply_entries": self.apply_entries + cuenta["asientos"],
         })
         _logger.info(
             "[forum_partner_import][batch %s] aplicación %d-%d en %.1fs | ajustados=%d "
@@ -342,9 +422,14 @@ class ForumImportBatchInventarioApply(models.Model):
         commit ni toca los contadores del batch.
         """
         self.ensure_one()
-        cuenta = {"aplicado": 0, "sin_diferencia": 0, "error": 0, "orm": 0, "segundos_orm": 0.0}
+        cuenta = {"aplicado": 0, "sin_diferencia": 0, "error": 0, "orm": 0, "segundos_orm": 0.0,
+                  "capas_valor": 0, "asientos": 0}
         if not filas:
             return cuenta
+        # Lo llena `_apl_sql` con lo que generó la valuación de esta tanda. Va
+        # como argumento y no como atributo de `self`: un recordset de Odoo
+        # define __slots__ y no acepta atributos nuevos (AttributeError).
+        contadores = {}
         cr = self.env.cr
         t = self._staging_name()
         # Nadie más crea ni mueve quants o capas mientras dura la tanda: el SQL
@@ -362,7 +447,7 @@ class ForumImportBatchInventarioApply(models.Model):
 
         resultado, errores = {}, {}
         if filas_sql:
-            self._apl_sql(t, filas_sql, resultado, tiempos)
+            self._apl_sql(t, filas_sql, resultado, tiempos, contadores)
         if filas_orm:
             t_orm = time.time()
             self._apl_orm(t, filas_orm, resultado, errores)
@@ -385,6 +470,8 @@ class ForumImportBatchInventarioApply(models.Model):
             "sin_diferencia": valores.count("sin_diferencia"),
             "error": valores.count("error"),
             "orm": len(filas_orm),
+            "capas_valor": contadores.get("capas_valor", 0),
+            "asientos": contadores.get("asientos", 0),
         })
         _logger.info("[forum_partner_import][batch %s] tiempos de la tanda: %s", self.id, tiempos())
         return cuenta
@@ -424,32 +511,35 @@ class ForumImportBatchInventarioApply(models.Model):
         """.format(t=t), {"filas": filas})
         cr.execute("ANALYZE forum_apl_f")
         consultas = [
-            # costo distinto de cero, costo que no es FIFO, seguimiento por lote/serie
+            # Costeo que el SQL no replica (solo FIFO) o seguimiento por lote.
+            # OJO: tener costo ya NO manda al ORM. El SQL valúa las capas y crea
+            # los asientos en borrador, que es el diseño del escenario de saldos
+            # iniciales, donde todos los productos tienen costo: con el criterio
+            # viejo caía el 100% de las celdas al ORM (medido) y la aplicación
+            # pasaba de minutos a horas.
             """
             WITH p AS (SELECT DISTINCT product_id, company_id FROM forum_apl_f)
             SELECT p.product_id
               FROM p
               JOIN product_product pp ON pp.id = p.product_id
               JOIN product_template pt ON pt.id = pp.product_tmpl_id
-              LEFT JOIN ir_property sp ON sp.name = 'standard_price' AND sp.company_id = p.company_id
-                    AND sp.res_id = 'product.product,' || p.product_id
-              LEFT JOIN ir_property spd ON spd.name = 'standard_price' AND spd.company_id = p.company_id
-                    AND spd.res_id IS NULL
               LEFT JOIN ir_property cm ON cm.name = 'property_cost_method' AND cm.company_id = p.company_id
                     AND cm.res_id = 'product.category,' || pt.categ_id
               LEFT JOIN ir_property cmd ON cmd.name = 'property_cost_method' AND cmd.company_id = p.company_id
                     AND cmd.res_id IS NULL
-             WHERE coalesce(sp.value_float, spd.value_float, 0) <> 0
-                OR coalesce(cm.value_text, cmd.value_text, 'standard') <> 'fifo'
+             WHERE coalesce(cm.value_text, cmd.value_text, 'standard') <> 'fifo'
                 OR pt.tracking <> 'none'
             """,
-            # capas con valor, o negativas (vacuum)
+            # Capas NEGATIVAS preexistentes: son las que el `_fifo_vacuum` va a
+            # corregir con capas de ajuste, y esa corrección el SQL no la
+            # replica. Las capas CON VALOR ya no mandan al ORM: son la norma en
+            # saldos iniciales y el reparto FIFO las consume por SQL.
             """
             SELECT DISTINCT l.product_id
               FROM stock_valuation_layer l
               JOIN (SELECT DISTINCT product_id, company_id FROM forum_apl_f) p
                 ON p.product_id = l.product_id AND p.company_id = l.company_id
-             WHERE l.value <> 0 OR l.remaining_value <> 0 OR l.remaining_qty < 0
+             WHERE l.remaining_qty < 0
             """,
             # reservas en el quant de la celda (_free_reservation)
             """
@@ -551,7 +641,7 @@ class ForumImportBatchInventarioApply(models.Model):
                          modelo, ", ".join(sin_cubrir))
         return columnas, valores, params
 
-    def _apl_sql(self, t, filas, resultado, tiempos=None):
+    def _apl_sql(self, t, filas, resultado, tiempos=None, contadores=None):
         """Réplica SQL de `_apply_inventory` para celdas con valuación cero."""
         tiempos = tiempos or self._apl_cronometro()
         cr = self.env.cr
@@ -579,7 +669,16 @@ class ForumImportBatchInventarioApply(models.Model):
                    split_part(coalesce(pi.value_reference, pdef.value_reference), ',', 2)::int AS inv_loc,
                    cur.decimal_places AS dec_cia, {dec_rep} AS dec_rep,
                    NULL::int AS move_id, NULL::int AS ml_id, NULL::int AS svl_id,
-                   0::numeric AS faltante
+                   0::numeric AS faltante,
+                   -- Costo del producto en su compañía: el que usa una capa de
+                   -- entrada (`_get_price_unit` cae en `standard_price` porque
+                   -- un movimiento de inventario nace sin `price_unit`).
+                   coalesce(sp.value_float, spd.value_float, 0) AS costo,
+                   -- Cotización de la moneda de reporte a la fecha, para los
+                   -- campos de tchistorico. Equivale a `_get_conversion_rate`.
+                   {cotiz} AS cotiz,
+                   -- Los rellena `_apl_fifo_valores` para las salidas.
+                   0::numeric AS val_salida, 0::numeric AS costo_salida
               FROM {t} s
               JOIN stock_quant q ON q.product_id = s.product_id AND q.location_id = s.location_id
                                AND q.lot_id IS NULL AND q.package_id IS NULL AND q.owner_id IS NULL
@@ -593,11 +692,19 @@ class ForumImportBatchInventarioApply(models.Model):
                     AND pi.res_id = 'product.template,' || pt.id AND pi.company_id = s.company_id
               LEFT JOIN ir_property pdef ON pdef.name = 'property_stock_inventory'
                     AND pdef.res_id IS NULL AND pdef.company_id = s.company_id
+              -- Costo del producto: la propiedad propia y, si no tiene, el
+              -- default de la compañía. Es el mismo orden que resuelve el ORM.
+              LEFT JOIN ir_property sp ON sp.name = 'standard_price'
+                    AND sp.res_id = 'product.product,' || s.product_id
+                    AND sp.company_id = s.company_id
+              LEFT JOIN ir_property spd ON spd.name = 'standard_price'
+                    AND spd.res_id IS NULL AND spd.company_id = s.company_id
              WHERE s.row_num = ANY(%(filas)s)
         """.format(t=t, dec_rep=(
             '(SELECT decimal_places FROM res_currency WHERE id = c."monedaDeReporte")'
-            if "monedaDeReporte" in self.env["res.company"]._fields else "NULL::int")),
-            {"filas": filas, "lang": lang})
+            if "monedaDeReporte" in self.env["res.company"]._fields else "NULL::int"),
+            cotiz=self._apl_sql_cotiz()),
+            {"filas": filas, "lang": lang, "hoy": hoy})
 
         tiempos("SQL: tabla de trabajo")
         # Celdas sin quant (contado 0): no hay nada que aplicar.
@@ -836,64 +943,106 @@ class ForumImportBatchInventarioApply(models.Model):
         """)
         capa = lambda campo, expr, moneda="dec_cia": self._apl_num(
             "stock.valuation.layer", campo, expr, moneda)
+        # Valor de la capa. ENTRADA: cantidad × costo, redondeado a la moneda de
+        # la compañía (`_prepare_in_svl_vals`). SALIDA: lo que el consumo FIFO
+        # saca de las capas con saldo, más el faltante valuado al último costo
+        # conocido si las capas no alcanzan (`_run_fifo`); se calcula en
+        # `_apl_fifo_valores`, que deja `val_salida`, `costo_salida` y
+        # `costo_salida` en la tabla de trabajo.
+        val_entrada = "a.costo * a.diff"
         explicitos_svl = {
             "id": "a.svl_id", "company_id": "a.company_id", "product_id": "a.product_id",
             "categ_id": "a.categ_id", "stock_move_id": "a.move_id",
             "description": "%(nombre_upd)s || ' - ' || a.prod_name",
             "quantity": capa("quantity", "a.diff"),
-            "unit_cost": capa("unit_cost", "0"),
-            "value": capa("value", "0"),
+            # unit_cost de una salida FIFO es tmp_value/cantidad, no el costo del
+            # producto: lo pone _apl_fifo_valores. En una entrada es el costo.
+            "unit_cost": capa("unit_cost", "CASE WHEN a.diff > 0 THEN a.costo "
+                                           "ELSE a.costo_salida END"),
+            "value": capa("value", "CASE WHEN a.diff > 0 THEN %s ELSE a.val_salida END"
+                                   % val_entrada),
             "remaining_qty": capa("remaining_qty", "CASE WHEN a.diff > 0 THEN a.diff ELSE -a.faltante END"),
-            "remaining_value": "CASE WHEN a.diff > 0 THEN %s ELSE NULL END" % capa("remaining_value", "0"),
+            # remaining_value de una entrada es su propio valor. En una SALIDA
+            # queda NULL SIEMPRE, incluso con faltante: ni `_prepare_out_svl_vals`
+            # ni `_run_fifo` escriben ese campo (la rama de stock negativo
+            # devuelve remaining_qty, value y unit_cost, no remaining_value).
+            # Verificado contra el ORM: con faltante de -819 el ORM dejó
+            # remaining_value en 0/NULL, no el valor del faltante.
+            "remaining_value": ("CASE WHEN a.diff > 0 THEN %s ELSE NULL END"
+                                % capa("remaining_value", val_entrada)),
             "create_uid": "%(uid)s", "write_uid": "%(uid)s",
             "create_date": "now() AT TIME ZONE 'UTC'", "write_date": "now() AT TIME ZONE 'UTC'",
         }
-        if "moneda_reporte_id" in Layer._fields:
-            explicitos_svl["moneda_reporte_id"] = 'c."monedaDeReporte"'
-            for campo in SVL_TCHISTORICO_CERO:
-                if campo in Layer._fields:
-                    # tchistorico crea la capa en 0 con moneda_reporte_id=False en
-                    # los valores: los Monetary se guardan sin moneda que redondee.
-                    explicitos_svl[campo] = capa(campo, "0", None)
+        explicitos_svl.update(self._apl_tchistorico(Layer, capa, val_entrada))
         cols_d, vals_d, params_d = self._apl_defaults("stock.valuation.layer", explicitos_svl)
         params.update(params_d)
-        cr.execute("""
+        insertar_capas = """
             INSERT INTO stock_valuation_layer ({cols})
             SELECT {vals}
               FROM forum_apl a JOIN res_company c ON c.id = a.company_id
-             WHERE NOT a.es_cero
+             WHERE NOT a.es_cero AND {signo}
              ORDER BY a.svl_id
         """.format(cols=", ".join(['"%s"' % c for c in explicitos_svl] + cols_d),
-                   vals=", ".join(list(explicitos_svl.values()) + vals_d)), params)
-        consumo = self._apl_num("stock.valuation.layer", "remaining_qty",
-                                "l.remaining_qty - least(c.remaining_qty, s.consumir - c.antes)")
+                   vals=", ".join(list(explicitos_svl.values()) + vals_d),
+                   signo="{signo}")
+        # El INSERT va en DOS pasos, y el orden no es un detalle: el ORM valúa
+        # primero todas las entradas del lote y después las salidas, así que las
+        # capas de entrada RECIÉN CREADAS son candidatas del consumo FIFO de las
+        # salidas de la misma tanda. Insertarlas todas juntas dejaría a las
+        # salidas sin ver esas candidatas y el valor saldría distinto.
+        cr.execute(insertar_capas.format(signo="a.diff > 0"), params)
+        tiempos("SQL: capas de entrada")
 
-        tiempos("SQL: capas")
-        #    Consumo FIFO de las salidas (_run_fifo): capas con saldo en orden
-        #    create_date, id; las entradas de la tanda entran al final.
+        # Con las entradas ya en la tabla, se resuelve el consumo FIFO: cuánto
+        # saca cada salida de cada capa con saldo y a qué costo.
+        self._apl_fifo_valores(params)
+        tiempos("SQL: reparto FIFO")
+
+        cr.execute(insertar_capas.format(signo="a.diff < 0"), params)
+
+        tiempos("SQL: capas de salida")
+        #    Consumo FIFO: se descuenta de cada capa candidata lo que las
+        #    salidas le tomaron (`forum_apl_toma`, que armó `_apl_fifo_valores`).
+        #    Se baja también `remaining_value`: con capas en cero no hacía falta,
+        #    pero acá las entradas del ajuste tienen valor y el ORM descuenta los
+        #    dos campos (`candidate_vals` de `_run_fifo`).
         cr.execute("""
-            WITH salidas AS (
-                SELECT product_id, company_id, sum(-diff) - sum(faltante) AS consumir
-                  FROM forum_apl WHERE diff < 0 AND NOT es_cero GROUP BY 1, 2
-            ),
-            candidatas AS (
-                SELECT l.id, l.product_id, l.company_id, l.remaining_qty,
-                       coalesce(sum(l.remaining_qty) OVER (
-                           PARTITION BY l.product_id, l.company_id ORDER BY l.create_date, l.id
-                           ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0) AS antes
-                  FROM stock_valuation_layer l
-                  JOIN salidas s ON s.product_id = l.product_id AND s.company_id = l.company_id
-                 WHERE l.remaining_qty > 0
+            WITH consumido AS (
+                SELECT capa_id, sum(toma) AS qty, sum(valor_tomado) AS valor
+                  FROM forum_apl_toma GROUP BY 1
             )
             UPDATE stock_valuation_layer l
-               SET remaining_qty = {consumo},
+               SET remaining_qty = {consumo_qty},
+                   remaining_value = {consumo_val},
                    write_uid = %(uid)s, write_date = now() AT TIME ZONE 'UTC'
-              FROM candidatas c
-              JOIN salidas s ON s.product_id = c.product_id AND s.company_id = c.company_id
-             WHERE l.id = c.id AND s.consumir > c.antes
-        """.replace("{consumo}", consumo), params)
+              FROM consumido k, res_company c, res_currency cur
+             WHERE l.id = k.capa_id AND c.id = l.company_id AND cur.id = c.currency_id
+        """.format(
+            # `remaining_qty` es un Float con digits fijos y `remaining_value` un
+            # Monetary: la escala de este último sale de la moneda de la compañía
+            # de la capa, que acá viene del JOIN y no de la tabla de trabajo.
+            consumo_qty=self._apl_num("stock.valuation.layer", "remaining_qty",
+                                      "l.remaining_qty - k.qty", None),
+            consumo_val=("round((coalesce(l.remaining_value, 0) - k.valor)::numeric, "
+                         "cur.decimal_places)"),
+        ), params)
 
         tiempos("SQL: consumo FIFO")
+        # 7 bis. Asientos contables EN BORRADOR, uno por capa con valor.
+        #        Los contadores NO van en `resultado`: ese dict es {fila: estado}
+        #        y se escribe tal cual en staging. Van en `contadores`, que pasa
+        #        `_apl_procesar_filas` y lee al cerrar la tanda.
+        asientos = self._apl_asientos(params)
+        # Capas con valor de ESTA tanda y de ESTE camino: se cuentan por los
+        # svl_id que repartió la tanda, no por fecha de creación (el camino ORM
+        # crea las suyas en el mismo instante y quedarían sumadas dos veces).
+        cr.execute("""
+            SELECT count(*) FROM stock_valuation_layer l
+             WHERE l.id = ANY(%s) AND round(l.value::numeric, 2) <> 0
+        """, ([svl for svl in self._apl_valores("svl_id") if svl],))
+        if contadores is not None:
+            contadores.update({"asientos": asientos, "capas_valor": cr.fetchone()[0]})
+        tiempos("SQL: asientos en borrador")
         # 8. Última fecha de inventario de las ubicaciones.
         cr.execute("""
             UPDATE stock_location SET last_inventory_date = %(hoy)s,
@@ -912,6 +1061,600 @@ class ForumImportBatchInventarioApply(models.Model):
         for modelo in ("stock.quant", "stock.move", "stock.move.line",
                        "stock.valuation.layer", "stock.location"):
             self.env[modelo].invalidate_model()
+
+    # ==================================================================
+    # Fase 3: publicación de los asientos (por ORM, deliberadamente)
+    # ==================================================================
+    def action_publicar_asientos(self):
+        """Valida y deja la publicación de los asientos en manos del cron.
+
+        Publicar va por el ORM y no por SQL a propósito: la numeración del
+        diario es correlativa legal y el balanceo y los hooks los tiene que
+        firmar Odoo. Lo único que hace esta fase es `action_post` por tandas.
+        """
+        self.ensure_one()
+        if not self._es_inventario():
+            raise UserError(_("Solo un ajuste de inventario publica asientos."))
+        if self.state != "applied":
+            raise UserError(_("Primero tiene que terminar la aplicación del ajuste."))
+        if self.post_batch_size < 1:
+            raise UserError(_("El tamaño de tanda de publicación debe ser mayor a cero."))
+
+        self._pub_validar_cotizaciones()
+        self._apl_cancelacion_pedida()
+        total = self._pub_pendientes_count()
+        if not total:
+            raise UserError(_("No hay asientos en borrador de este ajuste para publicar."))
+        vals = {"state": "posting", "current_phase": "post", "post_ended_at": False,
+                "post_step": False, "post_total": total}
+        if not self.post_started_at:
+            vals.update({"post_done": 0, "post_errors": 0,
+                         "post_started_at": fields.Datetime.now()})
+        self.write(vals)
+        self._log("Publicación iniciada. %d asientos en borrador, tandas de %d."
+                  % (total, self.post_batch_size))
+        self.env.cr.commit()
+        self._encolar_cron()
+        return True
+
+    def _pub_dominio_borrador(self):
+        """Asientos en borrador generados por la aplicación de ESTE batch.
+
+        Se identifican por el movimiento de inventario que los originó: el SQL
+        les puso `stock_move_id`, igual que el ORM.
+        """
+        self.ensure_one()
+        return [
+            ("state", "=", "draft"),
+            ("stock_move_id", "!=", False),
+            ("stock_move_id.is_inventory", "=", True),
+        ]
+
+    def _pub_pendientes_count(self):
+        self.ensure_one()
+        return self.env["account.move"].sudo().search_count(self._pub_dominio_borrador())
+
+    def _pub_validar_cotizaciones(self):
+        """Frena ANTES de arrancar si falta la cotización de alguna fecha.
+
+        La copia de `aml_secondary_currency` que gana por `addons_path` es la de
+        `general_primate`, que busca la cotización con la **fecha exacta** del
+        asiento y levanta `UserError` desde el `_post()`. Sin este control, la
+        publicación reventaría a mitad de una tanda y habría que reanudar a
+        ciegas. Ver FINDINGS.md.
+        """
+        self.ensure_one()
+        Company = self.env["res.company"]
+        if "secondary_currency_id" not in Company._fields:
+            return
+        cr = self.env.cr
+        cr.execute("""
+            SELECT DISTINCT m.company_id, m.date, c.secondary_currency_id
+              FROM account_move m
+              JOIN stock_move sm ON sm.id = m.stock_move_id
+              JOIN res_company c ON c.id = m.company_id
+             WHERE m.state = 'draft' AND sm.is_inventory
+               AND c.secondary_currency_id IS NOT NULL
+        """)
+        faltan = []
+        for company_id, fecha, moneda_id in cr.fetchall():
+            cr.execute("""
+                SELECT 1 FROM res_currency_rate
+                 WHERE currency_id = %s AND name = %s
+                   AND (company_id = %s OR company_id IS NULL) LIMIT 1
+            """, (moneda_id, fecha, company_id))
+            if not cr.fetchone():
+                faltan.append((fecha, Company.browse(company_id).display_name,
+                               self.env["res.currency"].browse(moneda_id).name))
+        if faltan:
+            detalle = "\n".join("- %s, %s, moneda %s" % f for f in faltan)
+            raise UserError(_(
+                "Falta la cotización de la moneda secundaria para la fecha exacta "
+                "de los asientos. La publicación fallaría a mitad de tanda.\n\n%s\n\n"
+                "Cargá la cotización de esas fechas (en producción la carga el cron "
+                "del BCU) y volvé a iniciar la publicación.") % detalle)
+
+    def _publicar_varias_tandas(self):
+        """Una tanda de publicación por corrida del cron, con reintentos."""
+        self.ensure_one()
+        self.invalidate_recordset(["state", "post_done", "post_total"])
+        if self.state != "posting":
+            return
+        if self._apl_cancelacion_pedida():
+            self.write({"state": "cancel", "post_ended_at": fields.Datetime.now()})
+            self._log("Publicación cancelada por el usuario con %d de %d asientos publicados."
+                      % (self.post_done, self.post_total))
+            self.env.cr.commit()
+            return
+        for intento in range(1, REINTENTOS_TANDA + 1):
+            try:
+                quedan = self._publicar_tanda()
+                self.env.cr.commit()
+                break
+            except Exception as e:
+                self.env.cr.rollback()
+                self.env.clear()
+                if isinstance(e, TransactionRollbackError) and intento < REINTENTOS_TANDA:
+                    _logger.warning(
+                        "[forum_partner_import][batch %s] la tanda de publicación chocó con "
+                        "otra transacción (%s); reintento %d de %d",
+                        self.id, e, intento + 1, REINTENTOS_TANDA)
+                    continue
+                self.write({"state": "error", "post_ended_at": fields.Datetime.now()})
+                self._log("ERROR en la tanda de publicación: %s" % e)
+                self.env.cr.commit()
+                _logger.exception("[forum_partner_import] tanda de publicación fallida")
+                return
+        if not quedan:
+            self._finalizar_publicacion()
+            return
+        self._encolar_cron()
+
+    def _publicar_tanda(self):
+        """Publica una tanda de asientos. Devuelve cuántos quedan pendientes.
+
+        Todo el camino va con el guard del WMS: `_run_fifo` puede escribir el
+        `standard_price` del producto y `integracion_wis` engancha ese `write`
+        para mandar un request por producto.
+        """
+        self.ensure_one()
+        t0 = time.time()
+        Move = self.env["account.move"].sudo().with_context(**CONTEXTO_SIN_WMS)
+        asientos = Move.search(self._pub_dominio_borrador(), order="id",
+                               limit=self.post_batch_size)
+        if not asientos:
+            return 0
+        publicados, errores = self._pub_postear(asientos)
+        self.write({
+            "post_done": self.post_done + publicados,
+            "post_errors": self.post_errors + errores,
+            "post_step": _("Publicando asientos: %d de %d") % (
+                self.post_done + publicados, self.post_total),
+        })
+        _logger.info(
+            "[forum_partner_import][batch %s] publicación de %d asientos en %.1fs "
+            "(%.1f ms/asiento) | publicados=%d errores=%d",
+            self.id, len(asientos), time.time() - t0,
+            1000.0 * (time.time() - t0) / len(asientos), publicados, errores)
+        return self._pub_pendientes_count()
+
+    def _pub_postear(self, asientos):
+        """`action_post` de la tanda; si falla, asiento por asiento.
+
+        Un asiento que no publica no puede frenar la corrida entera: se reintenta
+        solo y, si vuelve a fallar, queda en borrador con el motivo en el log.
+        """
+        cr = self.env.cr
+        try:
+            with cr.savepoint():
+                asientos.action_post()
+                asientos.env.flush_all()
+            return len(asientos), 0
+        except Exception as e:
+            _logger.warning("[forum_partner_import][batch %s] tanda de %d asientos falló "
+                            "(%s); se reintenta uno por uno", self.id, len(asientos), e)
+        publicados, errores = 0, 0
+        for asiento in asientos:
+            for intento in range(1, REINTENTOS_ASIENTO + 1):
+                try:
+                    with cr.savepoint():
+                        asiento.action_post()
+                        asiento.env.flush_all()
+                    publicados += 1
+                    break
+                except Exception as e:
+                    if intento == REINTENTOS_ASIENTO:
+                        errores += 1
+                        self._log("El asiento %s (id %s) no se pudo publicar: %s"
+                                  % (asiento.ref or "-", asiento.id, tools.ustr(e)[:300]))
+        return publicados, errores
+
+    def _finalizar_publicacion(self):
+        self.ensure_one()
+        self.write({"state": "posted", "post_ended_at": fields.Datetime.now(),
+                    "post_step": False})
+        self._log("Asientos publicados: %d. Errores: %d." % (self.post_done, self.post_errors))
+        self.env.cr.commit()
+
+    def _apl_asientos(self, params):
+        """Asientos de valuación de la tanda, en estado BORRADOR.
+
+        Replica `_validate_accounting_entries` + `_account_entry_move`: **un
+        asiento por capa** cuyo producto valúa en tiempo real y cuyo valor no es
+        cero, con dos líneas que se cancelan. No se publican acá: eso lo hace la
+        fase 3 por el ORM, que es lo que asigna la numeración correlativa del
+        diario y corre los hooks. Por eso quedan sin `name`, sin
+        `sequence_prefix/number` y sin `posted_before`.
+
+        Cuentas y diario salen de la categoría del producto
+        (`_get_accounting_data_for_valuation`): valuación contra entrada/salida.
+        En una ENTRADA el ORM debita valuación y acredita la cuenta de origen; en
+        una SALIDA es al revés. La cuenta de contrapartida de una ubicación de
+        ajuste es `stock_output` salvo que la ubicación tenga la suya
+        (`_get_dest_account`).
+
+        Los campos que no se ponen acá los cubre `_apl_defaults` con
+        `default_get`, así entra lo que agregue cualquier módulo instalado
+        (los `cfe_*` de la localización, `extract_state`, etc.).
+        """
+        cr = self.env.cr
+        Move = self.env["account.move"]
+        MoveLine = self.env["account.move.line"]
+        # Capas de la tanda que generan asiento: producto con valuación en
+        # tiempo real y valor distinto de cero. Mismo filtro que el ORM.
+        cr.execute("""
+            DROP TABLE IF EXISTS forum_apl_asiento;
+            CREATE TEMP TABLE forum_apl_asiento ON COMMIT DROP AS
+            SELECT a.row_num, a.svl_id, a.move_id, a.company_id, a.product_id,
+                   a.diff, a.dec_cia, a.prod_name,
+                   l.value AS valor,
+                   abs(l.value) AS importe,
+                   l.quantity AS cantidad_capa,
+                   pt.uom_id,
+                   c.currency_id,
+                   -- Cuenta de valuación de la categoría.
+                   split_part(pval.value_reference, ',', 2)::int AS cta_valuacion,
+                   -- Contrapartida: la de la ubicación de ajuste si la definió,
+                   -- y si no la de salida de la categoría.
+                   coalesce(li.valuation_in_account_id,
+                            split_part(pout.value_reference, ',', 2)::int) AS cta_contra,
+                   split_part(pjrn.value_reference, ',', 2)::int AS diario
+              FROM forum_apl a
+              JOIN stock_valuation_layer l ON l.id = a.svl_id
+              JOIN product_product pp ON pp.id = a.product_id
+              JOIN product_template pt ON pt.id = pp.product_tmpl_id
+              JOIN res_company c ON c.id = a.company_id
+              JOIN stock_location li ON li.id = a.inv_loc
+              LEFT JOIN ir_property pval ON pval.name = 'property_stock_valuation_account_id'
+                    AND pval.res_id = 'product.category,' || pt.categ_id
+                    AND pval.company_id = a.company_id
+              LEFT JOIN ir_property pout ON pout.name = 'property_stock_account_output_categ_id'
+                    AND pout.res_id = 'product.category,' || pt.categ_id
+                    AND pout.company_id = a.company_id
+              LEFT JOIN ir_property pjrn ON pjrn.name = 'property_stock_journal'
+                    AND pjrn.res_id = 'product.category,' || pt.categ_id
+                    AND pjrn.company_id = a.company_id
+              LEFT JOIN ir_property pv ON pv.name = 'property_valuation'
+                    AND pv.res_id = 'product.category,' || pt.categ_id
+                    AND pv.company_id = a.company_id
+             WHERE NOT a.es_cero
+               AND coalesce(pv.value_text, 'manual') = 'real_time'
+               AND round(l.value::numeric, a.dec_cia) <> 0
+        """)
+        cr.execute("SELECT count(*) FROM forum_apl_asiento")
+        if not cr.fetchone()[0]:
+            return 0
+        # Un producto que valúa en tiempo real sin cuentas o sin diario es un
+        # error de configuración: el ORM corta con UserError y acá también, en
+        # vez de dejar capas con valor sin asiento.
+        cr.execute("""SELECT count(*) FROM forum_apl_asiento
+                       WHERE cta_valuacion IS NULL OR cta_contra IS NULL OR diario IS NULL""")
+        sin_cuentas = cr.fetchone()[0]
+        if sin_cuentas:
+            cr.execute("""SELECT product_id FROM forum_apl_asiento
+                           WHERE cta_valuacion IS NULL OR cta_contra IS NULL OR diario IS NULL
+                           LIMIT 5""")
+            ejemplos = ", ".join(str(r[0]) for r in cr.fetchall())
+            raise UserError(_(
+                "%d capas de valuación no tienen cuenta o diario en la categoría de su "
+                "producto (ejemplos de producto: %s). Hay que configurar la cuenta de "
+                "valuación, la de salida y el diario de inventario antes de aplicar.")
+                % (sin_cuentas, ejemplos))
+
+        # Ids de las secuencias, en el orden de las capas: así el asiento de la
+        # primera capa lleva el id más bajo, como en el ORM.
+        cr.execute("SELECT row_num FROM forum_apl_asiento ORDER BY svl_id")
+        orden = [r[0] for r in cr.fetchall()]
+        cr.execute("SELECT nextval('account_move_id_seq') FROM generate_series(1, %s)", (len(orden),))
+        ids_am = sorted(r[0] for r in cr.fetchall())
+        cr.execute("SELECT nextval('account_move_line_id_seq') FROM generate_series(1, %s)",
+                   (2 * len(orden),))
+        ids_aml = sorted(r[0] for r in cr.fetchall())
+        cr.execute("""
+            ALTER TABLE forum_apl_asiento ADD COLUMN am_id int,
+                                          ADD COLUMN aml_debito int,
+                                          ADD COLUMN aml_credito int
+        """)
+        cr.execute("""
+            UPDATE forum_apl_asiento a SET am_id = m.am, aml_debito = m.d, aml_credito = m.c
+              FROM unnest(%s::bigint[], %s::int[], %s::int[], %s::int[]) AS m(row_num, am, d, c)
+             WHERE a.row_num = m.row_num
+        """, (orden, ids_am, ids_aml[0::2], ids_aml[1::2]))
+
+        # La fecha contable: la del batch si se fijó, y si no la del día, igual
+        # que el movimiento (`force_period_date` / `fields.Date.context_today`).
+        params = dict(params, fecha_asiento=self.inventory_accounting_date or params["hoy"])
+
+        explicitos_am = {
+            "id": "a.am_id", "company_id": "a.company_id", "journal_id": "a.diario",
+            "currency_id": "a.currency_id", "date": "%(fecha_asiento)s",
+            "state": "'draft'", "move_type": "'entry'", "auto_post": "'no'",
+            "ref": "%(nombre_upd)s || ' - ' || a.prod_name",
+            "stock_move_id": "a.move_id",
+            # Sin partner: `_get_partner_id_for_valuation_lines` sale del picking
+            # y un movimiento de inventario no tiene.
+            "partner_id": "NULL",
+            "name": "'/'", "posted_before": "false",
+            "create_uid": "%(uid)s", "write_uid": "%(uid)s",
+            "create_date": "now() AT TIME ZONE 'UTC'", "write_date": "now() AT TIME ZONE 'UTC'",
+        }
+        if "invoice_date" in Move._fields:
+            # La localización le pone default de hoy a TODO asiento, incluidos
+            # los manuales; se replica para que la paridad no se vaya por acá.
+            explicitos_am["invoice_date"] = "%(fecha_asiento)s"
+        cols_d, vals_d, params_d = self._apl_defaults("account.move", explicitos_am)
+        params.update(params_d)
+        cr.execute("""
+            INSERT INTO account_move ({cols})
+            SELECT {vals} FROM forum_apl_asiento a ORDER BY a.am_id
+        """.format(cols=", ".join(['"%s"' % c for c in explicitos_am] + cols_d),
+                   vals=", ".join(list(explicitos_am.values()) + vals_d)), params)
+
+        # Las dos líneas. En account.move.line casi todo lo que importa es
+        # compute/related stored (account_id, balance, debit, credit, date,
+        # name, quantity...), así que NO lo cubre default_get: va explícito.
+        # `quantity` lleva el signo de la capa en las DOS líneas, como el ORM.
+        aml = lambda campo, expr, moneda="dec_cia": self._apl_num(
+            "account.move.line", campo, expr, moneda)
+        lineas = []
+        for lado in ("debito", "credito"):
+            signo = "" if lado == "debito" else "-"
+            # ENTRADA: debita valuación, acredita la contrapartida.
+            # SALIDA: al revés. El signo del valor de la capa ya lo dice.
+            cuenta = ("CASE WHEN a.diff > 0 THEN a.cta_valuacion ELSE a.cta_contra END"
+                      if lado == "debito" else
+                      "CASE WHEN a.diff > 0 THEN a.cta_contra ELSE a.cta_valuacion END")
+            explicitos_aml = {
+                "id": "a.aml_%s" % lado,
+                "move_id": "a.am_id", "company_id": "a.company_id",
+                "account_id": cuenta,
+                "name": "%(nombre_upd)s || ' - ' || a.prod_name",
+                "ref": "%(nombre_upd)s || ' - ' || a.prod_name",
+                "date": "%(fecha_asiento)s",
+                "parent_state": "'draft'", "display_type": "'product'",
+                "currency_id": "a.currency_id", "company_currency_id": "a.currency_id",
+                "product_id": "a.product_id", "product_uom_id": "a.uom_id",
+                "quantity": aml("quantity", "a.cantidad_capa"),
+                "debit": aml("debit", "a.importe" if lado == "debito" else "0"),
+                "credit": aml("credit", "a.importe" if lado == "credito" else "0"),
+                "balance": aml("balance", "%sa.importe" % signo),
+                "amount_currency": aml("amount_currency", "%sa.importe" % signo),
+                "partner_id": "NULL", "sequence": "100",
+                "create_uid": "%(uid)s", "write_uid": "%(uid)s",
+                "create_date": "now() AT TIME ZONE 'UTC'", "write_date": "now() AT TIME ZONE 'UTC'",
+            }
+            cols_l, vals_l, params_l = self._apl_defaults("account.move.line", explicitos_aml)
+            params.update(params_l)
+            lineas.append((explicitos_aml, cols_l, vals_l))
+        for explicitos_aml, cols_l, vals_l in lineas:
+            cr.execute("""
+                INSERT INTO account_move_line ({cols})
+                SELECT {vals} FROM forum_apl_asiento a ORDER BY a.am_id
+            """.format(cols=", ".join(['"%s"' % c for c in explicitos_aml] + cols_l),
+                       vals=", ".join(list(explicitos_aml.values()) + vals_l)), params)
+
+        cr.execute("""
+            UPDATE stock_valuation_layer l SET account_move_id = a.am_id
+              FROM forum_apl_asiento a WHERE l.id = a.svl_id
+        """)
+        cr.execute("SELECT count(*) FROM forum_apl_asiento")
+        creados = cr.fetchone()[0]
+        for modelo in ("account.move", "account.move.line"):
+            self.env[modelo].invalidate_model()
+        return creados
+
+    def _apl_fifo_valores(self, params):
+        """Reparto FIFO de las salidas de la tanda, como lo hace `_run_fifo`.
+
+        Deja en `forum_apl`, por cada celda con salida:
+
+        `faltante` es la cantidad que las capas con saldo no alcanzan a cubrir
+        (caso de stock negativo). `val_salida` es el `value` de su capa,
+        negativo: la suma de lo tomado de cada capa candidata, redondeando cada
+        toma por separado (el ORM hace `currency.round(value_taken_on_candidate)`
+        dentro del bucle), más el faltante valuado al último costo conocido.
+        `costo_salida` es el `unit_cost` de la capa, que en una salida FIFO es
+        `tmp_value / cantidad` y no el costo del producto.
+
+        El reparto se hace por rangos: cada salida ocupa el tramo
+        `[antes, antes + cantidad)` del total a consumir del producto, cada capa
+        candidata ocupa su propio tramo en el orden `create_date, id` (el `_order`
+        del modelo, que es el que usa `_get_fifo_candidates`), y lo que cada
+        salida toma de cada capa es el solapamiento de los dos tramos. Así se
+        replica el bucle del ORM sin iterar fila por fila.
+
+        Deja también la tabla temporal `forum_apl_toma`, que usa el UPDATE del
+        consumo para descontar `remaining_qty` y `remaining_value` de cada capa.
+        """
+        cr = self.env.cr
+        cr.execute("DROP TABLE IF EXISTS forum_apl_toma")
+        cr.execute("""
+            CREATE TEMP TABLE forum_apl_toma ON COMMIT DROP AS
+            WITH salidas AS (
+                SELECT row_num, product_id, company_id, dec_cia, costo, -diff AS cantidad,
+                       sum(-diff) OVER (PARTITION BY product_id, company_id
+                                        ORDER BY move_id) - (-diff) AS antes,
+                       sum(-diff) OVER (PARTITION BY product_id, company_id
+                                        ORDER BY move_id) AS hasta
+                  FROM forum_apl WHERE diff < 0 AND NOT es_cero
+            ),
+            candidatas AS (
+                SELECT l.id, l.product_id, l.company_id, l.remaining_qty,
+                       -- Costo unitario de la capa: remaining_value/remaining_qty,
+                       -- como `candidate_unit_cost` del ORM (no su unit_cost).
+                       coalesce(l.remaining_value, 0) / nullif(l.remaining_qty, 0) AS costo,
+                       sum(l.remaining_qty) OVER (PARTITION BY l.product_id, l.company_id
+                                                  ORDER BY l.create_date, l.id)
+                           - l.remaining_qty AS antes,
+                       sum(l.remaining_qty) OVER (PARTITION BY l.product_id, l.company_id
+                                                  ORDER BY l.create_date, l.id) AS hasta,
+                       row_number() OVER (PARTITION BY l.product_id, l.company_id
+                                          ORDER BY l.create_date DESC, l.id DESC) AS ultima
+                  FROM stock_valuation_layer l
+                 WHERE l.remaining_qty > 0
+                   AND (l.product_id, l.company_id) IN (SELECT product_id, company_id FROM salidas)
+            )
+            SELECT s.row_num, s.product_id, s.company_id, c.id AS capa_id,
+                   least(s.hasta, c.hasta) - greatest(s.antes, c.antes) AS toma,
+                   c.costo AS costo_capa,
+                   -- Cada toma se redondea por separado, como en el bucle del ORM.
+                   round(((least(s.hasta, c.hasta) - greatest(s.antes, c.antes)) * c.costo)::numeric,
+                         s.dec_cia) AS valor_tomado
+              FROM salidas s
+              JOIN candidatas c ON c.product_id = s.product_id AND c.company_id = s.company_id
+             WHERE least(s.hasta, c.hasta) > greatest(s.antes, c.antes)
+        """)
+        cr.execute("CREATE INDEX forum_apl_toma_idx ON forum_apl_toma (row_num)")
+        cr.execute("CREATE INDEX forum_apl_toma_capa ON forum_apl_toma (capa_id)")
+        cr.execute("ANALYZE forum_apl_toma")
+
+        # Faltante y valores de cada salida. `last_fifo_price` del ORM es el
+        # costo de la última capa que alcanzó a mirar; si no había ninguna, cae
+        # en el `standard_price` del producto.
+        cr.execute("""
+            WITH disp AS (
+                SELECT product_id, company_id, sum(remaining_qty) AS saldo,
+                       -- `last_fifo_price` del ORM es el costo de la ÚLTIMA capa
+                       -- candidata que alcanzó a mirar, AUNQUE SEA 0. Solo cuando
+                       -- no hubo ninguna candidata cae en el standard_price del
+                       -- producto. Verificado: con una candidata de
+                       -- remaining_value=0, el ORM valuó la salida en 0 y un
+                       -- `nullif(costo, 0)` la valuaba al costo del producto.
+                       count(*) AS candidatas,
+                       (array_agg(costo ORDER BY create_date DESC, id DESC))[1] AS costo_ultima
+                  FROM (SELECT l.product_id, l.company_id, l.remaining_qty, l.create_date, l.id,
+                               coalesce(l.remaining_value, 0) / nullif(l.remaining_qty, 0) AS costo
+                          FROM stock_valuation_layer l
+                         WHERE l.remaining_qty > 0
+                           AND (l.product_id, l.company_id) IN
+                               (SELECT product_id, company_id FROM forum_apl
+                                 WHERE diff < 0 AND NOT es_cero)) x
+                 GROUP BY 1, 2
+            ),
+            salidas AS (
+                SELECT row_num, product_id, company_id, -diff AS cantidad,
+                       sum(-diff) OVER (PARTITION BY product_id, company_id
+                                        ORDER BY move_id) - (-diff) AS antes,
+                       sum(-diff) OVER (PARTITION BY product_id, company_id
+                                        ORDER BY move_id) AS hasta
+                  FROM forum_apl WHERE diff < 0 AND NOT es_cero
+            ),
+            tomado AS (
+                SELECT row_num, sum(valor_tomado) AS valor FROM forum_apl_toma GROUP BY 1
+            )
+            UPDATE forum_apl a SET
+                -- Lo que de esta salida queda sin cubrir por capas con saldo.
+                faltante = greatest(0, least(s.cantidad,
+                                             s.hasta - coalesce(d.saldo, 0))),
+                -- `last_fifo_price` del ORM: `new_standard_price or standard_price`.
+                -- `new_standard_price` es el costo de la última candidata mirada,
+                -- y en Python un 0.0 es falsy, así que con candidatas de costo 0
+                -- el ORM TAMBIÉN cae en el standard_price. El `nullif` replica
+                -- ese `or`. Verificado simulando `_run_fifo` sobre un caso real:
+                -- candidata de rem_val=0 y faltante 1 → value=-2875, unit_cost=2875.
+                val_salida = -(coalesce(t.valor, 0)
+                               + greatest(0, least(s.cantidad, s.hasta - coalesce(d.saldo, 0)))
+                                 * coalesce(nullif(d.costo_ultima, 0), a.costo)),
+                costo_salida = CASE WHEN s.cantidad = 0 THEN 0 ELSE
+                    (coalesce(t.valor, 0)
+                     + greatest(0, least(s.cantidad, s.hasta - coalesce(d.saldo, 0)))
+                       * coalesce(nullif(d.costo_ultima, 0), a.costo)) / s.cantidad END
+              FROM salidas s
+              LEFT JOIN disp d ON d.product_id = s.product_id AND d.company_id = s.company_id
+              LEFT JOIN tomado t ON t.row_num = s.row_num
+             WHERE a.row_num = s.row_num
+        """)
+
+    def _apl_sql_cotiz(self):
+        """Expresión SQL de la cotización de la moneda de reporte a la fecha.
+
+        Replica `res.currency._get_conversion_rate(moneda_cía, monedaDeReporte)`,
+        que es lo que usa el `create()` de tchistorico: el cociente entre la
+        tasa de la moneda destino y la de la moneda origen, cada una la última
+        cargada con fecha menor o igual. Verificado contra el ORM en la copia:
+        el ORM devolvió 0.025082773151399618 y el SQL (0.025082773151399618 / 1.0).
+
+        Devuelve `NULL::numeric` si la compañía no tiene moneda de reporte; ahí
+        tchistorico deja sus campos en 0 (rama `else` de su override).
+        """
+        if "monedaDeReporte" not in self.env["res.company"]._fields:
+            return "NULL::numeric"
+        tasa = """(SELECT r.rate FROM res_currency_rate r
+                    WHERE r.currency_id = %s AND r.name <= %%(hoy)s
+                      AND (r.company_id = c.id OR r.company_id IS NULL)
+                    ORDER BY r.name DESC, r.company_id NULLS LAST LIMIT 1)"""
+        return ("(%s / nullif(%s, 0))"
+                % (tasa % 'c."monedaDeReporte"', tasa % "c.currency_id"))
+
+    def _apl_tchistorico(self, Layer, capa, val_entrada):
+        """Campos que tchistorico calcularía en el `create()` de la capa.
+
+        El INSERT por SQL no pasa por ese `create()`, así que sus campos se
+        replican acá con la misma fórmula. Su rama de entrada (`value > 0`)
+        exige cotización y **levanta UserError si no la encuentra**; la de
+        salida (`value < 0`) la tolera y deja todo en 0. El SQL no puede
+        levantar ese error, así que cuando no hay cotización deja los campos en
+        0 y `moneda_reporte_id` en NULL, que es exactamente la rama `else` del
+        módulo: el dato es de reporte, no de stock ni de contabilidad.
+
+        `a.cotiz` es la cotización de la moneda de reporte a la fecha, que
+        `_apl_sql` deja en la tabla de trabajo (equivale a
+        `res.currency._get_conversion_rate(moneda_cía, monedaDeReporte)`).
+        """
+        if "moneda_reporte_id" not in Layer._fields:
+            return {}
+        # Sin moneda de reporte configurada no hay nada que calcular.
+        con_cotiz = "a.cotiz IS NOT NULL AND a.cotiz <> 0"
+        # El valor de la capa, ya con signo: entrada positiva, salida negativa.
+        valor = "CASE WHEN a.diff > 0 THEN (%s) ELSE a.val_salida END" % val_entrada
+        costo = "CASE WHEN a.diff > 0 THEN a.costo ELSE a.costo_salida END"
+        # `valorRestante` de tchistorico es `remaining_value * cotización`, y el
+        # remaining_value de una SALIDA queda NULL/0 siempre (ver el INSERT de
+        # capas): así que en una salida este campo es 0, también con faltante.
+        restante = "CASE WHEN a.diff > 0 THEN (%s) ELSE 0 END" % val_entrada
+        # cantidad_svl del módulo: usa 1 si la cantidad es 0, para no dividir por cero.
+        cantidad = "CASE WHEN a.diff = 0 THEN 1 ELSE a.diff END"
+        formulas = {
+            "moneda_reporte_id": 'CASE WHEN %s THEN c."monedaDeReporte" ELSE NULL END' % con_cotiz,
+            "cotizacionDia": ("cotizacionDia", "a.cotiz"),
+            "valorMonedaSecundaria": ("valorMonedaSecundaria", "(%s) * a.cotiz" % valor),
+            "valorRestante": ("valorRestante", "(%s) * a.cotiz" % restante),
+            "valorUnitario": ("valorUnitario", "(%s) * a.cotiz" % costo),
+            # En una ENTRADA es value/cantidad; en una SALIDA es el value pelado.
+            "unitCostesDestinoInc": ("unitCostesDestinoInc",
+                                     "CASE WHEN a.diff > 0 THEN (%s) / (%s) ELSE a.val_salida END"
+                                     % (val_entrada, cantidad)),
+            "unitCostesDestinoIncMR": ("unitCostesDestinoIncMR",
+                                       "CASE WHEN a.diff > 0 THEN (%s) * a.cotiz / (%s) "
+                                       "ELSE a.val_salida * a.cotiz END"
+                                       % (val_entrada, cantidad)),
+            "valorizadoCosteDestino": ("valorizadoCosteDestino", valor),
+            "valorizadoCosteDestinoMR": ("valorizadoCosteDestinoMR", "(%s) * a.cotiz" % valor),
+            # ucmr y unit_cost_report se asignan SIEMPRE, incluso sin cotización:
+            # el módulo hace `vals['ucmr'] = unit_cost * vals.get('cotizacionDia', 1.0)`
+            # fuera del if, y con cotizacionDia en 0 el producto queda en 0.
+            "ucmr": ("ucmr", "(%s) * coalesce(a.cotiz, 0)" % costo),
+            "unit_cost_report": ("unit_cost_report",
+                                 "(%s) * coalesce(nullif(a.cotiz, 0), 1)" % costo),
+        }
+        salida = {}
+        for campo, formula in formulas.items():
+            if campo not in Layer._fields:
+                continue
+            if campo == "moneda_reporte_id":
+                salida[campo] = formula
+                continue
+            nombre, expr = formula
+            # Los Monetary de tchistorico redondean por `moneda_reporte_id`, que
+            # el ORM deja en NULL cuando no hay cotización: ahí no redondea.
+            moneda = "dec_rep" if Layer._fields[campo].type == "monetary" else "dec_cia"
+            if campo in ("ucmr", "unit_cost_report"):
+                # Se asignan siempre: no van dentro del CASE de cotización.
+                salida[campo] = capa(nombre, expr, moneda)
+                continue
+            salida[campo] = "CASE WHEN %s THEN %s ELSE %s END" % (
+                con_cotiz, capa(nombre, expr, moneda), capa(nombre, "0", None))
+        return salida
 
     def _apl_num(self, modelo, campo, expr, moneda="dec_cia"):
         """Expresión SQL de un numérico con la misma escala que guarda el ORM.

@@ -194,3 +194,74 @@ SELECT c.conrelid::regclass AS tabla,
 ```
 
 Los conteos van a ser distintos en producción: lo que importa es el orden.
+
+---
+
+# Hallazgo: dos copias de `aml_secondary_currency`, y gana la vieja
+
+> Documento de insumo. **No se aplicó ningún cambio**: es deuda del repo, a
+> sanear con decisión de equipo. Relevado el 2026-09-17 sobre `o17_support_forum`
+> y su copia `o17_inv_med`, mientras se medía el apply del ajuste de inventario.
+
+## Qué se encontró
+
+El módulo técnico `aml_secondary_currency` existe **dos veces** en el
+`addons_path` de `forum.conf`, con el mismo nombre de carpeta:
+
+| copia | posición en `addons_path` |
+|---|---|
+| `_shared/general_primate/aml_secondary_currency/` | **12** |
+| `forum/aml_secondary_currency/` | **33** |
+
+Odoo resuelve un módulo por la primera carpeta que lo encuentra, así que **corre
+la de `general_primate`**. Tres pruebas independientes:
+
+1. el orden del `addons_path` en `forum.conf`;
+2. `general_primate/.../models/__pycache__/` tiene los `.pyc` compilados y
+   `forum/aml_secondary_currency` **no tiene `__pycache__`**: el server nunca la
+   importó;
+3. el código de las dos difiere.
+
+Es el mismo patrón de shadowing ya documentado en `CLAUDE.md` para
+`POScybrosys` contra `CybroAddons`.
+
+## Por qué importa
+
+Las dos copias se comportan **distinto ante la falta de cotización**, y la que
+corre es la más estricta:
+
+- **`general_primate` (la que corre):** busca la cotización con
+  `('name', '=', fecha)` —**fecha exacta, sin fallback**— y **levanta
+  `UserError`** («No se encontró tipo de cambio para la fecha … y moneda …»)
+  desde `compute_amount_secondary()`, que su propio `_post()` invoca sobre las
+  líneas de todo asiento que quede `posted`.
+- **`forum/` (la que NO corre):** tiene el commit `55125f5`
+  *[FIX][4827] Divisa secundaria no frena la facturación*, que cambia el
+  criterio a «última cotización ≤ fecha» y a no interrumpir (deja
+  `amount_secondary` en 0 y sólo loguea).
+
+O sea: **hay un fix hecho y probado que no tiene ningún efecto**, y quien lea
+`forum/aml_secondary_currency` va a concluir que el problema está resuelto. Pasó
+en esta misma sesión: se leyó la copia equivocada y se dio por bueno que la
+divisa secundaria no podía frenar una publicación masiva de asientos.
+
+## Consecuencia práctica para este módulo
+
+Las 6 compañías tienen `secondary_currency_id` (USD), así que **para publicar
+cualquier asiento tiene que existir una fila en `res_currency_rate` de esa
+moneda con la fecha contable EXACTA del asiento**. Por eso la fase de
+publicación valida la cotización antes de arrancar (ver el README) en lugar de
+fallar a mitad de tanda.
+
+## Opciones para sanearlo (no se hizo)
+
+1. Borrar `_shared/general_primate/aml_secondary_currency/` y quedarse con la de
+   `forum/`, que tiene el fix. Afecta a **todos** los clientes que carguen
+   `general_primate`: hay que revisar uno por uno.
+2. Reordenar el `addons_path` de `forum.conf` para que `forum/` gane. Cambia la
+   resolución de **cualquier** otro módulo duplicado: más barato de escribir y
+   más difícil de predecir.
+3. Portar el fix a la copia de `general_primate` y dejar la de `forum/` como
+   está. Es lo menos invasivo, pero deja las dos copias vivas.
+
+La 1 es la correcta a largo plazo; la 3, la de menor riesgo inmediato.
