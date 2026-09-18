@@ -1964,8 +1964,18 @@ class ForumImportBatchInventarioApply(models.Model):
         """
         if "moneda_reporte_id" not in Layer._fields:
             return {}
-        # Sin moneda de reporte configurada no hay nada que calcular.
-        con_cotiz = "a.cotiz IS NOT NULL AND a.cotiz <> 0"
+        # La condición NO es "hay cotización": es el VALOR de la capa. El
+        # `create()` de tchistorico entra por su rama de entrada con `value > 0`,
+        # por la de salida con `value < 0`, y **todo lo demás —incluido
+        # `value = 0`— cae en el `else`**, que deja `cotizacionDia` en 0,
+        # `moneda_reporte_id` en NULL y los cuatro campos de costo destino SIN
+        # ASIGNAR (o sea NULL, no 0).
+        # Verificado contra la gemela ORM: de 12.610 capas de valor 0, el ORM
+        # dejó las 12.610 con esos campos en NULL y ninguna con cotización;
+        # esta réplica escribía 66 con cotización porque miraba `a.cotiz`.
+        valor_no_cero = ("round((CASE WHEN a.diff > 0 THEN (%s) ELSE a.val_salida END)::numeric, "
+                         "a.dec_cia) <> 0" % val_entrada)
+        con_cotiz = "a.cotiz IS NOT NULL AND a.cotiz <> 0 AND " + valor_no_cero
         # El valor de la capa, ya con signo: entrada positiva, salida negativa.
         valor = "CASE WHEN a.diff > 0 THEN (%s) ELSE a.val_salida END" % val_entrada
         costo = "CASE WHEN a.diff > 0 THEN a.costo ELSE a.costo_salida END"
@@ -1998,6 +2008,10 @@ class ForumImportBatchInventarioApply(models.Model):
             "unit_cost_report": ("unit_cost_report",
                                  "(%s) * coalesce(nullif(a.cotiz, 0), 1)" % costo),
         }
+        # Estos cuatro solo se asignan en las ramas CON cotización; en el `else`
+        # el módulo no los toca, así que quedan NULL (no 0).
+        solo_con_cotiz = ("unitCostesDestinoInc", "unitCostesDestinoIncMR",
+                          "valorizadoCosteDestino", "valorizadoCosteDestinoMR")
         salida = {}
         for campo, formula in formulas.items():
             if campo not in Layer._fields:
@@ -2006,6 +2020,11 @@ class ForumImportBatchInventarioApply(models.Model):
                 salida[campo] = formula
                 continue
             nombre, expr = formula
+            if campo in solo_con_cotiz:
+                moneda = "dec_rep" if Layer._fields[campo].type == "monetary" else "dec_cia"
+                salida[campo] = "CASE WHEN %s THEN %s ELSE NULL END" % (
+                    con_cotiz, capa(nombre, expr, moneda))
+                continue
             # Los Monetary de tchistorico redondean por `moneda_reporte_id`, que
             # el ORM deja en NULL cuando no hay cotización: ahí no redondea.
             moneda = "dec_rep" if Layer._fields[campo].type == "monetary" else "dec_cia"
