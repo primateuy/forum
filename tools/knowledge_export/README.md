@@ -67,6 +67,20 @@ El `.gitignore` deja fuera **todos** los `config*.json` menos el `.example`.
 En `password` conviene una **API key** (Ajustes → Mi perfil → Seguridad de la
 cuenta), no la contraseña.
 
+La `url` puede ir con o sin esquema: si falta, se asume `https://`.
+
+> **Destinos en odoo.sh** — el `db` no es el nombre visible del branch, sino el
+> **nombre técnico de la base, que sale del subdominio de la URL del build**.
+> Para `https://primateuy-19-0-staging-12082026-1036-38416367.dev.odoo.com` la
+> base es `primateuy-19-0-staging-12082026-1036-38416367`, no
+> `19.0.Staging_12082026_1036`. Con el nombre equivocado la autenticación falla
+> con un `Fault 1` cuyo traceback termina en `registry.py`, que no dice «esa
+> base no existe» por ningún lado.
+
+El usuario del destino necesita poder crear `documents.document` y escribir
+`ir.attachment` (para la trazabilidad). **No** necesita leer `ir.model`, y no
+hace falta dárselo.
+
 ## Uso
 
 ```bash

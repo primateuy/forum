@@ -8,3 +8,4 @@ weasyprint>=60
 beautifulsoup4>=4.12
 lxml>=4.9
 requests>=2.31
+certifi>=2024.2.2

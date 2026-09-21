@@ -3,9 +3,13 @@
 Todo el acceso a las dos bases (Forum origen, Primate destino) pasa por acá.
 """
 import logging
+import re
 import socket
+import ssl
 import time
 import xmlrpc.client
+
+import certifi
 
 _logger = logging.getLogger(__name__)
 
@@ -20,18 +24,42 @@ class OdooRPC:
     """Conexión a una base de Odoo por XML-RPC."""
 
     def __init__(self, url, db, username, password, reintentos=4, espera_base=2.0):
-        self.url = url.rstrip("/")
+        self.url = self._normalizar_url(url)
         self.db = db
         self.username = username
         self.password = password
         self.reintentos = reintentos
         self.espera_base = espera_base
         self.uid = None
+        # 🔴 `xmlrpc.client` usa el contexto SSL por defecto de la stdlib, y en el
+        # Python del framework de macOS ese contexto NO trae CA bundle
+        # (`ssl.get_default_verify_paths().cafile` es None): falla TODO https con
+        # `SSLCertVerificationError: unable to get local issuer certificate`, y
+        # parece un problema del servidor cuando no lo es —`curl` y `requests`
+        # contra el mismo host dan 200, porque `requests` usa certifi—. Hay que
+        # pasárselo a mano. `context` se ignora solo si la URL es http.
+        contexto = ssl.create_default_context(cafile=certifi.where())
         self._common = xmlrpc.client.ServerProxy(
-            "%s/xmlrpc/2/common" % self.url, allow_none=True)
+            "%s/xmlrpc/2/common" % self.url, allow_none=True, context=contexto)
         self._models = xmlrpc.client.ServerProxy(
-            "%s/xmlrpc/2/object" % self.url, allow_none=True)
+            "%s/xmlrpc/2/object" % self.url, allow_none=True, context=contexto)
         self._version = None
+
+    @staticmethod
+    def _normalizar_url(url):
+        """Deja la URL como la espera `ServerProxy`.
+
+        Escribir el host pelado (`forum.primateuy.com`) es lo natural, y
+        `ServerProxy` lo rechaza con `OSError: unsupported XML-RPC protocol`,
+        que no dice nada sobre lo que falta. Se asume https, que es lo que
+        corresponde para cualquier destino que no sea localhost.
+        """
+        url = (url or "").strip().rstrip("/")
+        if not url:
+            raise ValueError("La configuración no tiene URL.")
+        if not re.match(r"^https?://", url, re.IGNORECASE):
+            url = "https://" + url
+        return url
 
     # ------------------------------------------------------------------
     def login(self):
@@ -96,9 +124,30 @@ class OdooRPC:
         return salida
 
     def tiene_modelo(self, modelo):
-        """True si el modelo existe en el destino (para distinguir v17 de v18+)."""
-        return bool(self.execute(
-            "ir.model", "search_count", [("model", "=", modelo)]))
+        """True si el modelo existe en el destino (para distinguir v17 de v18+).
+
+        Se prueba el modelo DIRECTO en vez de preguntarle a `ir.model`: leer
+        `ir.model` exige permisos de administración que un usuario de
+        integración no tiene ni debería tener. Verificado contra un destino
+        real: `Fault 4: "No puede acceder a los registros 'Models'"`, y la
+        subida entera se caía en la detección, antes de escribir nada.
+
+        Un modelo inexistente contesta `Object <modelo> doesn't exist`, que sale
+        de un `ValueError` del core **sin traducir**
+        (`odoo/service/model.py::execute_cr`), así que el texto es estable en
+        cualquier idioma. Cualquier otro Fault se propaga: un error de permisos
+        sobre un modelo que SÍ existe tiene que verse, no disfrazarse de
+        «no está».
+        """
+        try:
+            self.execute(modelo, "search_count", [])
+            return True
+        except xmlrpc.client.Fault as e:
+            mensaje = str(getattr(e, "faultString", "") or e)
+            if modelo in mensaje and ("doesn't exist" in mensaje
+                                      or "does not exist" in mensaje):
+                return False
+            raise
 
     # ------------------------------------------------------------------
     def _con_reintentos(self, funcion, *args):
