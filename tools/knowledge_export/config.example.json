@@ -26,6 +26,8 @@
     "username": "usuario@dominio.com",
     "password": "API_KEY_O_CLAVE",
     "raiz": "Forum",
-    "ambiente": "Producción"
+    "ambiente": "Producción",
+    "upload_mode": "flat",
+    "_upload_mode": "flat: todos los PDFs sueltos en raiz/ambiente, con la posición en el árbol en el nombre. mirror: árbol de carpetas espejo. Lo pisa --upload-mode."
   }
 }

@@ -18,6 +18,18 @@ CAMPOS = [
 
 MAX_SLUG = 60
 
+# Modos de nombre de archivo (y de subida):
+#   mirror -> `NNN_slug_<id>` dentro del árbol de carpetas espejo
+#   flat   -> `010-030-020_slug_<id>` todo en una carpeta, con la posición en el
+#             árbol codificada en el nombre para que el orden ALFABÉTICO sea el
+#             orden jerárquico.
+MODOS = ("flat", "mirror")
+
+# Los ordinales van de 10 en 10 para dejar lugar a intercalar a mano sin
+# renumerar todo. Con 3 dígitos entran 99 hermanos por nivel; si alguna vez hay
+# más, el ancho crece solo (ver `_ancho_prefijo`).
+PASO_ORDEN = 10
+
 
 def slug(texto, por_defecto="sin-titulo"):
     """Nombre de archivo seguro: sin tildes, sin signos, corto y estable."""
@@ -45,6 +57,7 @@ class Articulo:
         self.hijos = []
         self.padre = None
         self.orden = 0          # posición entre hermanos, para el prefijo NNN_
+        self.ruta_orden = []    # ordinales de todos los ancestros + el propio
         # Se completan al recorrer el árbol.
         self.nivel = 1
         self.path = []
@@ -98,8 +111,58 @@ def leer_articulos(rpc, root_id=None, incluir_privados=False, incluir_archivados
     return {f["id"]: Articulo(f) for f in filas}
 
 
-def armar_arbol(por_id, root_id=None):
-    """Enlaza padres e hijos y completa nivel, path y carpeta. Devuelve las raíces."""
+def _ancho_prefijo(raices):
+    """Dígitos que necesita el ordinal más grande del árbol.
+
+    Con 20 hermanos como máximo (medido en producción) alcanzan 3, pero el ancho
+    se calcula igual: un nivel con más de 99 hermanos rompería el orden
+    alfabético, que es justo lo único que el modo plano tiene que garantizar.
+    """
+    mayor = 0
+
+    def bajar(nodos):
+        nonlocal mayor
+        mayor = max(mayor, len(nodos))
+        for a in nodos:
+            bajar(a.hijos)
+
+    bajar(raices)
+    return max(3, len("%d" % (mayor * PASO_ORDEN)))
+
+
+def nombre_archivo(art, extension, modo="mirror", ancho=3, profundidad=1):
+    """Nombre del archivo del artículo, según el modo.
+
+    El `<id>` va siempre al final: es lo que garantiza que dos artículos con el
+    mismo título no colisionen cuando caen todos en la misma carpeta.
+
+    🔴 En `flat` el prefijo se RELLENA con ceros hasta la profundidad del árbol,
+    y no es capricho: sin eso el orden alfabético pone al padre DESPUÉS de sus
+    hijos, porque el separador de niveles `-` (0x2D) ordena antes que el `_`
+    (0x5F) que abre el slug:
+
+        160-010-080-010_configuracion-pos-manual_293   <- hijo
+        160-010-080_metodos-de-pagos-manuales_265      <- padre, va después
+        160-010_administracion-de-puntos-de-venta_140  <- abuelo, más después
+
+    Con todos los nombres al mismo número de grupos, el `000` de los niveles que
+    el artículo no usa ordena antes que cualquier posición real y el listado
+    queda en el orden del árbol (padre y después sus hijos), que es lo único que
+    este modo tiene que garantizar.
+    """
+    if modo == "flat":
+        niveles = list(art.ruta_orden) + [0] * (profundidad - len(art.ruta_orden))
+        prefijo = "-".join(("%0*d" % (ancho, o * PASO_ORDEN)) for o in niveles)
+    else:
+        prefijo = "%03d" % art.orden
+    return "%s_%s_%d.%s" % (prefijo, slug(art.titulo), art.id, extension)
+
+
+def armar_arbol(por_id, root_id=None, modo="mirror"):
+    """Enlaza padres e hijos y completa nivel, path, carpeta y nombres.
+
+    `modo` decide cómo se llaman los archivos (ver `nombre_archivo`).
+    """
     for art in por_id.values():
         if art.parent_id and art.parent_id in por_id:
             padre = por_id[art.parent_id]
@@ -112,20 +175,27 @@ def armar_arbol(por_id, root_id=None):
         # fuera del alcance.
         raices = [por_id[root_id]]
 
-    def recorrer(nodos, nivel, path, carpeta):
+    def recorrer(nodos, nivel, path, carpeta, orden_padre):
         nodos.sort(key=lambda a: (a.sequence, a.id))
         for i, art in enumerate(nodos, start=1):
             art.nivel = nivel
             art.orden = i
+            art.ruta_orden = orden_padre + [i]
             art.path = path + [art.titulo]
             nombre_carpeta = "%03d_%s" % (i, slug(art.titulo))
             art.carpeta = "%s/%s" % (carpeta, nombre_carpeta) if carpeta else nombre_carpeta
-            base = "%03d_%s_%d" % (i, slug(art.titulo), art.id)
-            art.archivo_pdf = base + ".pdf"
-            art.archivo_html = base + ".html"
-            recorrer(art.hijos, nivel + 1, art.path, art.carpeta)
+            recorrer(art.hijos, nivel + 1, art.path, art.carpeta, art.ruta_orden)
 
-    recorrer(raices, 1, [], "")
+    recorrer(raices, 1, [], "", [])
+
+    # Los nombres se resuelven en una segunda pasada: el ancho del prefijo
+    # depende del árbol entero, no se puede saber mientras se lo recorre.
+    ancho = _ancho_prefijo(raices)
+    todos = recorrido(raices)
+    profundidad = max((a.nivel for a in todos), default=1)
+    for art in todos:
+        art.archivo_pdf = nombre_archivo(art, "pdf", modo, ancho, profundidad)
+        art.archivo_html = nombre_archivo(art, "html", modo, ancho, profundidad)
     return raices
 
 

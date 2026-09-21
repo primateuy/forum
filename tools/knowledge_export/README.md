@@ -63,6 +63,7 @@ El `.gitignore` deja fuera **todos** los `config*.json` menos el `.example`.
 | `origen.root_id` | artículo raíz por defecto (`null` = todo el alcance) |
 | `destino.url / db / username / password` | Odoo de Primate, donde se sube |
 | `destino.raiz` / `destino.ambiente` | carpetas raíz en Documentos (`Forum` / `Producción`) |
+| `destino.upload_mode` | `flat` (default) o `mirror`; lo pisa `--upload-mode` |
 
 En `password` conviene una **API key** (Ajustes → Mi perfil → Seguridad de la
 cuenta), no la contraseña.
@@ -102,10 +103,51 @@ python3 export_knowledge.py --root-id 87       # sólo ese subárbol
 | `--include-private` / `--include-archived` | ampliar el alcance |
 | `--include-items` | PDF propio también para los `is_article_item` |
 | `--upload-html` | subir también los HTML |
+| `--upload-mode flat\|mirror` | cómo quedan los PDFs en Documentos (default `flat`) |
 | `--on-conflict skip\|replace` | qué hacer si el documento ya existe (default `replace`) |
 | `--pdf-engine auto\|weasyprint\|wkhtmltopdf` | forzar motor |
 | `--keep-duplicate-title` | no quitar el encabezado que repite el título |
 | `--no-http-images` | no bajar por HTTP las imágenes que no estén en `ir.attachment` |
+
+## Modo de subida: `flat` (default) y `mirror`
+
+Se elige con `--upload-mode` o con `destino.upload_mode` en la configuración; la
+CLI pisa al archivo.
+
+**`flat`** — todos los PDFs y el manifest **sueltos** dentro de
+`<raiz>/<ambiente>`, sin subcarpetas. Es lo que pidió el equipo funcional: la
+jerarquía ya está en el manifest y las carpetas espejo les estorbaban para
+revisar y reorganizar. La posición en el árbol viaja en el **nombre del
+archivo**, de modo que **el orden alfabético es el orden jerárquico**:
+
+```
+160-000-000-000-000_punto-de-venta_139.pdf
+160-010-000-000-000_administracion-de-puntos-de-venta_140.pdf
+160-010-010-000-000_definiciones-para-una-nueva-sucursal_243.pdf
+...
+160-010-080-000-000_metodos-de-pagos-manuales_265.pdf
+160-010-080-010-000_configuracion-pos-manual_293.pdf
+```
+
+Un grupo por nivel, de 10 en 10 para poder intercalar a mano sin renumerar todo,
+y el `<id>` al final para que dos artículos con el mismo título no choquen.
+
+> 🔴 **El relleno con `000` no es decorativo.** Con prefijos de largo variable el
+> orden alfabético pone al padre **después** de sus hijos, porque el separador de
+> niveles `-` (0x2D) ordena antes que el `_` (0x5F) que abre el slug:
+> `160-010-080-010_hijo` < `160-010-080_padre` < `160-010_abuelo`. Rellenando
+> todos los nombres a la misma cantidad de grupos, el `000` de los niveles sin
+> usar ordena primero y el listado queda en orden de árbol.
+
+Antes de subir se verifica que no haya dos archivos con el mismo nombre: en
+`flat` comparten carpeta, así que un nombre repetido sería un pisón silencioso.
+
+**`mirror`** — el árbol de carpetas espejo, con `NNN_slug_<id>.pdf` dentro de
+cada una. Queda por si alguna vez sirve.
+
+El modo afecta **el nombre de los archivos**, así que la exportación y la subida
+tienen que correrse con el mismo: si exportás en `mirror` y subís en `flat`, los
+archivos caen todos juntos pero sin el prefijo que los ordena.
 
 ## Confirmación de ambientes
 
@@ -143,8 +185,11 @@ out/forum_knowledge/
 └── export.log
 ```
 
-El prefijo `NNN_` respeta el `sequence` de Odoo, así el orden dentro de cada
-carpeta se mantiene en cualquier explorador de archivos.
+El nombre de los archivos depende del **modo de subida** (ver arriba): con
+`mirror` es `NNN_slug_<id>` y con `flat`, `NNN-NNN-...-NNN_slug_<id>`. En los dos
+casos el prefijo respeta el `sequence` de Odoo, así el orden se mantiene en
+cualquier explorador de archivos. El árbol de carpetas local se arma siempre,
+sea cual sea el modo.
 
 ### manifest.csv
 

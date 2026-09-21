@@ -10,6 +10,7 @@ Documentos de Primate replicando la jerarquía.
 Las credenciales salen de config.json (ver config.example.json). Nada hardcodeado.
 """
 import argparse
+import collections
 import json
 import logging
 import os
@@ -99,8 +100,9 @@ def confirmar_ambientes(cfg, args, va_a_subir):
         print("  %-20s %s" % ("DESTINO (se ESCRIBE)", destino.get("url", "?")))
         print("                      base %s · usuario %s"
               % (destino.get("db", "?"), destino.get("username", "?")))
-        print("                      carpeta %s / %s · conflictos: %s"
-              % (destino.get("raiz", "?"), destino.get("ambiente", "?"), args.on_conflict))
+        print("                      carpeta %s / %s · modo %s · conflictos: %s"
+              % (destino.get("raiz", "?"), destino.get("ambiente", "?"),
+                 modo_subida(cfg, args), args.on_conflict))
     else:
         print("  %-20s (no se sube: %s)"
               % ("DESTINO",
@@ -129,6 +131,32 @@ def confirmar_ambientes(cfg, args, va_a_subir):
     if respuesta not in ("y", "s", "yes", "si", "sí"):
         raise SystemExit("Cancelado.")
     print()
+
+
+def ruta_en_documentos(cfg, modo, art):
+    """Dónde va a quedar el archivo en Documentos, de verdad.
+
+    En `flat` no hay subcarpetas, así que anunciar el path del árbol sería
+    mentir: el manifest tiene que poder usarse para ir a buscar el archivo.
+    """
+    base = "%s/%s" % (cfg["destino"]["raiz"], cfg["destino"]["ambiente"])
+    return base if modo == "flat" else "%s/%s" % (base, art.carpeta)
+
+
+def modo_subida(cfg, args):
+    """`flat` o `mirror`: la CLI pisa al config, y el default es `flat`.
+
+    `flat` deja todos los PDFs sueltos en `<raiz>/<ambiente>` y codifica la
+    posición en el árbol en el NOMBRE del archivo, para que el orden alfabético
+    sea el orden jerárquico. Es lo que pidió el equipo funcional: la jerarquía
+    ya está en el manifest, y las carpetas espejo les estorbaban para
+    reorganizar. `mirror` es el árbol de carpetas.
+    """
+    modo = (args.upload_mode or cfg.get("destino", {}).get("upload_mode") or "flat").lower()
+    if modo not in tree.MODOS:
+        raise SystemExit("upload_mode inválido: %r. Valores: %s"
+                         % (modo, ", ".join(tree.MODOS)))
+    return modo
 
 
 def cargar_config(ruta):
@@ -177,6 +205,7 @@ def exportar(args, cfg):
     rpc.login()
 
     root_id = args.root_id or origen.get("root_id")
+    modo = modo_subida(cfg, args)
     por_id = tree.leer_articulos(
         rpc, root_id=root_id,
         incluir_privados=args.include_private,
@@ -184,7 +213,7 @@ def exportar(args, cfg):
         limite=args.limit)
     if not por_id:
         raise SystemExit("No hay artículos en el alcance pedido.")
-    raices = tree.armar_arbol(por_id, root_id=root_id)
+    raices = tree.armar_arbol(por_id, root_id=root_id, modo=modo)
     todos = tree.recorrido(raices)
 
     # Los `is_article_item` no generan PDF propio: en Odoo son filas de una lista
@@ -256,8 +285,7 @@ def exportar(args, cfg):
             pdf_rel=("pdf/%s/%s" % (art.carpeta, art.archivo_pdf)) if genero_pdf else "",
             html_rel=("html/%s/%s" % (art.carpeta, art.archivo_html)) if genero_pdf else "",
             videos=getattr(art, "_videos", []),
-            ruta_documentos="%s/%s/%s" % (cfg["destino"]["raiz"],
-                                          cfg["destino"]["ambiente"], art.carpeta),
+            ruta_documentos=ruta_en_documentos(cfg, modo, art),
             irrecuperables=getattr(art, "_irrecuperables", [])))
     ruta_manifest = base / "manifest.csv"
     manifest_mod.escribir(ruta_manifest, filas)
@@ -284,14 +312,15 @@ def subir(args, cfg):
         raise SystemExit("No hay %s. Corré primero la exportación." % ruta_manifest)
 
     destino = cfg["destino"]
+    modo = modo_subida(cfg, args)
     rpc = OdooRPC(destino["url"], destino["db"], destino["username"], destino["password"])
     rpc.login()
     docs = upload.Documentos(rpc, on_conflict=args.on_conflict)
     docs.detectar()
 
     raiz_id = docs.ruta([destino["raiz"], destino["ambiente"]])
-    _logger.info("Raíz en Documentos: %s/%s (id %s)",
-                 destino["raiz"], destino["ambiente"], raiz_id)
+    _logger.info("Raíz en Documentos: %s/%s (id %s) · modo %s",
+                 destino["raiz"], destino["ambiente"], raiz_id, modo)
 
     import csv
     with open(ruta_manifest, encoding="utf-8-sig", newline="") as fh:
@@ -299,17 +328,36 @@ def subir(args, cfg):
 
     con_pdf = [f for f in filas if f["Archivo PDF"]]
     total = len(con_pdf)
+
+    # En `flat` todos los archivos comparten carpeta, así que dos nombres
+    # iguales serían un pisón silencioso: el segundo reemplazaría al primero y
+    # el manifest seguiría diciendo que están los dos. El `<id>` del final lo
+    # hace imposible, pero se verifica igual antes de escribir nada.
+    if modo == "flat":
+        vistos = collections.Counter(Path(f["Archivo PDF"]).name for f in con_pdf)
+        chocan = sorted(n for n, c in vistos.items() if c > 1)
+        if chocan:
+            raise SystemExit(
+                "%d nombre(s) de archivo repetidos en modo flat, se pisarían entre "
+                "ellos: %s" % (len(chocan), ", ".join(chocan[:5])))
+        _logger.info("Sin colisiones de nombre: %d archivos distintos", len(vistos))
     for n, fila in enumerate(con_pdf, start=1):
         ruta_pdf = base / fila["Archivo PDF"]
         if not ruta_pdf.exists():
             _logger.warning("  [%d/%d] falta el archivo %s, se saltea", n, total, ruta_pdf)
             continue
-        partes = Path(fila["Archivo PDF"]).parent.relative_to("pdf").parts
-        carpeta_id = docs.ruta(list(partes), raiz_id)
+        if modo == "flat":
+            # Todo suelto en la raíz: la jerarquía viaja en el NOMBRE del
+            # archivo (y en el manifest), no en carpetas.
+            carpeta_id, destino_log = raiz_id, "(raíz)"
+        else:
+            partes = Path(fila["Archivo PDF"]).parent.relative_to("pdf").parts
+            carpeta_id = docs.ruta(list(partes), raiz_id)
+            destino_log = "/".join(partes)
         _, accion = docs.subir(ruta_pdf, ruta_pdf.name, carpeta_id,
                                origen="forum:knowledge.article:%s" % fila["ID Odoo"])
         _logger.info("  [%d/%d] %s -> %s (%s)", n, total, ruta_pdf.name,
-                     "/".join(partes), accion)
+                     destino_log, accion)
         if args.upload_html and fila["Archivo HTML"]:
             ruta_h = base / fila["Archivo HTML"]
             if ruta_h.exists():
@@ -350,6 +398,10 @@ def main():
                         "(83 de 98 artículos lo repiten)")
     p.add_argument("--no-http-images", action="store_true",
                    help="no bajar por HTTP las imágenes que no estén en ir.attachment")
+    p.add_argument("--upload-mode", choices=list(tree.MODOS),
+                   help="flat (default): todos los PDFs sueltos en <raiz>/<ambiente>, "
+                        "con la posición en el árbol codificada en el nombre. "
+                        "mirror: árbol de carpetas espejo. Pisa a `destino.upload_mode`.")
     p.add_argument("--on-conflict", choices=["skip", "replace"], default="replace")
     p.add_argument("--pdf-engine", choices=["auto", "weasyprint", "wkhtmltopdf"],
                    default="auto")
