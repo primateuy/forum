@@ -1,0 +1,10 @@
+# Exportación de Knowledge a PDF. Python 3.11+.
+#
+# WeasyPrint necesita además librerías del sistema (pango, cairo, glib):
+#   macOS:  brew install pango
+#   Debian: apt install libpango-1.0-0 libpangoft2-1.0-0 libcairo2 libgdk-pixbuf-2.0-0
+# Si no están, el script cae solo a wkhtmltopdf (si está en el PATH).
+weasyprint>=60
+beautifulsoup4>=4.12
+lxml>=4.9
+requests>=2.31

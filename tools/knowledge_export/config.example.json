@@ -1,0 +1,21 @@
+{
+  "_comentario": "Copiá este archivo a config.json y completalo. config.json NO va al repo.",
+  "origen": {
+    "_comentario": "Odoo de FORUM, de donde se lee el módulo Conocimiento.",
+    "url": "http://localhost:8099",
+    "db": "o17_support_forum",
+    "username": "usuario@dominio.com",
+    "password": "API_KEY_O_CLAVE",
+    "root_id": 87,
+    "_root_id": "Artículo raíz por defecto. null = todo el alcance. Se pisa con --root-id."
+  },
+  "destino": {
+    "_comentario": "Odoo de PRIMATE, donde se suben los PDFs al módulo Documentos.",
+    "url": "https://primate.example.com",
+    "db": "nombre_base",
+    "username": "usuario@dominio.com",
+    "password": "API_KEY_O_CLAVE",
+    "raiz": "Forum",
+    "ambiente": "Producción"
+  }
+}
