@@ -1182,16 +1182,36 @@ tiempo de publicación, pero cambia lo que ve el contador.
    SELECT comunicacion_activa FROM integracion_wis_integracion_wis;  -- false
    ```
 
-6. **Cuentas y diario de stock en TODAS las categorías** de los productos del
-   archivo, si van a valuar en tiempo real. Ojo: una propiedad puede existir con
-   el valor **vacío**, y entonces el producto queda sin cuenta aunque la fila
-   esté; la aplicación corta con `UserError` si pasa:
+6. **Cuentas y diario de stock resolubles en TODAS las categorías** de los
+   productos del archivo, si van a valuar en tiempo real. No hace falta fila
+   propia por categoría: desde la 17.0.1.3.2 la aplicación acepta el **valor por
+   defecto de la compañía** (`ir_property` con `res_id IS NULL`), igual que el
+   ORM. Lo que sigue cortando con `UserError` es que no haya ninguno de los dos.
+
+   Esta consulta lista las categorías que valúan en tiempo real y a las que les
+   falta algo, resolviendo con la misma precedencia que el ORM. Tiene que
+   devolver **cero filas**:
 
    ```sql
-   SELECT count(*) FROM ir_property
-    WHERE name = 'property_stock_valuation_account_id'
-      AND (value_reference IS NULL OR value_reference NOT LIKE 'account.account,%');
+   WITH p AS (
+     SELECT pc.id, pc.complete_name, c.id AS company_id, f.name AS prop,
+            (SELECT x.value_reference FROM ir_property x
+              WHERE x.fields_id = f.id
+                AND (x.res_id = 'product.category,' || pc.id OR x.res_id IS NULL)
+                AND (x.company_id = c.id OR x.company_id IS NULL)
+              ORDER BY (x.res_id IS NULL), (x.company_id IS NULL) LIMIT 1) AS val
+       FROM product_category pc
+       CROSS JOIN res_company c
+       JOIN ir_model_fields f ON f.model = 'product.category' AND f.name IN (
+            'property_stock_valuation_account_id', 'property_stock_account_input_categ_id',
+            'property_stock_account_output_categ_id', 'property_stock_journal')
+   )
+   SELECT * FROM p WHERE val IS NULL;
    ```
+
+   🔴 Ojo con la propiedad que existe **con el valor vacío**: la fila gana igual
+   (la precedencia va por presencia de fila, como en el ORM) y deja la cuenta en
+   NULL. La consulta de arriba la muestra.
 
 7. Después de cargar el staging, revisar el log y el export: IDs no encontrados
    (en producción deberían ser 0), ubicaciones por compañía, no almacenables.

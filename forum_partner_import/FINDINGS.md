@@ -344,3 +344,115 @@ el correcto, no sólo el rápido.
 
 Como efecto colateral útil, el nuevo informa **cuántos números faltan** por
 prefijo (`esperados - presentes`), que es más accionable que una cuenta de saltos.
+
+## Defecto propio: el apply exigía fila de `ir_property` por categoría (corregido en 17.0.1.3.2)
+
+Síntoma, en la corrida del 2026-09-21 sobre el dump nuevo:
+
+```
+ERROR en la tanda de aplicación que arranca en 0: 6 capas de valuación no tienen
+cuenta o diario en la categoría de su producto (ejemplos de producto: 1206680,
+1206683, 1206687, ...)
+```
+
+**No faltaba configuración.** Odoo resuelve una propiedad company-dependent en
+**dos niveles** (`base/models/ir_property.py:278`, `_get_multi`):
+
+```sql
+WHERE p.fields_id = %s
+  AND (p.company_id = %s OR p.company_id IS NULL)
+  AND (p.res_id IN %s OR p.res_id IS NULL)   -- <- el default de la compañía
+ORDER BY p.company_id NULLS FIRST
+```
+
+La fila con `res_id IS NULL` es el **valor por defecto para todas las
+categorías**. `_apl_asientos` exigía fila explícita por categoría, así que una
+categoría que se apoya en el default daba `NULL` y cortaba la tanda — aunque el
+producto valúe perfecto en Odoo.
+
+En `o17_inv_med` los defaults existen para las 6 compañías (valuación
+`account.account,74`, salida `194`, diario `account.journal,15`) y **15
+categorías de la compañía 1 marcadas `real_time` no tienen ninguna fila propia**.
+Ahí no explotó porque ninguna de esas 15 tiene un solo producto almacenable con
+stock; en el dump nuevo sí los hay.
+
+El patrón correcto ya estaba **en este mismo archivo** para `property_cost_method`,
+`property_stock_inventory` y `standard_price`, con su comentario *«la propiedad
+propia y, si no tiene, el default de la compañía. Es el mismo orden que resuelve
+el ORM»*. Faltó en la consulta de cuentas y en el invariante 4d.
+
+`property_valuation` tenía el mismo hueco pero **en silencio**: una categoría con
+default `real_time` y sin fila propia se trataba como `manual`, y el módulo no
+creaba el asiento que el ORM sí crea. Peor que el error, porque no avisa.
+
+### Dos detalles que no son obvios
+
+**La precedencia va por presencia de fila, no por valor.** Una fila explícita con
+el valor vacío gana igual y deja la cuenta en NULL — que es exactamente lo que
+hace el ORM (devuelve `False` y corta con `UserError`). Un `coalesce` de valores
+taparía ese caso con el default y crearía el asiento que el ORM se niega a crear.
+Por eso la resolución es un `ORDER BY (res_id IS NULL), (company_id IS NULL)
+LIMIT 1` y no un `coalesce`.
+
+**Se filtra por `fields_id`, no por `ir_property.name`.** En el nivel del default
+no hay `res_id` que desempate, y el nombre solo no distingue la propiedad de otro
+modelo.
+
+## Defecto propio: `acc_src` y `acc_dest` eran la misma cuenta (corregido en 17.0.1.3.2)
+
+Aparecido al revisar lo anterior. El core saca las dos contrapartidas de **puntas
+distintas del movimiento** (`stock_account/models/stock_move.py:392`):
+
+```python
+def _get_src_account(self, accounts_data):
+    return self.location_id.valuation_out_account_id.id or accounts_data['stock_input'].id
+
+def _get_dest_account(self, accounts_data):
+    if not self.location_dest_id.usage in ('production', 'inventory'):
+        return accounts_data['stock_output'].id
+    return self.location_dest_id.valuation_in_account_id.id or accounts_data['stock_output'].id
+```
+
+En una **entrada** la ubicación de ajuste es el ORIGEN, y la cuenta que manda es
+`valuation_out_account_id` con respaldo en la cuenta de **entrada** de la
+categoría. En una **salida** es el DESTINO, y manda `valuation_in_account_id` con
+respaldo en la de **salida**. El módulo usaba `valuation_in_account_id` y la
+cuenta de salida **en las dos direcciones**.
+
+**Por qué la paridad no lo había visto.** En esta base la cuenta de entrada y la
+de salida son la misma (`account.account,194`) en las 101 categorías que las
+tienen y también en el default, y **ninguna ubicación tiene cuentas de valuación
+propias**. Con esos datos las dos fórmulas dan idéntico y el diff da 0.
+
+Se destapó fabricando la diferencia: cuentas distintas para entrada y salida en
+una categoría, y cuentas de valuación en la ubicación de ajuste. Sobre 40
+movimientos reales de `o17_inv_med`, contra
+`_get_accounting_data_for_valuation()` del ORM:
+
+| contrapartida | fórmula nueva | fórmula vieja |
+|---|---|---|
+| entrada | 20 bien / 0 mal | **0 bien / 20 mal** |
+| salida  | 20 bien / 0 mal | 20 bien / 0 mal |
+
+El ORM valida `acc_src` **y** `acc_dest` antes de saber la dirección, así que el
+chequeo de configuración ahora exige las dos, más valuación y diario.
+
+### El `MATERIALIZED` del invariante 4d no es decorativo
+
+Al resolver las propiedades en un CTE, Postgres lo **inlinea** (PG ≥ 12 con una
+sola referencia) y ejecuta las subconsultas como `SubPlan` dentro del `Join
+Filter`: una vez por cada una de las 1,6 M de líneas. Medido sobre el batch 11:
+**21,9 s sin materializar contra 1,6 s con**. La fase entera de invariantes pasa
+de 25 s a 8,5 s.
+
+Y el control se probó **fabricando el defecto**, no viendo que diga «0». Con una
+categoría apoyada en el default y **una** línea con la cuenta cambiada:
+
+| | 4d viejo | 4d nuevo |
+|---|---|---|
+| base sana | 0 | 0 |
+| categoría apoyada en el default | 0 | 0 |
+| + una línea con otra cuenta | **0 (ciego)** | **1** |
+
+El viejo era ciego porque con las propiedades en NULL, `account_id NOT IN (NULL,
+NULL)` da NULL y la fila no se cuenta. De ahí el `IS DISTINCT FROM`.

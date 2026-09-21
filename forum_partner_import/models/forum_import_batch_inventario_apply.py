@@ -1260,23 +1260,46 @@ class ForumImportBatchInventarioApply(models.Model):
                    SELECT round(sum(x.debit)::numeric, cur.decimal_places)
                      FROM account_move_line x WHERE x.move_id = am.id)
         """, {"desde": self.apply_started_at})
+        # Las tres cuentas que el ORM puede haber usado, resueltas con su misma
+        # precedencia (ver `_apl_sql_prop_categ`): valuación, `acc_src` y
+        # `acc_dest`. Con `IS DISTINCT FROM` y no `NOT IN`: un `NOT IN` con un
+        # NULL adentro da NULL, y el control viejo no verificaba nada justo en
+        # las categorías que se apoyan en el default de la compañía.
+        #
+        # Se resuelven una vez por (compañía, categoría) y no por línea. 🔴 El
+        # `MATERIALIZED` no es decorativo: sin él Postgres
+        # inlinea el CTE y ejecuta las subconsultas como SubPlan dentro del
+        # Join Filter, una vez por cada una de las 1,6 M de líneas. Medido sobre
+        # el batch 11: 21,9 s sin materializar contra 1,6 s con.
         revisar("4d. cuentas distintas de las de la categoría del producto", """
+            WITH cat AS MATERIALIZED (
+                SELECT c.id AS company_id, pc.id AS categ_id,
+                       {val} AS cta_valuacion, {ent} AS cta_entrada, {sal} AS cta_salida
+                  FROM res_company c CROSS JOIN product_category pc
+            )
             SELECT count(*) FROM account_move_line l
               JOIN account_move am ON am.id = l.move_id
               JOIN stock_move m ON m.id = am.stock_move_id
               JOIN product_product pp ON pp.id = l.product_id
               JOIN product_template pt ON pt.id = pp.product_tmpl_id
-              LEFT JOIN ir_property pval ON pval.name = 'property_stock_valuation_account_id'
-                    AND pval.res_id = 'product.category,' || pt.categ_id
-                    AND pval.company_id = am.company_id
-              LEFT JOIN ir_property pout ON pout.name = 'property_stock_account_output_categ_id'
-                    AND pout.res_id = 'product.category,' || pt.categ_id
-                    AND pout.company_id = am.company_id
+              JOIN stock_location lsrc ON lsrc.id = m.location_id
+              JOIN stock_location ldst ON ldst.id = m.location_dest_id
+              JOIN cat k ON k.company_id = am.company_id AND k.categ_id = pt.categ_id
              WHERE m.is_inventory AND am.create_date >= %(desde)s
-               AND l.account_id NOT IN (
-                   split_part(pval.value_reference, ',', 2)::int,
-                   split_part(pout.value_reference, ',', 2)::int)
-        """, {"desde": self.apply_started_at})
+               AND l.account_id IS DISTINCT FROM k.cta_valuacion
+               AND l.account_id IS DISTINCT FROM coalesce(lsrc.valuation_out_account_id,
+                                                          k.cta_entrada)
+               AND l.account_id IS DISTINCT FROM (
+                   CASE WHEN ldst.usage IN ('production', 'inventory')
+                        THEN coalesce(ldst.valuation_in_account_id, k.cta_salida)
+                        ELSE k.cta_salida END)
+        """.format(val=self._apl_sql_prop_categ(
+                       "property_stock_valuation_account_id", "pc.id", "c.id"),
+                   ent=self._apl_sql_prop_categ(
+                       "property_stock_account_input_categ_id", "pc.id", "c.id"),
+                   sal=self._apl_sql_prop_categ(
+                       "property_stock_account_output_categ_id", "pc.id", "c.id")),
+           {"desde": self.apply_started_at})
 
         # 6. Sin quants duplicados, sin conteos pendientes, sin asientos huérfanos.
         revisar("6a. par producto/ubicación con más de un quant", """
@@ -1637,6 +1660,76 @@ class ForumImportBatchInventarioApply(models.Model):
             _logger.exception("[forum_partner_import] verificación posterior a publicar")
         self.env.cr.commit()
 
+    def _apl_sql_prop_categ(self, prop, categ_sql, cia_sql):
+        """Subconsulta escalar que resuelve una propiedad de `product.category`
+        con la MISMA precedencia que el ORM.
+
+        `ir.property._get_multi` (`base/models/ir_property.py`) busca con
+        `(company_id = X OR company_id IS NULL) AND (res_id IN (...) OR res_id
+        IS NULL)`: la fila con `res_id IS NULL` es **el valor por defecto de la
+        compañía para todas las categorías**, y la categoría que no tiene fila
+        propia se apoya en ella. Exigir fila explícita por categoría corta con
+        `UserError` productos que en Odoo valúan perfecto — es lo que pasaba
+        acá hasta la 17.0.1.3.2.
+
+        El orden es: fila propia de la categoría antes que el default, y dentro
+        de cada nivel la de la compañía antes que la global.
+
+        🔴 La precedencia va por **presencia de fila, no por valor**. Una fila
+        explícita con el valor vacío gana igual y deja la cuenta en NULL, que es
+        exactamente lo que hace el ORM (devuelve False y corta). Un `coalesce`
+        de valores taparía ese caso con el default y crearía el asiento que el
+        ORM se niega a crear.
+
+        Se filtra por `fields_id` y no por `ir_property.name`: el nombre solo no
+        distingue la propiedad de otro modelo, y en el nivel del default
+        (`res_id IS NULL`) no hay `res_id` que desempate.
+        """
+        campo = ("x.value_text" if prop == "property_valuation"
+                 else "split_part(x.value_reference, ',', 2)::int")
+        return """(SELECT {campo} FROM ir_property x
+                    WHERE x.fields_id = (SELECT f.id FROM ir_model_fields f
+                                          WHERE f.model = 'product.category'
+                                            AND f.name = '{prop}')
+                      AND (x.res_id = 'product.category,' || {categ} OR x.res_id IS NULL)
+                      AND (x.company_id = {cia} OR x.company_id IS NULL)
+                    ORDER BY (x.res_id IS NULL), (x.company_id IS NULL)
+                    LIMIT 1)""".format(campo=campo, prop=prop, categ=categ_sql, cia=cia_sql)
+
+    # Propiedades de la categoría que hacen falta para el asiento, con el alias
+    # con el que quedan en `forum_apl_categ`.
+    _APL_PROPS_CATEG = (
+        ("valuacion", "property_valuation"),
+        ("cta_valuacion", "property_stock_valuation_account_id"),
+        ("cta_entrada", "property_stock_account_input_categ_id"),
+        ("cta_salida", "property_stock_account_output_categ_id"),
+        ("diario", "property_stock_journal"),
+    )
+
+    def _apl_categ_cuentas(self):
+        """Tabla temporal `forum_apl_categ`: las propiedades contables ya
+        resueltas para cada par (compañía, categoría) de la tanda.
+
+        Se resuelve una vez por par y no una vez por capa: las categorías son
+        cientos y las capas, cientos de miles.
+        """
+        cr = self.env.cr
+        cols = ",\n                   ".join(
+            "%s AS %s" % (self._apl_sql_prop_categ(prop, "p.categ_id", "p.company_id"), alias)
+            for alias, prop in self._APL_PROPS_CATEG)
+        cr.execute("""
+            DROP TABLE IF EXISTS forum_apl_categ;
+            CREATE TEMP TABLE forum_apl_categ ON COMMIT DROP AS
+            WITH pares AS (
+                SELECT DISTINCT company_id, categ_id FROM forum_apl WHERE NOT es_cero
+            )
+            SELECT p.company_id, p.categ_id,
+                   {cols}
+              FROM pares p
+        """.format(cols=cols))
+        cr.execute("CREATE INDEX forum_apl_categ_idx ON forum_apl_categ (company_id, categ_id)")
+        cr.execute("ANALYZE forum_apl_categ")
+
     def _apl_asientos(self, params):
         """Asientos de valuación de la tanda, en estado BORRADOR.
 
@@ -1648,11 +1741,24 @@ class ForumImportBatchInventarioApply(models.Model):
         `sequence_prefix/number` y sin `posted_before`.
 
         Cuentas y diario salen de la categoría del producto
-        (`_get_accounting_data_for_valuation`): valuación contra entrada/salida.
-        En una ENTRADA el ORM debita valuación y acredita la cuenta de origen; en
-        una SALIDA es al revés. La cuenta de contrapartida de una ubicación de
-        ajuste es `stock_output` salvo que la ubicación tenga la suya
-        (`_get_dest_account`).
+        (`_get_accounting_data_for_valuation`), resueltos con la precedencia del
+        ORM en `_apl_categ_cuentas`. En una ENTRADA el ORM debita valuación y
+        acredita `acc_src`; en una SALIDA debita `acc_dest` y acredita
+        valuación.
+
+        Y `acc_src` y `acc_dest` NO son la misma cuenta ni salen de la misma
+        punta del movimiento (`stock_account/models/stock_move.py:392`):
+
+        - `_get_src_account` = cuenta de la ubicación de ORIGEN
+          (`valuation_out_account_id`) y, si no la tiene, la cuenta de
+          **entrada** de la categoría.
+        - `_get_dest_account` = cuenta de la ubicación de DESTINO
+          (`valuation_in_account_id`) **solo si su uso es `inventory` o
+          `production`**, y si no, la cuenta de **salida** de la categoría.
+
+        En una entrada la ubicación de ajuste es el ORIGEN; en una salida, el
+        DESTINO. El ORM valida las dos cuentas vaya para donde vaya el
+        movimiento, así que acá se exigen las dos igual.
 
         Los campos que no se ponen acá los cubre `_apl_defaults` con
         `default_get`, así entra lo que agregue cualquier módulo instalado
@@ -1663,63 +1769,82 @@ class ForumImportBatchInventarioApply(models.Model):
         MoveLine = self.env["account.move.line"]
         # Capas de la tanda que generan asiento: producto con valuación en
         # tiempo real y valor distinto de cero. Mismo filtro que el ORM.
+        self._apl_categ_cuentas()
         cr.execute("""
             DROP TABLE IF EXISTS forum_apl_asiento;
             CREATE TEMP TABLE forum_apl_asiento ON COMMIT DROP AS
-            SELECT a.row_num, a.svl_id, a.move_id, a.company_id, a.product_id,
-                   a.diff, a.dec_cia, a.prod_name,
-                   l.value AS valor,
-                   abs(l.value) AS importe,
-                   l.quantity AS cantidad_capa,
-                   pt.uom_id,
-                   c.currency_id,
-                   -- Cuenta de valuación de la categoría.
-                   split_part(pval.value_reference, ',', 2)::int AS cta_valuacion,
-                   -- Contrapartida: la de la ubicación de ajuste si la definió,
-                   -- y si no la de salida de la categoría.
-                   coalesce(li.valuation_in_account_id,
-                            split_part(pout.value_reference, ',', 2)::int) AS cta_contra,
-                   split_part(pjrn.value_reference, ',', 2)::int AS diario
-              FROM forum_apl a
-              JOIN stock_valuation_layer l ON l.id = a.svl_id
-              JOIN product_product pp ON pp.id = a.product_id
-              JOIN product_template pt ON pt.id = pp.product_tmpl_id
-              JOIN res_company c ON c.id = a.company_id
-              JOIN stock_location li ON li.id = a.inv_loc
-              LEFT JOIN ir_property pval ON pval.name = 'property_stock_valuation_account_id'
-                    AND pval.res_id = 'product.category,' || pt.categ_id
-                    AND pval.company_id = a.company_id
-              LEFT JOIN ir_property pout ON pout.name = 'property_stock_account_output_categ_id'
-                    AND pout.res_id = 'product.category,' || pt.categ_id
-                    AND pout.company_id = a.company_id
-              LEFT JOIN ir_property pjrn ON pjrn.name = 'property_stock_journal'
-                    AND pjrn.res_id = 'product.category,' || pt.categ_id
-                    AND pjrn.company_id = a.company_id
-              LEFT JOIN ir_property pv ON pv.name = 'property_valuation'
-                    AND pv.res_id = 'product.category,' || pt.categ_id
-                    AND pv.company_id = a.company_id
-             WHERE NOT a.es_cero
-               AND coalesce(pv.value_text, 'manual') = 'real_time'
-               AND round(l.value::numeric, a.dec_cia) <> 0
+            WITH base AS (
+                SELECT a.row_num, a.svl_id, a.move_id, a.company_id, a.product_id,
+                       a.diff, a.dec_cia, a.prod_name,
+                       l.value AS valor,
+                       abs(l.value) AS importe,
+                       l.quantity AS cantidad_capa,
+                       pt.uom_id,
+                       c.currency_id,
+                       pcat.cta_valuacion,
+                       -- `_get_src_account`: la cuenta de la ubicación de
+                       -- ORIGEN y, si no la tiene, la de ENTRADA de la
+                       -- categoría. En una entrada el origen es la ubicación de
+                       -- ajuste; en una salida, la interna.
+                       coalesce(CASE WHEN a.diff > 0 THEN li.valuation_out_account_id
+                                     ELSE ls.valuation_out_account_id END,
+                                pcat.cta_entrada) AS cta_src,
+                       -- `_get_dest_account`: la cuenta de la ubicación de
+                       -- DESTINO solo si su uso es de ajuste o producción, y si
+                       -- no, la de SALIDA de la categoría. En una entrada el
+                       -- destino es la interna, que no entra en ese caso.
+                       CASE WHEN a.diff > 0 THEN pcat.cta_salida
+                            ELSE coalesce(li.valuation_in_account_id, pcat.cta_salida) END
+                           AS cta_dest,
+                       pcat.diario
+                  FROM forum_apl a
+                  JOIN stock_valuation_layer l ON l.id = a.svl_id
+                  JOIN product_product pp ON pp.id = a.product_id
+                  JOIN product_template pt ON pt.id = pp.product_tmpl_id
+                  JOIN res_company c ON c.id = a.company_id
+                  JOIN stock_location li ON li.id = a.inv_loc
+                  JOIN stock_location ls ON ls.id = a.location_id
+                  JOIN forum_apl_categ pcat ON pcat.company_id = a.company_id
+                                           AND pcat.categ_id = a.categ_id
+                 WHERE NOT a.es_cero
+                   AND coalesce(pcat.valuacion, 'manual') = 'real_time'
+                   AND round(l.value::numeric, a.dec_cia) <> 0
+            )
+            -- La contrapartida del asiento: en una ENTRADA el ORM acredita
+            -- `acc_src`; en una SALIDA debita `acc_dest`.
+            SELECT base.*,
+                   CASE WHEN diff > 0 THEN cta_src ELSE cta_dest END AS cta_contra
+              FROM base
         """)
         cr.execute("SELECT count(*) FROM forum_apl_asiento")
         if not cr.fetchone()[0]:
             return 0
         # Un producto que valúa en tiempo real sin cuentas o sin diario es un
         # error de configuración: el ORM corta con UserError y acá también, en
-        # vez de dejar capas con valor sin asiento.
-        cr.execute("""SELECT count(*) FROM forum_apl_asiento
-                       WHERE cta_valuacion IS NULL OR cta_contra IS NULL OR diario IS NULL""")
+        # vez de dejar capas con valor sin asiento. Se exigen las CUATRO, y las
+        # dos contrapartidas vaya el movimiento para donde vaya, porque
+        # `_get_accounting_data_for_valuation` las valida todas antes de saber
+        # la dirección.
+        falta = ("cta_valuacion IS NULL OR cta_src IS NULL OR cta_dest IS NULL "
+                 "OR diario IS NULL")
+        cr.execute("SELECT count(*) FROM forum_apl_asiento WHERE " + falta)
         sin_cuentas = cr.fetchone()[0]
         if sin_cuentas:
-            cr.execute("""SELECT product_id FROM forum_apl_asiento
-                           WHERE cta_valuacion IS NULL OR cta_contra IS NULL OR diario IS NULL
-                           LIMIT 5""")
-            ejemplos = ", ".join(str(r[0]) for r in cr.fetchall())
+            # La categoría dice qué hay que configurar; el id de producto, no.
+            cr.execute("""
+                SELECT DISTINCT pc.complete_name
+                  FROM forum_apl_asiento a
+                  JOIN product_product pp ON pp.id = a.product_id
+                  JOIN product_template pt ON pt.id = pp.product_tmpl_id
+                  JOIN product_category pc ON pc.id = pt.categ_id
+                 WHERE """ + falta + """
+                 ORDER BY 1 LIMIT 5""")
+            ejemplos = ", ".join(r[0] for r in cr.fetchall())
             raise UserError(_(
                 "%d capas de valuación no tienen cuenta o diario en la categoría de su "
-                "producto (ejemplos de producto: %s). Hay que configurar la cuenta de "
-                "valuación, la de salida y el diario de inventario antes de aplicar.")
+                "producto (ejemplos de categoría: %s). Hay que configurar la cuenta de "
+                "valuación, la de entrada, la de salida y el diario de inventario antes "
+                "de aplicar, en la categoría o en el valor por defecto de la compañía.")
                 % (sin_cuentas, ejemplos))
 
         # Ids de las secuencias, en el orden de las capas: así el asiento de la
