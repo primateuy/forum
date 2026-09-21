@@ -66,6 +66,71 @@ def configurar_log(directorio, verboso=False):
     return archivo
 
 
+PALABRAS_PRODUCCION = ("prod", "produccion", "producción")
+
+
+def _huele_a_produccion(seccion):
+    """¿La URL o el nombre de base de este lado parecen producción?"""
+    texto = ("%s %s" % (seccion.get("url", ""), seccion.get("db", ""))).lower()
+    return any(p in texto for p in PALABRAS_PRODUCCION)
+
+
+def confirmar_ambientes(cfg, args, va_a_subir):
+    """Muestra a qué se conecta y pide confirmación antes de escribir nada.
+
+    Esta herramienta lee de una base y escribe en OTRA, las dos configurables
+    por archivo. Equivocarse de `--config` significa subir la documentación de
+    un cliente al Documentos que no es, y el error se descubre del otro lado.
+    Por eso el resumen sale siempre y la confirmación es obligatoria salvo
+    `--yes`.
+    """
+    origen, destino = cfg["origen"], cfg["destino"]
+    ancho = 78
+    print("\n" + "=" * ancho)
+    print("  CONFIGURACIÓN: %s" % args.config)
+    print("-" * ancho)
+    print("  %-20s %s" % ("ORIGEN (se LEE)", origen.get("url", "?")))
+    print("                      base %s · usuario %s"
+          % (origen.get("db", "?"), origen.get("username", "?")))
+    raiz = origen.get("root_id") if args.root_id is None else args.root_id
+    print("                      alcance: %s"
+          % ("subárbol del artículo %s" % raiz if raiz else "todo el workspace"))
+    if va_a_subir:
+        print("  %-20s %s" % ("DESTINO (se ESCRIBE)", destino.get("url", "?")))
+        print("                      base %s · usuario %s"
+              % (destino.get("db", "?"), destino.get("username", "?")))
+        print("                      carpeta %s / %s · conflictos: %s"
+              % (destino.get("raiz", "?"), destino.get("ambiente", "?"), args.on_conflict))
+    else:
+        print("  %-20s (no se sube: %s)"
+              % ("DESTINO",
+                 "--skip-upload" if args.skip_upload else "sólo exportación"))
+
+    avisos = []
+    if va_a_subir and _huele_a_produccion(destino):
+        avisos.append("EL DESTINO PARECE PRODUCCIÓN: se va a ESCRIBIR en %s (base %s)"
+                      % (destino.get("url"), destino.get("db")))
+    if va_a_subir and args.on_conflict == "replace":
+        avisos.append("Los documentos que ya existan con el mismo nombre se REEMPLAZAN")
+    if avisos:
+        print("-" * ancho)
+        for a in avisos:
+            print("  ⚠️  %s" % a)
+    print("=" * ancho)
+
+    if args.yes:
+        print("  (--yes: se continúa sin preguntar)\n")
+        return
+    if not sys.stdin.isatty():
+        raise SystemExit(
+            "Sin terminal interactiva para confirmar. Pasá --yes si es una corrida "
+            "desatendida y ya verificaste los ambientes de arriba.")
+    respuesta = input("  ¿Continuar? (y/N) ").strip().lower()
+    if respuesta not in ("y", "s", "yes", "si", "sí"):
+        raise SystemExit("Cancelado.")
+    print()
+
+
 def cargar_config(ruta):
     ruta = Path(ruta)
     if not ruta.exists():
@@ -171,6 +236,7 @@ def exportar(args, cfg):
         motor = generador.generar(html, ruta_pdf, etiqueta="%s (id %s)" % (art.titulo, art.id))
 
         art._videos = resumen["videos"]
+        art._irrecuperables = resumen["irrecuperables"]
         _logger.info("  [%d/%d] %s -> %s (%s, %d img, %d video)",
                      n, total, art.titulo[:50], art.carpeta + "/" + art.archivo_pdf,
                      motor, resumen["imagenes_ok"] + resumen["imagenes_inline"],
@@ -191,7 +257,8 @@ def exportar(args, cfg):
             html_rel=("html/%s/%s" % (art.carpeta, art.archivo_html)) if genero_pdf else "",
             videos=getattr(art, "_videos", []),
             ruta_documentos="%s/%s/%s" % (cfg["destino"]["raiz"],
-                                          cfg["destino"]["ambiente"], art.carpeta)))
+                                          cfg["destino"]["ambiente"], art.carpeta),
+            irrecuperables=getattr(art, "_irrecuperables", [])))
     ruta_manifest = base / "manifest.csv"
     manifest_mod.escribir(ruta_manifest, filas)
 
@@ -199,6 +266,10 @@ def exportar(args, cfg):
     print("  PDFs generados : %d (%s)" % (total, generador.usos))
     print("  imágenes       : %d resueltas (%d por HTTP), %d ya inline, %d sin resolver"
           % (resolutor.resueltas, resolutor.por_http, resolutor.inline, resolutor.fallidas))
+    if resolutor.irrecuperables:
+        print("  ⚠ %d imagen(es) IRRECUPERABLES (file:///...): los artículos que las "
+              "tienen están marcados en la columna 'Imagen irrecuperable' del manifest"
+              % resolutor.irrecuperables)
     print("  manifest       : %s (%d filas)" % (ruta_manifest, len(filas)))
     if generador.fallbacks:
         print("  ⚠ %d artículo(s) cayeron al motor de respaldo" % len(generador.fallbacks))
@@ -255,7 +326,12 @@ def subir(args, cfg):
 def main():
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--config", default=str(AQUI / "config.json"))
+    p.add_argument("--config", default=str(AQUI / "config.json"),
+                   help="archivo de configuración a usar. Permite tener uno por "
+                        "combinación de ambientes: config.support-to-test.json, "
+                        "config.prod-to-staging.json, config.prod-to-prod.json")
+    p.add_argument("--yes", "-y", action="store_true",
+                   help="no pedir confirmación de los ambientes (corridas desatendidas)")
     p.add_argument("--out", default=str(AQUI / "out" / "forum_knowledge"))
     p.add_argument("--root-id", type=int, help="exportar sólo este subárbol")
     p.add_argument("--dry-run", action="store_true",
@@ -282,6 +358,11 @@ def main():
 
     archivo_log = configurar_log(Path(args.out).expanduser(), args.verbose)
     cfg = cargar_config(args.config)
+
+    # El `--dry-run` no escribe en ningún lado, así que no molesta con la
+    # confirmación; cualquier otra corrida sí.
+    if not args.dry_run:
+        confirmar_ambientes(cfg, args, va_a_subir=not args.skip_upload)
 
     if not args.only_upload:
         exportar(args, cfg)

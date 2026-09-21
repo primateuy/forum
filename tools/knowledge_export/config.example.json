@@ -1,9 +1,19 @@
 {
-  "_comentario": "Copiá este archivo a config.json y completalo. config.json NO va al repo.",
+  "_comentario": [
+    "Copiá este archivo y completalo. NINGÚN config*.json va al repo.",
+    "Conviene uno por combinación de ambientes y elegirlo con --config:",
+    "  config.support-to-test.json  (o17_support_forum -> base de prueba)",
+    "  config.prod-to-staging.json  (Forum producción -> staging de Primate)",
+    "  config.prod-to-prod.json     (Forum producción -> Primate producción)"
+  ],
   "origen": {
-    "_comentario": "Odoo de FORUM, de donde se lee el módulo Conocimiento.",
-    "url": "http://localhost:8099",
-    "db": "o17_support_forum",
+    "_comentario": [
+      "Odoo de FORUM, de donde se lee el módulo Conocimiento.",
+      "Tiene que ser PRODUCCIÓN o un dump restaurado CON su filestore: sin los",
+      "archivos de los adjuntos, las imágenes salen con placeholder."
+    ],
+    "url": "https://forum.example.com",
+    "db": "forum_prod",
     "username": "usuario@dominio.com",
     "password": "API_KEY_O_CLAVE",
     "root_id": 87,
@@ -11,7 +21,7 @@
   },
   "destino": {
     "_comentario": "Odoo de PRIMATE, donde se suben los PDFs al módulo Documentos.",
-    "url": "https://primate.example.com",
+    "url": "https://documentos.example.com",
     "db": "nombre_base",
     "username": "usuario@dominio.com",
     "password": "API_KEY_O_CLAVE",

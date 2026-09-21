@@ -9,6 +9,7 @@ import csv
 COLUMNAS = [
     "Título", "Sección", "Artículo", "Path completo", "ID Odoo", "Parent ID",
     "Secuencia", "Archivo PDF", "Archivo HTML", "Links de video", "Ruta en Documentos",
+    "Imagen irrecuperable",
 ]
 
 
@@ -22,7 +23,16 @@ def escribir(ruta, filas):
     return len(filas)
 
 
-def fila(art, titulo, seccion, articulo, pdf_rel, html_rel, videos, ruta_documentos):
+def fila(art, titulo, seccion, articulo, pdf_rel, html_rel, videos, ruta_documentos,
+         irrecuperables=()):
+    """Una fila del manifest.
+
+    `irrecuperables` son las imágenes `file:///C:/...` pegadas desde el disco de
+    quien escribió el artículo: no existen en ninguna base y ninguna corrida
+    contra producción las va a traer. La columna las marca para que en la fase
+    siguiente se sepa qué artículos pedir de vuelta o revisar a mano.
+    """
+    irrecuperables = list(irrecuperables)
     return {
         "Título": titulo,
         "Sección": seccion,
@@ -35,4 +45,6 @@ def fila(art, titulo, seccion, articulo, pdf_rel, html_rel, videos, ruta_documen
         "Archivo HTML": html_rel,
         "Links de video": " | ".join(videos),
         "Ruta en Documentos": ruta_documentos,
+        "Imagen irrecuperable": ("%d: %s" % (len(irrecuperables), " | ".join(irrecuperables))
+                                 if irrecuperables else ""),
     }

@@ -1,4 +1,6 @@
-config.json
+# Las configuraciones llevan credenciales y son por ambiente: ninguna va al repo.
+config*.json
+!config.example.json
 out/
 __pycache__/
 *.pyc

@@ -43,6 +43,7 @@ class ResolutorImagenes:
         self.fallidas = 0
         self.inline = 0
         self.por_http = 0
+        self.irrecuperables = 0
 
     # ------------------------------------------------------------------
     def _datos_adjunto(self, attachment_id):
@@ -143,7 +144,8 @@ class ResolutorImagenes:
     # ------------------------------------------------------------------
     def embeber(self, soup, articulo_id):
         """Reemplaza los `src` de `soup` por data URIs. Devuelve un resumen."""
-        resumen = {"resueltas": 0, "inline": 0, "fallidas": 0, "detalle_fallidas": []}
+        resumen = {"resueltas": 0, "inline": 0, "fallidas": 0, "detalle_fallidas": [],
+                   "irrecuperables": []}
         for img in soup.select("img[src]"):
             src = (img.get("src") or "").strip()
             if not src:
@@ -167,7 +169,18 @@ class ResolutorImagenes:
             resumen["fallidas"] += 1
             resumen["detalle_fallidas"].append(src)
             self.fallidas += 1
-            _logger.warning("Artículo %s: no se pudo resolver la imagen %s", articulo_id, src)
+            # Un `file://` apunta al disco de quien escribió el artículo: no hay
+            # corrida contra producción que lo arregle. Se marca aparte porque
+            # esos artículos hay que pedirlos de vuelta o revisarlos a mano.
+            if src.startswith("file://"):
+                resumen["irrecuperables"].append(src)
+                self.irrecuperables += 1
+                _logger.warning(
+                    "Artículo %s: imagen IRRECUPERABLE (pegada desde el disco de "
+                    "quien la escribió): %s", articulo_id, src)
+            else:
+                _logger.warning("Artículo %s: no se pudo resolver la imagen %s",
+                                articulo_id, src)
             marca = soup.new_tag("div")
             marca["class"] = "kx-img-missing"
             marca.string = "🖼️ Imagen no disponible en la exportación: %s" % src

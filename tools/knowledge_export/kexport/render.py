@@ -141,6 +141,7 @@ def construir(art, resolutor_imagenes, base_url="", resolver_articulo=None,
         "imagenes_inline": resumen_img["inline"],
         "imagenes_fallidas": resumen_img["fallidas"],
         "detalle_fallidas": resumen_img["detalle_fallidas"],
+        "irrecuperables": resumen_img["irrecuperables"],
         "titulo_deduplicado": titulo_deduplicado,
     }
     return documento, resumen

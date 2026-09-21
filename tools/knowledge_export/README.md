@@ -38,8 +38,24 @@ sudo apt install libpango-1.0-0 libpangoft2-1.0-0 libcairo2 libgdk-pixbuf-2.0-0
 ## Configuración
 
 ```bash
-cp config.example.json config.json   # config.json NO va al repo
+cp config.example.json config.json   # ningún config*.json va al repo
 ```
+
+La herramienta lee de **una** base y escribe en **otra**, las dos configurables,
+así que conviene tener **un archivo por combinación de ambientes** y elegirlo con
+`--config`:
+
+| archivo | origen → destino |
+|---|---|
+| `config.support-to-test.json` | `o17_support_forum` → base de prueba |
+| `config.prod-to-staging.json` | Forum **producción** → `o19_primate_staging` |
+| `config.prod-to-prod.json` | Forum **producción** → Primate **producción** |
+
+```bash
+python3 export_knowledge.py --config config.prod-to-staging.json
+```
+
+El `.gitignore` deja fuera **todos** los `config*.json` menos el `.example`.
 
 | clave | qué es |
 |---|---|
@@ -63,6 +79,8 @@ python3 export_knowledge.py --root-id 87       # sólo ese subárbol
 
 | flag | qué hace |
 |---|---|
+| `--config RUTA` | qué configuración usar (default: `config.json` en esta carpeta) |
+| `--yes` / `-y` | no pedir confirmación de ambientes (corridas desatendidas) |
 | `--root-id N` | exportar sólo el subárbol de ese artículo |
 | `--dry-run` | listar el árbol y contar artículos/imágenes/videos, sin generar |
 | `--skip-upload` / `--only-upload` | separar las dos mitades |
@@ -74,6 +92,32 @@ python3 export_knowledge.py --root-id 87       # sólo ese subárbol
 | `--pdf-engine auto\|weasyprint\|wkhtmltopdf` | forzar motor |
 | `--keep-duplicate-title` | no quitar el encabezado que repite el título |
 | `--no-http-images` | no bajar por HTTP las imágenes que no estén en `ir.attachment` |
+
+## Confirmación de ambientes
+
+Toda corrida que **no** sea `--dry-run` arranca mostrando a qué se conecta y
+pide confirmación:
+
+```
+==============================================================================
+  CONFIGURACIÓN: config.prod-to-prod.json
+------------------------------------------------------------------------------
+  ORIGEN (se LEE)      https://forum.example.com
+                      base forum_prod · usuario tecnico@primate.uy
+                      alcance: subárbol del artículo 87
+  DESTINO (se ESCRIBE) https://documentos.primate.uy
+                      base primate_prod · usuario tecnico@primate.uy
+                      carpeta Forum / Producción · conflictos: replace
+------------------------------------------------------------------------------
+  ⚠️  EL DESTINO PARECE PRODUCCIÓN: se va a ESCRIBIR en ... (base primate_prod)
+  ⚠️  Los documentos que ya existan con el mismo nombre se REEMPLAZAN
+==============================================================================
+  ¿Continuar? (y/N)
+```
+
+Si la URL o el nombre de base del destino contienen `prod`, sale la advertencia
+explícita. `--yes` saltea la pregunta; sin terminal interactiva y sin `--yes` la
+corrida **se corta**, en vez de seguir a ciegas.
 
 ## Salida
 
@@ -91,7 +135,8 @@ carpeta se mantiene en cualquier explorador de archivos.
 ### manifest.csv
 
 `Título | Sección | Artículo | Path completo | ID Odoo | Parent ID | Secuencia |
-Archivo PDF | Archivo HTML | Links de video | Ruta en Documentos`
+Archivo PDF | Archivo HTML | Links de video | Ruta en Documentos |
+Imagen irrecuperable`
 
 Separador `;`, UTF-8 con BOM (para que Excel no rompa las tildes). Lleva **una
 fila por artículo del alcance**, incluidos los que no generan PDF: el proceso
@@ -137,7 +182,36 @@ cubiertas las cuatro formas que aparecen en los `body` (`/web/image/<id>`,
 Las que no se pueden resolver dejan un **placeholder visible** y una línea en el
 log: una imagen que falta en silencio es peor que una que se ve rota.
 
-Las pegadas desde Word (`file:///C:/Users/…`) son irrecuperables por definición.
+#### 🔴 Hay que leer de PRODUCCIÓN (o de un dump CON filestore)
+
+`o17_support_forum` **no tiene los archivos de los adjuntos de Knowledge**: de
+200 adjuntos muestreados, **0** tienen su archivo en el filestore. La base trae
+las filas de `ir_attachment` con su `store_fname` y su `file_size`, pero el
+binario no está, así que `datas` vuelve vacío por RPC y la descarga por HTTP
+devuelve 500. Resultado: la mayoría de las imágenes sale con **placeholder**.
+
+**No es un problema de la herramienta** — se verificó resolviendo las cuatro
+formas de URL contra un adjunto que sí tiene archivo (id 23): 4 de 4 a data URI.
+
+Para la corrida que vale, el origen tiene que ser **producción de Forum**, o un
+dump restaurado **junto con su filestore**. Si el export sale con muchos
+placeholders, lo primero a mirar es eso, no el código:
+
+```sql
+-- Tiene que devolver un número parecido al total, no cero.
+SELECT count(*) FROM ir_attachment
+ WHERE res_model = 'knowledge.article' AND store_fname IS NOT NULL;
+```
+y después comprobar que esos `store_fname` existan en el filestore de la base.
+
+#### Imágenes irrecuperables
+
+Las pegadas desde Word (`file:///C:/Users/…`) apuntan al disco de quien escribió
+el artículo: no existen en ninguna base y **ninguna corrida contra producción
+las va a traer**. Los artículos que las tienen quedan marcados en la columna
+**`Imagen irrecuperable`** del manifest (`N: <url> | <url>`), para que en la fase
+siguiente se sepa cuáles pedir de vuelta o revisar a mano. En el subárbol
+exportado son 4, en 3 artículos.
 
 ### `is_article_item`
 
@@ -186,5 +260,59 @@ Contra `o17_support_forum` (origen) y una base Odoo 19 con Documentos (destino):
 | re-subida | 0 duplicados (`replace` y `skip` probados) |
 
 **Pendiente de probar contra el destino real**: la corrida se hizo contra una
-base Odoo 19 de prueba, no contra la instancia de Primate. Antes de apuntar a
-producción, correr con `--limit 5` y revisar.
+base Odoo 19 de prueba, no contra la instancia de Primate.
+
+---
+
+## Checklist de la corrida real
+
+En este orden, sin saltear pasos. Cada uno se mira antes de pasar al siguiente.
+
+1. **Origen correcto.** Producción de Forum, o un dump restaurado **con su
+   filestore** (ver arriba). Contra `o17_support_forum` las imágenes salen con
+   placeholder y el resultado no sirve para publicar.
+
+2. **Dry-run completo**, sin `--root-id`, para ver el árbol entero (~253
+   artículos entre workspace y privados; 175 de workspace):
+
+   ```bash
+   python3 export_knowledge.py --config config.prod-to-staging.json --dry-run
+   ```
+
+   Revisar: cantidad de artículos, cuántos tienen contenido, profundidad, y los
+   conteos de imágenes, videos y archivos.
+
+3. **Export completo**, todavía sin subir:
+
+   ```bash
+   python3 export_knowledge.py --config config.prod-to-staging.json --skip-upload
+   ```
+
+   Al terminar, mirar el resumen: **cuántas imágenes quedaron sin resolver**. Si
+   son muchas, parar y revisar el filestore del origen antes de seguir.
+
+4. **Validar el manifest**: una fila por artículo, sin huecos en `Título` ni en
+   `ID Odoo`, los videos detectados, y la columna `Imagen irrecuperable` para
+   saber qué artículos hay que revisar a mano.
+
+5. **Revisar PDFs a mano**: al menos 5 variados (uno con tabla, uno con muchas
+   imágenes, uno con video, uno de nivel profundo, uno hoja).
+
+6. **Subir a staging de Primate primero**:
+
+   ```bash
+   python3 export_knowledge.py --config config.prod-to-staging.json --only-upload
+   ```
+
+   Abrir Documentos y comprobar la estructura de carpetas. Después **re-ejecutar
+   el mismo comando** y confirmar que el resumen dice `0 nuevos` y que no
+   aparecieron duplicados.
+
+7. **Recién entonces producción**, con su propia configuración:
+
+   ```bash
+   python3 export_knowledge.py --config config.prod-to-prod.json --only-upload
+   ```
+
+   La herramienta va a mostrar la advertencia de destino productivo y pedir
+   confirmación. Leer el resumen antes de contestar que sí.
