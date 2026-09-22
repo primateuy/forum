@@ -7,13 +7,17 @@
 --      la lista mostraba todo en 0,00 $.
 --   2. El resto de campos calculados-almacenados de cabecera y línea.
 --   3. La referencia, al formato legible con código, atributos y sucursal.
+--   4. El residual de la LÍNEA, que quedó en cero y sin el cual la
+--      conciliación (fase 4) no tiene con qué trabajar.
 --
 -- Qué NO toca:
 --   * Asientos PUBLICADOS: al publicar, el ORM ya completó todo. Esta
 --     reparación es sólo para los que están esperando revisión.
 --   * Asientos que no sean de nuestro ajuste (ver la identificación).
---   * Las LÍNEAS contables: sus importes siempre estuvieron bien. Acá no
---     se toca ni un debe ni un haber.
+--   * El debe y el haber de las líneas: siempre estuvieron bien. Acá no
+--     se toca ni uno.
+--   * Las conciliaciones ya existentes: las líneas que tengan una
+--     conciliación parcial se saltean y se informan aparte.
 --
 -- Es IDEMPOTENTE: correrlo dos veces deja el mismo resultado.
 -- Corre entero dentro de una transacción; si algo no cuadra, ROLLBACK.
@@ -189,6 +193,57 @@ UPDATE account_move_line l SET name = n.referencia
   FROM reparar_nombre n WHERE l.move_id = n.move_id;
 
 -- -------------------------------------------------------------------
+-- 5. Residual de la LÍNEA.
+--    `amount_residual` es un calculado-almacenado cuyo `@api.depends` NO
+--    incluye `move_id.state`: se calcula al CREAR la línea y publicar no
+--    lo vuelve a tocar (account_move_line.py::_compute_amount_residual).
+--    Las líneas creadas por SQL con una versión anterior del módulo
+--    quedaron con residual cero, y `reconcile()` sobre un residual cero
+--    no hace nada: la conciliación correría sin error y sin efecto.
+--
+--    Réplica del compute para líneas SIN conciliación parcial (que es el
+--    caso acá: son asientos en borrador, nunca se conciliaron):
+--      necesita residual = cuenta conciliable, o de tipo efectivo/tarjeta
+--      residual          = redondeo(balance) en moneda de la compañía
+--      residual_moneda   = redondeo(amount_currency) en la de la línea
+--      reconciled        = los dos residuales en cero
+-- -------------------------------------------------------------------
+UPDATE account_move_line l SET
+       amount_residual          = v.residual,
+       amount_residual_currency = v.residual_moneda,
+       reconciled               = v.conciliada
+  FROM (SELECT l2.id,
+               CASE WHEN r.necesita
+                    THEN round(l2.balance::numeric, cc.decimal_places)
+                    ELSE 0 END AS residual,
+               CASE WHEN r.necesita
+                    THEN round(l2.amount_currency::numeric, lc.decimal_places)
+                    ELSE 0 END AS residual_moneda,
+               r.necesita
+                 AND round(l2.balance::numeric, cc.decimal_places) = 0
+                 AND round(l2.amount_currency::numeric, lc.decimal_places) = 0
+                 AS conciliada
+          FROM account_move_line l2
+          JOIN reparar_objetivo o ON o.move_id = l2.move_id
+          JOIN account_account ac ON ac.id = l2.account_id
+          JOIN res_currency cc ON cc.id = l2.company_currency_id
+          JOIN res_currency lc ON lc.id = coalesce(l2.currency_id,
+                                                   l2.company_currency_id)
+          CROSS JOIN LATERAL (
+               SELECT ac.reconcile
+                   OR ac.account_type IN ('asset_cash', 'liability_credit_card')
+                   AS necesita) r
+         -- Nunca pisar una conciliación real.
+         WHERE NOT EXISTS (SELECT 1 FROM account_partial_reconcile p
+                            WHERE p.debit_move_id = l2.id
+                               OR p.credit_move_id = l2.id)) v
+ WHERE l.id = v.id
+   -- Sólo lo que cambia: una segunda corrida no reescribe nada.
+   AND (l.amount_residual          IS DISTINCT FROM v.residual
+     OR l.amount_residual_currency IS DISTINCT FROM v.residual_moneda
+     OR l.reconciled               IS DISTINCT FROM v.conciliada);
+
+-- -------------------------------------------------------------------
 -- CHECK DESPUÉS
 -- -------------------------------------------------------------------
 \echo '=== DESPUÉS ==='
@@ -217,6 +272,21 @@ SELECT count(*) AS referencia_distinta_entre_cabecera_y_linea_debe_ser_0
 SELECT count(*) AS publicados_tocados_debe_ser_0
   FROM account_move am JOIN reparar_objetivo o ON o.move_id = am.id
  WHERE am.state <> 'draft';
+
+-- El residual tiene que ser el saldo en las cuentas conciliables.
+SELECT count(*) AS lineas_conciliables_sin_residual_debe_ser_0
+  FROM account_move_line l
+  JOIN reparar_objetivo o ON o.move_id = l.move_id
+  JOIN account_account ac ON ac.id = l.account_id AND ac.reconcile
+ WHERE l.balance <> 0
+   AND round(l.amount_residual::numeric, 2) IS DISTINCT FROM round(l.balance::numeric, 2);
+
+-- Líquidas salteadas por tener una conciliación de verdad (informativo).
+SELECT count(*) AS lineas_salteadas_por_conciliacion_existente
+  FROM account_move_line l
+  JOIN reparar_objetivo o ON o.move_id = l.move_id
+ WHERE EXISTS (SELECT 1 FROM account_partial_reconcile p
+                WHERE p.debit_move_id = l.id OR p.credit_move_id = l.id);
 
 \echo 'Revisá los números de arriba. Si todo está en 0, COMMIT; si no, ROLLBACK.'
 -- COMMIT;
