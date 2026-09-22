@@ -2,7 +2,7 @@
 {
     "name": "Importación masiva de clientes FORUM",
     "summary": "Carga masiva de clientes y puntos, y ajuste de inventario multi-sucursal, vía SQL por tandas",
-    "version": "17.0.1.3.2",
+    "version": "17.0.1.3.3",
     "author": "Primate Uy",
     "category": "Contacts",
     "license": "LGPL-3",

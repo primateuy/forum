@@ -1301,6 +1301,35 @@ class ForumImportBatchInventarioApply(models.Model):
                        "property_stock_account_output_categ_id", "pc.id", "c.id")),
            {"desde": self.apply_started_at})
 
+        # 4e/4f: los dos controles que faltaban sobre el asiento EN BORRADOR.
+        # Hasta ahora todo lo de la familia 4 miraba las líneas, y la cabecera
+        # quedaba sin verificar: un asiento con las líneas perfectas y los
+        # importes de cabecera en NULL pasaba los cuatro controles y se veía
+        # como `0,00 $` en la pantalla de revisión.
+        revisar("4e. cabecera del asiento sin el importe de sus líneas", """
+            SELECT count(*) FROM account_move am
+              JOIN stock_move m ON m.id = am.stock_move_id
+              JOIN res_company c ON c.id = am.company_id
+              JOIN res_currency cur ON cur.id = c.currency_id
+              JOIN LATERAL (SELECT sum(l.debit) AS debe FROM account_move_line l
+                             WHERE l.move_id = am.id) x ON true
+             WHERE m.is_inventory AND am.create_date >= %(desde)s
+               AND round(x.debe::numeric, cur.decimal_places) <> 0
+               AND coalesce(am.amount_total, 0)
+                   <> round(x.debe::numeric, cur.decimal_places)
+        """, {"desde": self.apply_started_at})
+        # El diseño dice «un asiento por capa con valor distinto de cero». Si
+        # alguna vez se crea uno con todas sus líneas en cero, es que la
+        # condición de creación se rompió: sin este control se vería igual que
+        # el defecto de la cabecera, y son cosas distintas.
+        revisar("4f. asiento del ajuste con todas sus líneas en cero", """
+            SELECT count(*) FROM account_move am
+              JOIN stock_move m ON m.id = am.stock_move_id
+             WHERE m.is_inventory AND am.create_date >= %(desde)s
+               AND NOT EXISTS (SELECT 1 FROM account_move_line l
+                                WHERE l.move_id = am.id AND l.debit <> 0)
+        """, {"desde": self.apply_started_at})
+
         # 6. Sin quants duplicados, sin conteos pendientes, sin asientos huérfanos.
         revisar("6a. par producto/ubicación con más de un quant", """
             SELECT count(*) FROM (
@@ -1884,6 +1913,32 @@ class ForumImportBatchInventarioApply(models.Model):
             "create_uid": "%(uid)s", "write_uid": "%(uid)s",
             "create_date": "now() AT TIME ZONE 'UTC'", "write_date": "now() AT TIME ZONE 'UTC'",
         }
+        # 🔴 Importes de la CABECERA. Son campos calculados-almacenados: el
+        # INSERT crudo nunca los computa y quedan en NULL, que Odoo dibuja como
+        # `0,00 $`. Publicar los recalcula, así que el hueco sólo se ve MIENTRAS
+        # ESTÁN EN BORRADOR — justo la pantalla en la que el cliente revisa
+        # antes de publicar, y ahí parecen asientos vacíos aunque sus líneas
+        # tengan los importes correctos. No lo cazó la paridad porque la gemela
+        # del ORM publica sola y se comparó contra asientos ya publicados.
+        #
+        # Para un asiento misceláneo el core suma SOLO las líneas de débito
+        # (`account/models/account_move.py::_compute_amount`, rama
+        # «Miscellaneous journal entry») y `direction_sign` vale 1, así que de
+        # los nueve campos sólo tres llevan el importe y seis van en cero.
+        # Verificado campo a campo contra 7.342 asientos hechos por el ORM.
+        amt = lambda campo, expr: self._apl_num("account.move", campo, expr)
+        explicitos_am.update({
+            "amount_total": amt("amount_total", "a.importe"),
+            "amount_total_signed": amt("amount_total_signed", "a.importe"),
+            "amount_total_in_currency_signed": amt("amount_total_in_currency_signed",
+                                                   "a.importe"),
+            "amount_untaxed": amt("amount_untaxed", "0"),
+            "amount_tax": amt("amount_tax", "0"),
+            "amount_residual": amt("amount_residual", "0"),
+            "amount_untaxed_signed": amt("amount_untaxed_signed", "0"),
+            "amount_tax_signed": amt("amount_tax_signed", "0"),
+            "amount_residual_signed": amt("amount_residual_signed", "0"),
+        })
         if "invoice_date" in Move._fields:
             # La localización le pone default de hoy a TODO asiento, incluidos
             # los manuales; se replica para que la paridad no se vaya por acá.
