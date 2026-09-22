@@ -48,11 +48,31 @@ TABLAS = OrderedDict([
     ("account_move", {
         "ignorar": {"id", "create_date", "write_date", "stock_move_id",
                     "message_main_attachment_id", "access_token"},
-        "orden": "(SELECT m.product_id FROM stock_move m WHERE m.id = t.stock_move_id), ref",
+        # 🔴 El orden NO puede usar `ref`: la referencia enriquecida es un
+        # desvío deliberado y difiere entre caminos, así que ordenaba distinto
+        # cada volcado y dos asientos del mismo producto salían cruzados. Se
+        # ordena por la clave de negocio del movimiento, que es la misma en los
+        # dos caminos.
+        "orden": ("(SELECT m.product_id FROM stock_move m WHERE m.id = t.stock_move_id), "
+                  "(SELECT m.location_id FROM stock_move m WHERE m.id = t.stock_move_id), "
+                  "(SELECT m.location_dest_id FROM stock_move m WHERE m.id = t.stock_move_id), "
+                  "(SELECT m.product_qty FROM stock_move m WHERE m.id = t.stock_move_id)"),
     }),
     ("account_move_line", {
         "ignorar": {"id", "create_date", "write_date", "move_id", "statement_line_id"},
-        "orden": "product_id, account_id, debit, credit",
+        # 🔴 Igual que la cabecera: sin la clave del movimiento, dos líneas del
+        # mismo producto y cuenta con el mismo importe empatan y cada volcado
+        # las saca en el orden físico. Eso aparecía como diferencias de
+        # `amount_residual` y `matching_number` que no existían.
+        "orden": ("(SELECT m.product_id FROM account_move am JOIN stock_move m "
+                  "   ON m.id = am.stock_move_id WHERE am.id = t.move_id), "
+                  "(SELECT m.location_id FROM account_move am JOIN stock_move m "
+                  "   ON m.id = am.stock_move_id WHERE am.id = t.move_id), "
+                  "(SELECT m.location_dest_id FROM account_move am JOIN stock_move m "
+                  "   ON m.id = am.stock_move_id WHERE am.id = t.move_id), "
+                  "(SELECT m.product_qty FROM account_move am JOIN stock_move m "
+                  "   ON m.id = am.stock_move_id WHERE am.id = t.move_id), "
+                  "account_id, debit, credit"),
     }),
     ("stock_quant", {
         "ignorar": {"id", "create_date", "write_date", "in_date"},
@@ -240,6 +260,37 @@ def correr(env, batch, celdas, via, publicar):
         env = env(user=usuario)          # también el flush: escribir deja write_uid
         moves = env["account.move"].search([("id", ">", antes["account_move"])])
         moves.action_post()
+        # 🔴 Y la FASE 4. Del lado ORM la conciliación viene dentro de
+        # `_validate_accounting_entries` (stock_valuation_layer.py:105-110), así
+        # que sin esto el modo publicado compara un camino conciliado contra uno
+        # sin conciliar y `amount_residual`, `reconciled` y `matching_number`
+        # salen distintos por construcción.
+        # 🔴 Acotada a las líneas de ESTA corrida. La fase 4 real agrupa por el
+        # motivo del batch, que en producción ES la corrida entera; en la base
+        # de pruebas hay además 828.781 líneas de la corrida del 18-09 con el
+        # mismo motivo, y sin este recorte el camino SQL conciliaba las líneas
+        # nuevas contra aquéllas. El ORM sólo mira las capas de la llamada
+        # (`_get_all_related_aml` sobre sus stock_move), así que esto es lo que
+        # hace comparable a los dos.
+        tipo = type(batch)
+        original_grupos = tipo._rec_grupos_sql
+        desde = antes["account_move_line"]
+
+        def grupos_de_la_corrida(self, limite=None):
+            recortados = []
+            for product_id, account_id, ids in original_grupos(self):
+                ids = [i for i in ids if i > desde]
+                if ids:
+                    recortados.append((product_id, account_id, ids))
+            return recortados[:limite] if limite else recortados
+
+        tipo._rec_grupos_sql = grupos_de_la_corrida
+        try:
+            conciliador = batch.with_env(env).with_context(**CONTEXTO_SIN_WMS)
+            while conciliador._conciliar_tanda():
+                pass
+        finally:
+            tipo._rec_grupos_sql = original_grupos
 
 
     # 🔴 El volcado lee la base con SQL directo, así que lo que el ORM tenga
@@ -288,6 +339,25 @@ SECUENCIA_DIARIO = {
 }
 
 
+# 🔴 La conciliación deja dos columnas que no se pueden comparar de frente:
+# `full_reconcile_id` apunta a una fila creada en la corrida y `matching_number`
+# sale de una secuencia (y arranca en 'P' cuando la conciliación es parcial).
+# Lo que SÍ tiene que coincidir es el HECHO: si la línea quedó conciliada del
+# todo, a medias, o nada. Se compara esa clase, no el identificador.
+def _clase_matching(v):
+    if not v:
+        return None
+    return "parcial" if v == "P" else "total"
+
+
+NORMALIZAR = {
+    "account_move_line": {
+        "matching_number": _clase_matching,
+        "full_reconcile_id": lambda v: bool(v),
+    },
+}
+
+
 def comparar(vol_sql, vol_orm, excluir_campos, publicado=False):
     """Diferencias por tabla. Devuelve {tabla: [(fila, columna, sql, orm)]}."""
     dif = {}
@@ -307,6 +377,9 @@ def comparar(vol_sql, vol_orm, excluir_campos, publicado=False):
                     continue
                 if publicado and col in SECUENCIA_DIARIO.get(tabla, ()):
                     continue
+                normalizar = NORMALIZAR.get(tabla, {}).get(col) if publicado else None
+                if normalizar:
+                    vs, vo = normalizar(vs), normalizar(vo)
                 if vs != vo:
                     d.append((n, col, vs, vo))
         if d:

@@ -42,12 +42,33 @@ No hacen falta dos bases.
    construcción y no se probaría nada), con **entradas, salidas y contado 0**.
 2. Corrida A: camino SQL. Corrida B: se fuerza el camino ORM parcheando
    `_apl_productos_orm`.
-3. Se vuelcan las seis tablas y se comparan campo a campo.
+3. En modo `publicado`, el camino SQL además **publica y concilia** (fases 3 y
+   4), porque del lado ORM las dos cosas vienen adentro de
+   `_validate_accounting_entries`. La conciliación va acotada a las líneas de
+   **esa corrida**: la fase 4 real agrupa por el motivo del batch, que en
+   producción es la corrida entera, pero en la base de pruebas hay además las
+   828.781 líneas de corridas anteriores con el mismo motivo.
+4. Se vuelcan las seis tablas y se comparan campo a campo.
 
 **Se ignoran sólo**: la clave primaria, los timestamps de auditoría, el `date`
 del movimiento (es el reloj de la corrida, no el motor) y las claves foráneas
 que apuntan a filas creadas en la misma corrida, cuyos ids los da una secuencia.
 **Todo lo demás se compara, incluido el estado del asiento.**
+
+**Lo que se normaliza en modo `publicado`**, y sólo ahí: la numeración del diario
+(`name`, `sequence_number`, `move_name`), que sale de una secuencia de Postgres y
+no vuelve atrás con el rollback; y de la conciliación, `matching_number` y
+`full_reconcile_id`, de los que se compara la **clase** —total, parcial o
+ninguna— en vez del valor. `amount_residual`, `amount_residual_currency` y
+`reconciled` se comparan de frente.
+
+🔴 **El orden del volcado no puede depender de un campo que se desvía del core.**
+Ordenar `account_move` por `ref` hacía que cada camino sacara los asientos de un
+mismo producto en distinto orden, y el diff acusaba importes cruzados que no
+existían. El orden va por la clave de negocio del movimiento —producto, origen,
+destino, cantidad—, que es idéntica en los dos caminos; en las líneas, esa clave
+va antes que cuenta, debe y haber, porque dos líneas iguales del mismo producto
+empatan y el empate lo rompe el orden físico.
 
 ## 🔴 Cuándo hay que correrlo, obligatorio
 
