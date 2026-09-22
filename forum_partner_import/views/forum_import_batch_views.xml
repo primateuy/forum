@@ -27,9 +27,13 @@
                     string="4. Publicar asientos"
                     invisible="import_type != 'inventario' or state != 'applied'"
                     confirm="Se publican por tandas los asientos que la aplicación dejó en borrador. La numeración del diario la asigna Odoo, correlativa. Antes de arrancar se verifica que exista la cotización de la moneda secundaria para la fecha de los asientos. ¿Continuar?"/>
+            <button name="action_conciliar" type="object" class="btn-primary"
+                    string="5. Conciliar"
+                    invisible="import_type != 'inventario' or state != 'posted'"
+                    confirm="Concilia por tandas las líneas del ajuste en cuentas conciliables, agrupadas por producto y cuenta, igual que lo haría Odoo al publicar por el camino estándar. Normalmente ya corrió encadenada a la publicación: este botón es para relanzarla. ¿Continuar?"/>
             <button name="action_verificar_invariantes" type="object" class="btn-secondary"
                     string="Verificar invariantes"
-                    invisible="import_type != 'inventario' or state not in ('applied', 'posted', 'error', 'cancel')"/>
+                    invisible="import_type != 'inventario' or state not in ('applied', 'posted', 'reconciled', 'error', 'cancel')"/>
             <button name="action_reanudar" type="object" class="btn-primary"
                     string="Reanudar" invisible="state not in ('cancel', 'error')"/>
             <button name="action_cancelar" type="object" class="btn-secondary"
@@ -122,6 +126,7 @@
                        placeholder="Vacía: la fecha del apply"/>
                 <field name="apply_batch_size" readonly="state == 'applying'"/>
                 <field name="post_batch_size" readonly="state == 'posting'"/>
+                <field name="rec_batch_size" readonly="state == 'reconciling'"/>
               </group>
               <group>
                 <field name="batch_size" readonly="state == 'processing'"/>
@@ -170,6 +175,13 @@
               <field name="post_step" invisible="1"/>
               <field name="post_started_at" invisible="1"/>
               <field name="post_ended_at" invisible="1"/>
+              <field name="rec_total" invisible="1"/>
+              <field name="rec_done" invisible="1"/>
+              <field name="rec_errors" invisible="1"/>
+              <field name="rec_lines" invisible="1"/>
+              <field name="rec_step" invisible="1"/>
+              <field name="rec_started_at" invisible="1"/>
+              <field name="rec_ended_at" invisible="1"/>
               <field name="check_state" invisible="1"/>
               <field name="apply_started_at" invisible="1"/>
               <field name="apply_ended_at" invisible="1"/>

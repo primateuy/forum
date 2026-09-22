@@ -496,3 +496,60 @@ categoría apoyada en el default y **una** línea con la cuenta cambiada:
 
 El viejo era ciego porque con las propiedades en NULL, `account_id NOT IN (NULL,
 NULL)` da NULL y la fila no se cuenta. De ahí el `IS DISTINCT FROM`.
+
+## Defecto propio: la fase 4 se probó sobre un fixture viejo y el rojo era del fixture
+
+La primera corrida completa de la conciliación fue así: **77 grupos procesados,
+0 errores, 2,3 s**, y el invariante pasó de **77 violaciones a 76**. Con la fase
+corriendo limpia. Lo que tardó fue entender que el defecto no estaba en la fase.
+
+`reconcile()` trabaja sobre `amount_residual`, y en esa base el residual valía
+**cero en las 828.781 líneas**. `reconcile()` sobre residual cero **no hace nada
+y no levanta nada**: procesa el grupo, no compensa, y devuelve control como si
+hubiera funcionado.
+
+El residual estaba en cero porque los datos se habían aplicado el **18-09** con
+el motor anterior a `e34d99d`, que es el commit —**del mismo día de la prueba**—
+que agregó `amount_residual` al recompute por ORM. El fixture era de una versión
+anterior a la corrección que la prueba necesitaba.
+
+Recalculando el residual como lo hace el motor actual, la misma fase sobre los
+mismos 77 grupos deja el invariante en **0**.
+
+**La lección de método:** una base de pruebas con datos ya aplicados es un
+fixture con versión, y su versión es la del motor que los generó. Antes de leer
+un resultado sobre datos viejos hay que preguntarse qué commits entraron después
+de que se generaron. El síntoma —una fase que corre sin error y no logra nada—
+es idéntico al de un defecto propio.
+
+### Y de paso, la trampa de fondo
+
+`amount_residual` es un calculado-almacenado cuyo `@api.depends`
+(`account_move_line.py:749`) **no incluye `move_id.state`**: se calcula al crear
+la línea y **publicar no lo recalcula**. Cualquier camino que inserte líneas sin
+pasar por el `create()` del ORM tiene que completarlo, o la conciliación queda
+muda. Vale para el motor (está en `_CAMPOS_POR_ORM`) y para el `.sql` de
+reparación de los borradores ya instalados.
+
+## Defecto propio: el autor de lo que escribe `reconcile()` lo elegía otro
+
+El arnés marcó `write_uid` sql=1 contra orm=2 en las líneas conciliadas. La
+primera hipótesis —el `sudo()` de la fase— era falsa: **desde la 13 `sudo()`
+sólo levanta el flag de superusuario y no cambia el `uid`**, y de hecho la fase 3
+publica con `.sudo()` y deja `write_uid = 2` en los 1.657.562 renglones de la
+corrida real.
+
+Lo que pasa es otra cosa. `reconcile()` deja `matching_number` y
+`full_reconcile_id` sucios en la caché, y quien los baja a la base es **el primer
+flush que pase**. El propio `cr.savepoint()` llama a `Transaction.flush()` al
+salir, y ese método elige **un entorno cualquiera de la transacción** —el primero
+con `uid`—, que puede ser el de otro. En producción no se notaba porque la fase 3
+commitea antes de llegar a la 4; en el arnés las dos fases van en la misma
+transacción y ahí quedó a la vista.
+
+La corrección: **flushear adentro del savepoint y con el entorno del proceso**.
+Así el autor de las filas no depende de quién más esté en la transacción. Y de
+paso resuelve algo que no es cosmético: `_rec_grupos_sql` lee `reconciled` y
+`state` por **SQL crudo**, así que si el ORM tiene escrituras pendientes la
+consulta elige mal los grupos. Todo camino que lea por SQL crudo después de
+escribir por ORM tiene que flushear primero.

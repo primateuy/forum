@@ -793,6 +793,74 @@ falta, en vez de fallar a mitad de tanda (ver *Requisitos operativos*).
 bajaría mucho el tiempo, pero **cambia lo que ve el contador** y no se
 implementó: queda como opción futura, sujeta a decisión del cliente.
 
+### Fase 4: conciliación de las líneas
+
+Publicar no termina el trabajo. Cuando el ORM valida las capas de valuación,
+después de crear y postear los asientos **concilia** las líneas
+(`stock_account/models/stock_valuation_layer.py:105-110`): agrupa por *(producto,
+cuenta conciliable)* las líneas posteadas todavía sin conciliar y llama a
+`reconcile()` en cada grupo. El motor SQL no hacía eso, así que el ajuste
+quedaba con las líneas sueltas y **el resultado no era el del ORM**.
+
+**Esto NO es un desvío documentado: es una diferencia que había que cerrar.** La
+conciliación es semántica contable —`matching_number`, parciales contra totales,
+diferencias de cambio— y la decide Odoo. Por eso la fase va **por ORM**, como la
+publicación, con la misma infraestructura: cron, puntero, commit por tanda,
+cancelar/reanudar, reintento con savepoint, avance en vivo y guard del WMS.
+
+Corre **encadenada a la publicación**, en la misma ventana: al terminar la fase 3
+arranca la 4 sola. Son segundos al lado de las horas de la publicación.
+
+**El universo real es mucho más chico de lo que parece.** De los 23.541 grupos
+*(producto × cuenta)* del ajuste, sólo **77** tienen débito **y** crédito sin
+conciliar a la vez; en los otros `reconcile()` no hace nada porque no hay contra
+qué compensar. La consulta los filtra en el `HAVING`, y eso baja la fase de
+minutos a **4,2 s** (77 grupos, 2.920 líneas, 54,7 ms por grupo, 0 errores,
+medido sobre `o17_inv_med`).
+
+A diferencia de la publicación, acá la curva del tamaño de tanda **no tiene
+sorpresas**: es monótona y la tanda grande siempre gana, porque lo que se paga es
+el costo fijo de cada tanda (consulta más commit, ~0,6 s) y no el tamaño.
+
+| grupos por tanda | ms por grupo | total de los 77 |
+|---|---|---|
+| 10 | 120,4 | 9,3 s |
+| 25 | 82,5 | 6,4 s |
+| 50 | 65,4 | 5,0 s |
+| **250** (default) | **56,0** | **4,3 s** |
+
+El default 250 cubre la corrida entera en una sola tanda.
+
+**Qué deja.** `reconcile()` compensa hasta agotar un lado; el otro queda con
+saldo. En un grupo de 39 líneas con 1.616.567,67 de débito contra 3.589.077,80 de
+crédito, el débito se consume entero (12 líneas conciliadas, 1 parcial marcada
+`P`) y sobra el crédito. **Eso es lo correcto y es exactamente lo que deja el
+ORM**: el arnés de paridad compara `amount_residual`, `reconciled`,
+`full_reconcile_id` y `matching_number` línea por línea y da idéntico.
+
+#### Dos trampas que costaron una tarde
+
+🔴 **`amount_residual` se calcula al CREAR la línea, y publicar no lo recalcula.**
+Su `@api.depends` (`account_move_line.py:749`) **no incluye `move_id.state`**. Una
+línea insertada por SQL sin ese campo queda con residual cero, y `reconcile()`
+sobre residual cero **no hace nada y no falla**: la fase corre limpia, informa 0
+errores y no concilia nada. Por eso `amount_residual` y
+`amount_residual_currency` están en `_CAMPOS_POR_ORM` desde la fase 2, y por eso
+el `.sql` de reparación de los borradores viejos tiene que completarlos (sección
+5 de `tools/reparacion/`). La primera prueba de esta fase se hizo sobre datos
+aplicados con el motor anterior y dio 77 → 76: parecía un defecto de la fase y
+era el fixture.
+
+🔴 **El autor de lo que escribe `reconcile()` lo decide quien flushee primero.**
+La conciliación deja `matching_number` y `full_reconcile_id` sucios en la caché,
+y el `cr.savepoint()` llama a `Transaction.flush()` al salir, que elige **un
+entorno cualquiera de la transacción** (el primero con uid). Si otro entorno
+comparte la transacción, esas filas quedan firmadas por otro usuario. La fase
+flushea **adentro del savepoint y con su propio entorno**, así el autor no
+depende de quién más esté en la transacción. Y ojo con `sudo()`: desde la 13
+sólo levanta el flag de superusuario y **no cambia el uid**, así que no sirve
+para fijar el autor.
+
 ### Verificación exhaustiva por invariantes
 
 Al terminar la aplicación, y otra vez al terminar la publicación, el módulo corre
@@ -1037,6 +1105,12 @@ pasó de ~16 s (versión sin valuar) a ~41 s.
 > completa (12.548 s, con el falso arranque adentro) con un divisor de 827.657:
 > numerador de una corrida y denominador de otra. **El correcto es 14,77.**
 >
+**Fase 4, conciliación: 4,2 s** para los **77 grupos** con los dos lados (2.920
+líneas, 0 errores, 54,7 ms por grupo). Corre encadenada a la publicación y es
+ruido al lado de sus horas. El número chico no es un atajo: de los 23.541 grupos
+del ajuste sólo esos 77 tienen algo que conciliar, y el resto la consulta los
+descarta en el `HAVING` (ver *Fase 4*).
+
 > Para separar los dos tramos **no sirve `write_date`**: cualquier escritura
 > posterior lo mueve, y agrupar por él mete asientos preexistentes de la base
 > (dio «10 días» y «75.898 ms/asiento»). Los tramos se separan por el log del
@@ -1210,6 +1284,20 @@ vacía, no pase de 120 caracteres, diga lo mismo en la cabecera que en la línea
 
 Sobre datos generados **antes** de este cambio el 4g reporta violaciones: es lo
 correcto, está señalando los asientos que hay que reparar.
+
+**El modo `publicado` cubre también la conciliación.** El arnés corre la fase 4
+del lado SQL, porque del lado ORM la conciliación viene adentro de
+`_validate_accounting_entries`: sin eso compararía un camino conciliado contra
+uno sin conciliar. Se comparan `amount_residual`, `amount_residual_currency` y
+`reconciled` de frente; de `matching_number` y `full_reconcile_id` se compara la
+**clase** (total, parcial o ninguna) y no el valor, porque uno sale de una
+secuencia y el otro apunta a una fila creada en la corrida.
+
+Y una corrección del propio arnés que esto destapó: **el orden del volcado no
+puede depender de `ref`**, que es justamente el campo del desvío. Con dos
+asientos del mismo producto, cada camino los sacaba en un orden distinto y el
+diff acusaba importes cruzados que no existían. El orden va por la clave de
+negocio del movimiento (producto, origen, destino, cantidad).
 
 ## Checklist pre-producción
 

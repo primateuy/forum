@@ -51,6 +51,8 @@ const CAMPOS = [
     "apply_no_diff", "apply_errors", "apply_via_orm", "apply_step",
     "apply_layers_valued", "apply_entries",
     "post_total", "post_done", "post_errors", "post_step",
+    "rec_total", "rec_done", "rec_errors", "rec_lines", "rec_step",
+    "rec_started_at", "rec_ended_at",
     "post_started_at", "post_ended_at", "check_state", "check_at",
     "apply_started_at", "apply_ended_at",
     "started_at", "ended_at",
@@ -235,6 +237,36 @@ function fasePublicacionInventario(d) {
     };
 }
 
+function faseConciliacionInventario(d) {
+    let estadoFinal = null;
+    if (d.state === "reconciled") {
+        estadoFinal = { texto: _t("Conciliación terminada"), error: false };
+    } else if (d.state === "error" && d.current_phase === "rec") {
+        estadoFinal = { texto: _t("Conciliación con error"), error: true };
+    } else if (d.state === "cancel" && d.current_phase === "rec") {
+        estadoFinal = { texto: _t("Conciliación cancelada"), error: true };
+    }
+    return {
+        clave: "inventario_conciliacion",
+        titulo: _t("Fase 4 · Conciliación de las líneas"),
+        corriendo: d.state === "reconciling",
+        cargando: false,
+        estadoFinal,
+        hecho: d.rec_done,
+        total: d.rec_total,
+        inicio: d.rec_started_at,
+        fin: d.rec_ended_at,
+        unidad: _t("grupos/s"),
+        etapa: d.state === "reconciling" ? d.rec_step : null,
+        textoEtapa: _t("Conciliando por el ORM, encadenada a la publicación."),
+        filasContadores: [[
+            { etiqueta: _t("Grupos"), valor: d.rec_done },
+            { etiqueta: _t("Líneas"), valor: d.rec_lines },
+            { etiqueta: _t("Errores"), valor: d.rec_errors, error: d.rec_errors > 0 },
+        ]],
+    };
+}
+
 export const SECCIONES_POR_TIPO = {
     clientes: (d) => [faseClientes(d)],
     inventario: (d) => {
@@ -242,8 +274,11 @@ export const SECCIONES_POR_TIPO = {
         if (d.current_phase === "apply" || ["applying", "applied", "posting", "posted"].includes(d.state)) {
             fases.push(faseAplicacionInventario(d));
         }
-        if (d.current_phase === "post" || ["posting", "posted"].includes(d.state)) {
+        if (d.current_phase === "post" || ["posting", "posted", "reconciling", "reconciled"].includes(d.state)) {
             fases.push(fasePublicacionInventario(d));
+        }
+        if (d.current_phase === "rec" || ["reconciling", "reconciled"].includes(d.state)) {
+            fases.push(faseConciliacionInventario(d));
         }
         return fases;
     },

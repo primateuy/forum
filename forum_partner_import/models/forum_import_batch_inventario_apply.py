@@ -85,6 +85,13 @@ SVL_TCHISTORICO_CON_VALOR = ("cotizacionDia", "valorMonedaSecundaria", "valorRes
 # numeración del diario pesa los otros 2,5 ms. **Si se vuelve a medir, tiene que
 # ser con la tabla en volumen real.**
 LOTE_PUBLICACION = 500
+# Grupos (producto × cuenta conciliable) por tanda de conciliación.
+#
+# 🔴 El universo real es MUCHO más chico de lo que parece: de los 23.541 grupos
+# del ajuste, sólo 77 tienen débito Y crédito sin conciliar a la vez, y en los
+# otros `reconcile()` no hace nada. Filtrarlos en la consulta baja la fase de
+# minutos a segundos. La medición de abajo es sobre esos 77.
+LOTE_CONCILIACION = 250
 # Veces que se reintenta un asiento suelto que falló al publicar.
 REINTENTOS_ASIENTO = 2
 
@@ -112,12 +119,16 @@ class ForumImportBatchInventarioApply(models.Model):
             ("applied", "Ajuste aplicado"),
             ("posting", "Publicando asientos"),
             ("posted", "Asientos publicados"),
+            ("reconciling", "Conciliando asientos"),
+            ("reconciled", "Ajuste conciliado"),
         ],
         ondelete={"applying": "set default", "applied": "set default",
-                  "posting": "set default", "posted": "set default"},
+                  "posting": "set default", "posted": "set default",
+                  "reconciling": "set default", "reconciled": "set default"},
     )
     current_phase = fields.Selection(
-        [("carga", "Carga"), ("apply", "Aplicación"), ("post", "Publicación")],
+        [("carga", "Carga"), ("apply", "Aplicación"), ("post", "Publicación"),
+         ("rec", "Conciliación")],
         string="Fase", default="carga", required=True, readonly=True, copy=False,
         help="En qué fase está el batch. Decide qué retoma 'Reanudar' después de "
              "un error o una cancelación.",
@@ -193,6 +204,28 @@ class ForumImportBatchInventarioApply(models.Model):
     post_ended_at = fields.Datetime(string="Fin de la publicación", readonly=True, copy=False)
 
     # ------------------------------------------------------------------
+    # Fase 4: conciliación de las líneas (por ORM, a propósito)
+    # ------------------------------------------------------------------
+    rec_batch_size = fields.Integer(
+        string="Grupos por tanda de conciliación", default=LOTE_CONCILIACION,
+        required=True,
+        help="A diferencia de la publicación, acá la curva NO tiene sorpresas: "
+             "es monótona, la tanda grande siempre gana. Medido sobre los 77 "
+             "grupos con los dos lados de la corrida real: 10→120,4 ms por "
+             "grupo, 25→82,5, 50→65,4, 250→56,0. Lo que se paga es el costo "
+             "FIJO de cada tanda (consulta de grupos más commit, ~0,6 s), no el "
+             "tamaño. El default 250 cubre la corrida entera en una sola tanda.",
+    )
+    rec_total = fields.Integer(string="Grupos a conciliar", readonly=True, copy=False)
+    rec_done = fields.Integer(string="Grupos conciliados", readonly=True, copy=False)
+    rec_errors = fields.Integer(string="Grupos con error", readonly=True, copy=False)
+    rec_lines = fields.Integer(string="Líneas conciliadas", readonly=True, copy=False)
+    rec_step = fields.Char(string="Etapa de la conciliación", readonly=True, copy=False)
+    rec_started_at = fields.Datetime(string="Inicio de la conciliación", readonly=True,
+                                     copy=False)
+    rec_ended_at = fields.Datetime(string="Fin de la conciliación", readonly=True, copy=False)
+
+    # ------------------------------------------------------------------
     # Verificación por invariantes
     # ------------------------------------------------------------------
     check_state = fields.Selection(
@@ -222,6 +255,8 @@ class ForumImportBatchInventarioApply(models.Model):
             "apply_started_at": False, "apply_ended_at": False,
             "post_total": 0, "post_done": 0, "post_errors": 0, "post_step": False,
             "post_started_at": False, "post_ended_at": False,
+            "rec_total": 0, "rec_done": 0, "rec_errors": 0, "rec_lines": 0,
+            "rec_step": False, "rec_started_at": False, "rec_ended_at": False,
             "check_state": "pendiente", "check_report": False, "check_at": False,
         })
         return valores
@@ -265,11 +300,15 @@ class ForumImportBatchInventarioApply(models.Model):
 
     def action_reanudar(self):
         self.ensure_one()
-        if self.current_phase not in ("apply", "post"):
+        if self.current_phase not in ("apply", "post", "rec"):
             return super().action_reanudar()
         if self.state not in ("cancel", "error"):
             raise UserError(_("Solo se reanuda un batch cancelado o con error."))
         self._apl_cancelacion_pedida()   # un pedido viejo no debe frenar la reanudación
+        if self.current_phase == "rec":
+            # Se recuentan los pendientes: los ya conciliados no vuelven a pasar
+            # porque la consulta filtra por `reconciled`.
+            return self.action_conciliar()
         if self.current_phase == "post":
             # Se recuentan los pendientes: los ya publicados no vuelven a pasar.
             self._pub_validar_cotizaciones()
@@ -301,6 +340,8 @@ class ForumImportBatchInventarioApply(models.Model):
             batch._aplicar_varias_tandas()
         for batch in self.search([("state", "=", "posting")], order="id"):
             batch._publicar_varias_tandas()
+        for batch in self.search([("state", "=", "reconciling")], order="id"):
+            batch._conciliar_varias_tandas()
         return True
 
     # ==================================================================
@@ -1354,6 +1395,33 @@ class ForumImportBatchInventarioApply(models.Model):
         """.replace("{largo}", str(self.LARGO_REFERENCIA)),
            {"desde": self.apply_started_at})
 
+        # 9. Conciliación (fase 4).
+        #
+        # 🔴 NO se verifica "0 líneas sin conciliar": el 98,9 % de los grupos
+        # tiene un solo lado —un producto que sólo tuvo entradas, o sólo
+        # salidas— y ahí `reconcile()` correctamente no hace nada, así que ese
+        # control quedaría rojo para siempre. Sería un control que no puede dar
+        # verde, el mismo vicio que el invariante caro de FINDINGS.
+        #
+        # Lo que sí expresa el estado final del ORM: si en un grupo sobreviven
+        # un débito sin conciliar Y un crédito sin conciliar, `reconcile()`
+        # todavía tendría trabajo, y entonces la fase no terminó.
+        revisar("9. grupos con débito y crédito sin conciliar a la vez", """
+            SELECT count(*) FROM (
+                SELECT l.product_id, l.account_id
+                  FROM account_move_line l
+                  JOIN account_move am ON am.id = l.move_id AND am.state = 'posted'
+                  JOIN stock_move m ON m.id = am.stock_move_id AND m.is_inventory
+                  JOIN account_account ac ON ac.id = l.account_id AND ac.reconcile
+                  JOIN forum_import_batch b ON b.id = %(batch)s
+                 WHERE m.origin = b.inventory_reason
+                   AND b.inventory_reason IS NOT NULL
+                   AND coalesce(l.reconciled, false) = false
+                 GROUP BY l.product_id, l.account_id
+                HAVING count(*) FILTER (WHERE l.debit > 0) > 0
+                   AND count(*) FILTER (WHERE l.credit > 0) > 0) x
+        """, {"batch": self.id})
+
         # 6. Sin quants duplicados, sin conteos pendientes, sin asientos huérfanos.
         revisar("6a. par producto/ubicación con más de un quant", """
             SELECT count(*) FROM (
@@ -1704,13 +1772,222 @@ class ForumImportBatchInventarioApply(models.Model):
                     "post_step": False})
         self._log("Asientos publicados: %d. Errores: %d." % (self.post_done, self.post_errors))
         self.env.cr.commit()
-        # Segunda pasada de invariantes: ahora suman los de la publicación.
+        # La conciliación va ENCADENADA, en la misma ventana: son ~4,4 minutos
+        # medidos contra las 3 h 21 de publicar, y dejar el ajuste publicado sin
+        # conciliar es dejarlo en un estado que el ORM nunca produce.
+        try:
+            self.action_conciliar()
+        except Exception as e:
+            self.env.cr.rollback()
+            self._log("No se pudo encadenar la conciliación: %s. Se puede lanzar a "
+                      "mano con el botón." % tools.ustr(e)[:300])
+            _logger.exception("[forum_partner_import] encadenado de la conciliación")
+            self.env.cr.commit()
+            return
+        # Los invariantes se corren al cerrar la conciliación
+        # (`_finalizar_conciliacion`), que es el verdadero final del ciclo.
+
+    # ==================================================================
+    # Fase 4: conciliación
+    # ==================================================================
+    # 🔴 Va por ORM, mismo criterio que la publicación: `matching_number`, los
+    # parciales, los totales y las diferencias de cambio son semántica contable
+    # cuyo dueño es Odoo. Replicarla por SQL sería inventar contabilidad.
+    #
+    # Replica EXACTAMENTE el agrupamiento del core
+    # (`stock_account/models/stock_valuation_layer.py:105-110`): por producto y
+    # cuenta conciliable, sobre las líneas del ajuste ya publicadas y todavía
+    # sin conciliar. Ni más ni menos que lo que el ORM habría conciliado dentro
+    # de `_validate_accounting_entries`, que nuestro camino no atraviesa.
+    #
+    # Medido sobre los 23.541 grupos reales: **11,1 ms por grupo, ~4,4 minutos
+    # en total**. Por eso corre encadenada a la publicación, en la misma
+    # ventana: al lado de las 3 h 21 min de publicar es ruido.
+    #
+    # Y un dato que conviene saber antes de mirar los números: **sólo el 1,1 %
+    # de los grupos tiene débitos Y créditos**. El resto es un producto que sólo
+    # tuvo entradas, o sólo salidas, y ahí `reconcile()` correctamente no hace
+    # nada. De 828.761 líneas terminan conciliadas unas 200. Que el número sea
+    # chico no lo hace opcional: es el estado que deja el ORM.
+
+    def _rec_grupos_sql(self, limite=None):
+        """Los grupos que le quedan por conciliar a este batch."""
+        self.ensure_one()
+        cr = self.env.cr
+        cr.execute("""
+            SELECT l.product_id, l.account_id, array_agg(l.id ORDER BY l.id) AS ids
+              FROM account_move_line l
+              JOIN account_move am ON am.id = l.move_id AND am.state = 'posted'
+              JOIN stock_move m ON m.id = am.stock_move_id AND m.is_inventory
+              JOIN account_account ac ON ac.id = l.account_id AND ac.reconcile
+              JOIN forum_import_batch b ON b.id = %s
+             WHERE m.origin = b.inventory_reason
+               AND b.inventory_reason IS NOT NULL
+               -- Como lo mira el ORM: un `reconciled` en NULL es "no conciliado".
+               AND coalesce(l.reconciled, false) = false
+             GROUP BY l.product_id, l.account_id
+             -- Sólo los que tienen los DOS lados: en los demás `reconcile()` no
+             -- hace nada y recorrerlos es tiempo tirado.
+            HAVING count(*) FILTER (WHERE l.debit > 0) > 0
+               AND count(*) FILTER (WHERE l.credit > 0) > 0
+             ORDER BY l.product_id, l.account_id
+             %s
+        """ % ("%s", ("LIMIT %d" % int(limite)) if limite else ""), (self.id,))
+        return cr.fetchall()
+
+    def action_conciliar(self):
+        """Valida y deja la conciliación en manos del cron."""
+        self.ensure_one()
+        if not self._es_inventario():
+            raise UserError(_("Solo un ajuste de inventario concilia asientos."))
+        if self.state not in ("posted", "reconciled"):
+            raise UserError(_("Primero tienen que estar publicados los asientos."))
+        if self.rec_batch_size < 1:
+            raise UserError(_("El tamaño de tanda de conciliación debe ser mayor a cero."))
+        self._apl_cancelacion_pedida()
+        total = len(self._rec_grupos_sql())
+        if not total:
+            self._log("No hay grupos por conciliar.")
+            self.write({"state": "reconciled", "current_phase": "rec",
+                        "rec_ended_at": fields.Datetime.now(), "rec_step": False})
+            self.env.cr.commit()
+            return True
+        vals = {"state": "reconciling", "current_phase": "rec", "rec_ended_at": False,
+                "rec_step": False}
+        if not self.rec_started_at:
+            vals.update({"rec_total": total, "rec_done": 0, "rec_errors": 0,
+                         "rec_lines": 0, "rec_started_at": fields.Datetime.now()})
+        else:
+            # Retomando: el total es lo ya hecho MÁS lo que queda, igual que en
+            # la publicación; con sólo los pendientes la barra pasaba el 100 %.
+            vals["rec_total"] = self.rec_done + total
+        self.write(vals)
+        self._log("Conciliación iniciada. %d grupos con los dos lados, tandas de %d."
+                  % (total, self.rec_batch_size))
+        self.env.cr.commit()
+        self._encolar_cron()
+        return True
+
+    def _conciliar_varias_tandas(self):
+        """Una tanda por ejecución del cron, con reintento y commit propio."""
+        self.ensure_one()
+        self.invalidate_recordset(["state", "rec_done", "rec_total"])
+        if self.state != "reconciling":
+            return
+        if self._apl_cancelacion_pedida():
+            self.write({"state": "cancel", "rec_ended_at": fields.Datetime.now()})
+            self._log("Conciliación cancelada por el usuario con %d de %d grupos."
+                      % (self.rec_done, self.rec_total))
+            self.env.cr.commit()
+            return
+        for intento in range(1, REINTENTOS_TANDA + 1):
+            try:
+                quedan = self._conciliar_tanda()
+                self.env.cr.commit()
+                break
+            except Exception as e:
+                self.env.cr.rollback()
+                self.env.clear()
+                if isinstance(e, TransactionRollbackError) and intento < REINTENTOS_TANDA:
+                    _logger.warning(
+                        "[forum_partner_import][batch %s] la tanda de conciliación chocó "
+                        "con otra transacción (%s); reintento %d de %d",
+                        self.id, e, intento + 1, REINTENTOS_TANDA)
+                    continue
+                self.write({"state": "error", "rec_ended_at": fields.Datetime.now()})
+                self._log("ERROR en la tanda de conciliación: %s" % e)
+                self.env.cr.commit()
+                _logger.exception("[forum_partner_import] tanda de conciliación fallida")
+                return
+        if not quedan:
+            self._finalizar_conciliacion()
+            return
+        self._encolar_cron()
+
+    def _conciliar_tanda(self):
+        """Concilia una tanda de grupos. Devuelve cuántos quedan pendientes."""
+        self.ensure_one()
+        t0 = time.time()
+        # 🔴 El usuario va EXPLÍCITO, no heredado de quien llame. Conciliar
+        # escribe (`write_uid` de las líneas, `create_uid` de las parciales) y
+        # el flush del final arrastra lo que dejó pendiente la publicación, así
+        # que el autor tiene que ser el del proceso igual que en las fases 1-3.
+        # Ojo con `sudo()`: desde la 13 sólo levanta el flag de superusuario y
+        # NO cambia el uid, así que no alcanza para fijar el autor (la fase 3
+        # publica con `.sudo()` y deja `write_uid = 2`, verificado sobre los
+        # 1.657.562 renglones de la corrida real). El flag sí se mantiene, que
+        # es la red de siempre.
+        # Guard del WMS por las dudas: conciliar no debería escribir en producto,
+        # pero el costo de ponerlo es cero y el de olvidarlo es un envío real.
+        entorno = self.env(user=self.inventory_user_id, su=True) if self.inventory_user_id \
+            else self.env
+        AML = entorno["account.move.line"].with_context(**CONTEXTO_SIN_WMS)
+        # 🔴 Flush ANTES de la consulta, y con este entorno. Son dos cosas a la
+        # vez: `_rec_grupos_sql` lee `reconciled` y `state` por SQL CRUDO, así
+        # que lo que el ORM tenga pendiente no está en la base y la tanda
+        # elegiría mal; y si lo pendiente lo termina flusheando cualquier otro,
+        # esas filas quedan firmadas por otro usuario. En la corrida real la
+        # fase 3 commitea antes de llegar acá, pero el arnés encadena las dos
+        # fases en la misma transacción y ahí se vio: 8 líneas publicadas por el
+        # usuario 2 pasaban a `write_uid = 1` apenas empezaba la conciliación.
+        entorno.flush_all()
+        grupos = self._rec_grupos_sql(limite=self.rec_batch_size)
+        if not grupos:
+            return 0
+        cr = self.env.cr
+        hechos, errores, lineas = 0, 0, 0
+        for product_id, account_id, ids in grupos:
+            # Savepoint POR GRUPO: un grupo que no concilia no puede tirar abajo
+            # la tanda entera ni dejar a medias a los que ya pasaron.
+            try:
+                with cr.savepoint():
+                    AML.browse(ids).reconcile()
+                    # 🔴 El flush va ACÁ ADENTRO y con este entorno. `reconcile()`
+                    # deja `matching_number` y `full_reconcile_id` sucios en la
+                    # caché, y quien los baja a la base es el primer flush que
+                    # pase: el propio `cr.savepoint()` al salir llama a
+                    # `Transaction.flush()`, que elige un entorno CUALQUIERA de
+                    # la transacción (el primero con uid, que puede ser el de
+                    # otro). Esas filas quedaban firmadas por ese otro usuario.
+                    # Flushear acá fija el autor y no depende de quién comparta
+                    # la transacción.
+                    entorno.flush_all()
+                hechos += 1
+                lineas += len(ids)
+            except Exception as e:
+                errores += 1
+                self._log("No se pudo conciliar el grupo producto %s / cuenta %s: %s"
+                          % (product_id, account_id, tools.ustr(e)[:300]))
+        self.write({
+            "rec_done": self.rec_done + hechos,
+            "rec_errors": self.rec_errors + errores,
+            "rec_lines": self.rec_lines + lineas,
+            "rec_step": _("Conciliando: %d de %d grupos") % (
+                self.rec_done + hechos, self.rec_total),
+        })
+        _logger.info(
+            "[forum_partner_import][batch %s] conciliación de %d grupos en %.1fs "
+            "(%.1f ms/grupo) | ok=%d errores=%d",
+            self.id, len(grupos), time.time() - t0,
+            1000.0 * (time.time() - t0) / len(grupos), hechos, errores)
+        # Si la tanda se llenó, es que puede quedar más. Los grupos que dieron
+        # error siguen pendientes en la consulta, así que se los saltea contando
+        # sobre lo que efectivamente se concilió.
+        return len(grupos) if hechos and len(grupos) == self.rec_batch_size else 0
+
+    def _finalizar_conciliacion(self):
+        self.ensure_one()
+        self.write({"state": "reconciled", "rec_ended_at": fields.Datetime.now(),
+                    "rec_step": False})
+        self._log("Conciliación terminada. Grupos: %d. Líneas: %d. Errores: %d."
+                  % (self.rec_done, self.rec_lines, self.rec_errors))
+        self.env.cr.commit()
         try:
             self._verificar_invariantes()
         except Exception as e:
             self.env.cr.rollback()
             self._log("La verificación por invariantes falló: %s" % e)
-            _logger.exception("[forum_partner_import] verificación posterior a publicar")
+            _logger.exception("[forum_partner_import] verificación posterior a conciliar")
         self.env.cr.commit()
 
     def _apl_sql_prop_categ(self, prop, categ_sql, cia_sql):
