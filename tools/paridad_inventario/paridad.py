@@ -18,6 +18,7 @@ transacción que termina en rollback, así ninguna ve lo que hizo la otra.
 import argparse
 import os
 import sys
+from datetime import date
 from collections import OrderedDict
 
 # --------------------------------------------------------------------------
@@ -56,6 +57,9 @@ TABLAS = OrderedDict([
     ("stock_quant", {
         "ignorar": {"id", "create_date", "write_date", "in_date"},
         "orden": "product_id, location_id",
+        # 🔴 Los quants se ACTUALIZAN, no se crean: filtrar por `id > max` no
+        # compararía ni una fila y la tabla quedaría con cobertura falsa.
+        "filtro": "celdas",
     }),
 ])
 
@@ -66,12 +70,17 @@ def columnas(cr, tabla, ignorar):
     return [c for (c,) in cr.fetchall() if c not in ignorar]
 
 
-def volcar(cr, tabla, desde_id, cfg):
-    """Filas de `tabla` creadas en esta corrida, normalizadas y ordenadas."""
+def volcar(cr, tabla, desde_id, cfg, celdas):
+    """Filas de `tabla` que tocó esta corrida, normalizadas y ordenadas."""
     cols = columnas(cr, tabla, cfg["ignorar"])
     sel = ", ".join('t."%s"' % c for c in cols)
-    cr.execute("SELECT %s FROM %s t WHERE t.id > %%s ORDER BY %s"
-               % (sel, tabla, cfg["orden"]), (desde_id,))
+    if cfg.get("filtro") == "celdas":
+        pares = [(p, l) for p, l, _ in celdas]
+        cr.execute("SELECT %s FROM %s t WHERE (t.product_id, t.location_id) IN %%s "
+                   "ORDER BY %s" % (sel, tabla, cfg["orden"]), (tuple(pares),))
+    else:
+        cr.execute("SELECT %s FROM %s t WHERE t.id > %%s ORDER BY %s"
+                   % (sel, tabla, cfg["orden"]), (desde_id,))
     return cols, cr.fetchall()
 
 
@@ -177,10 +186,36 @@ def correr(env, batch, celdas, via, publicar):
         moves = env["account.move"].search([("id", ">", antes["account_move"])])
         moves._post(soft=False)
 
+
     volcados = {}
     for tabla, cfg in TABLAS.items():
-        volcados[tabla] = volcar(cr, tabla, antes[tabla], cfg)
+        volcados[tabla] = volcar(cr, tabla, antes[tabla], cfg, celdas)
     return cuenta, volcados
+
+
+def revisar_precondiciones(env, modo):
+    """En modo publicado hace falta la cotización de la moneda secundaria.
+
+    Publicar exige la tasa de la FECHA EXACTA (la copia vieja de
+    `aml_secondary_currency` que corre en estas bases no acepta la del día
+    anterior). Sin ella el `_post` levanta UserError y el arnés reventaba con un
+    traceback que no decía qué faltaba.
+    """
+    if modo != "publicado":
+        return None
+    cia = env.company
+    secundaria = getattr(cia, "secondary_currency_id", None) or getattr(
+        cia, "monedaDeReporte", None)
+    if not secundaria:
+        return None
+    hoy = date.today()
+    tasa = env["res.currency.rate"].search_count([
+        ("currency_id", "=", secundaria.id), ("name", "=", hoy)])
+    if tasa:
+        return None
+    return ("Falta la cotización de %s para %s: publicar la exige de la FECHA "
+            "EXACTA. Cargala y volvé a correr el modo publicado."
+            % (secundaria.name, hoy))
 
 
 def comparar(vol_sql, vol_orm, excluir_campos):
@@ -236,6 +271,15 @@ def main():
     codigo = 0
     for modo in modos:
         publicar = modo == "publicado"
+        with registry.cursor() as cr:
+            env = odoo.api.Environment(cr, odoo.SUPERUSER_ID, {})
+            falta = revisar_precondiciones(env, modo)
+            cr.rollback()
+        if falta:
+            print("\n=== PARIDAD en estado %s: NO SE PUDO CORRER ===" % modo.upper())
+            print("  " + falta)
+            codigo = 2
+            continue
         volcados = {}
         celdas = None
         for via in ("sql", "orm"):
