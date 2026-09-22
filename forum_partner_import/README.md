@@ -1158,6 +1158,59 @@ Tampoco se implementó, y queda como decisión del cliente: **agrupar los
 asientos** (uno por producto o por categoría en vez de uno por capa). Bajaría el
 tiempo de publicación, pero cambia lo que ve el contador.
 
+## Desvío deliberado del core: la referencia del asiento
+
+El core arma la descripción del asiento de valuación en
+`stock_account/models/stock_move.py:165` con
+`'%s - %s' % (reference, product_id.name)`. En una **variante**,
+`product_id.name` es el nombre de la **plantilla**: sin código y sin atributos.
+
+Medido sobre la corrida del peor caso: **828.784 asientos con sólo 1.030 textos
+de referencia distintos** para **23.541 variantes** — 22,9 variantes por texto,
+y el peor caso **4.495 variantes compartiendo una sola referencia**. El equipo
+del cliente lo reportó así: «todos los asientos dicen el mismo producto».
+
+**Decisión: nos apartamos del core a propósito**, porque el flujo de este módulo
+es revisar **cientos de miles de asientos en borrador antes de publicar**, y con
+ese texto la revisión es imposible. El formato es:
+
+```
+[<default_code>] <plantilla> (<atributos>) · <sucursal> · <motivo del ajuste>
+```
+
+acotado a **120 caracteres**. El `display_name` va primero a propósito: si el
+texto se trunca, lo que se pierde es la cola —el motivo, que es igual en todos—
+y **nunca el código del producto**, que es lo que identifica.
+
+| campo | qué lleva |
+|---|---|
+| `account_move.ref` | la referencia enriquecida |
+| `account_move_line.name` | la misma, que es la etiqueta que se ve en la línea |
+| `account_move_line.ref` | **se deja como el core**, así sigue cubierto por la paridad |
+
+El `display_name` se lee **por ORM, una vez por producto y por tanda** (no por
+celda): armarlo en SQL sería duplicar una fórmula del core recorriendo los
+valores de atributo, para ganar nada — son cientos de productos, no cientos de
+miles de filas.
+
+### Qué implica para la verificación
+
+Un campo que se aparta del core **no puede seguir comparándose contra el core**,
+así que estos dos salen del diff del arnés de paridad:
+
+```bash
+python3 paridad.py -c forum.conf -d <base> --modo ambos \
+    --excluir account_move.ref,account_move_line.name
+```
+
+🔴 **Y un campo excluido sin control propio es un campo sin cobertura.** Por eso
+el desvío tiene su invariante, el **4g**, que verifica que la referencia no esté
+vacía, no pase de 120 caracteres, diga lo mismo en la cabecera que en la línea y
+**contenga el `default_code` del producto**.
+
+Sobre datos generados **antes** de este cambio el 4g reporta violaciones: es lo
+correcto, está señalando los asientos que hay que reparar.
+
 ## Checklist pre-producción
 
 1. **Dump verificado** (ver el de clientes).
