@@ -222,10 +222,23 @@ def correr(env, batch, celdas, via, publicar):
             setattr(obj, nombre, valor)
 
     if publicar and via == "sql":
+        # 🔴 Con `action_post` y como el usuario del proceso, que es exactamente
+        # lo que hace la fase 3 del módulo. Publicar con `_post(soft=False)` a
+        # mano y como el usuario de la sesión dejaba `parent_state` y
+        # `move_name` sin recomputar en las líneas y cambiaba `write_uid`:
+        # tres diferencias que eran del ARNÉS, no del motor. Se comprobó contra
+        # la corrida real, donde esas columnas están bien en 1.657.568 renglones.
+        usuario = batch.inventory_user_id or env.user
+        env = env(user=usuario)          # también el flush: escribir deja write_uid
         moves = env["account.move"].search([("id", ">", antes["account_move"])])
-        moves._post(soft=False)
+        moves.action_post()
 
 
+    # 🔴 El volcado lee la base con SQL directo, así que lo que el ORM tenga
+    # pendiente de calcular todavía no está ahí. Sin este flush, `move_name` y
+    # `parent_state` de las líneas aparecían sin actualizar después de publicar
+    # y parecían un defecto del motor cuando eran del arnés.
+    env.flush_all()
     volcados = {}
     for tabla, cfg in TABLAS.items():
         volcados[tabla] = volcar(cr, tabla, antes[tabla], cfg, celdas)
