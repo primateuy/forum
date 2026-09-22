@@ -2312,8 +2312,15 @@ class ForumImportBatchInventarioApply(models.Model):
         # Verificado contra la gemela ORM: de 12.610 capas de valor 0, el ORM
         # dejó las 12.610 con esos campos en NULL y ninguna con cotización;
         # esta réplica escribía 66 con cotización porque miraba `a.cotiz`.
-        valor_no_cero = ("round((CASE WHEN a.diff > 0 THEN (%s) ELSE a.val_salida END)::numeric, "
-                         "a.dec_cia) <> 0" % val_entrada)
+        # 🔴 Por el signo CRUDO del valor, sin redondear. `tchistorico` ramifica
+        # con `vals.get('value', 0) > 0` y `< 0` (models.py:199 y :224), y el
+        # valor que recibe es el mismo que guardamos. Redondear antes de decidir
+        # es INTERPRETAR en vez de replicar: una salida de -0,004, que existe y
+        # es negativa, caía en el `else` de la réplica y en la rama de salida del
+        # ORM, y la capa quedaba sin `moneda_reporte_id`. Lo destapó el arnés al
+        # subir la muestra a 12 celdas. Manda el ORM.
+        valor_no_cero = ("(CASE WHEN a.diff > 0 THEN (%s) ELSE a.val_salida END) <> 0"
+                         % val_entrada)
         con_cotiz = "a.cotiz IS NOT NULL AND a.cotiz <> 0 AND " + valor_no_cero
         # El valor de la capa, ya con signo: entrada positiva, salida negativa.
         valor = "CASE WHEN a.diff > 0 THEN (%s) ELSE a.val_salida END" % val_entrada
@@ -2325,7 +2332,15 @@ class ForumImportBatchInventarioApply(models.Model):
         # cantidad_svl del módulo: usa 1 si la cantidad es 0, para no dividir por cero.
         cantidad = "CASE WHEN a.diff = 0 THEN 1 ELSE a.diff END"
         formulas = {
-            "moneda_reporte_id": 'CASE WHEN %s THEN c."monedaDeReporte" ELSE NULL END' % con_cotiz,
+            # 🔴 SIEMPRE la moneda de la compañía, sin condición. La rama `else`
+            # de tchistorico escribe `moneda_reporte_id: False`, pero el campo es
+            # un **related almacenado** de `company_id.monedaDeReporte`
+            # (models.py:31) y el ORM lo recomputa después: gana el related, no
+            # el `create`. Verificado sobre una capa de valor exactamente 0, con
+            # `cotizacionDia` en 0 en los dos caminos y la moneda puesta sólo por
+            # el ORM. La condición vieja replicaba lo que el `create` escribe y
+            # no lo que la base termina teniendo.
+            "moneda_reporte_id": 'c."monedaDeReporte"',
             "cotizacionDia": ("cotizacionDia", "a.cotiz"),
             "valorMonedaSecundaria": ("valorMonedaSecundaria", "(%s) * a.cotiz" % valor),
             "valorRestante": ("valorRestante", "(%s) * a.cotiz" % restante),

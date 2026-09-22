@@ -121,8 +121,41 @@ def elegir_celdas(env, batch, limite):
                  AND q2.location_id = q.location_id AND q2.lot_id IS NULL
                  AND q2.package_id IS NULL AND q2.owner_id IS NULL) = 1
          ORDER BY q.id LIMIT %s
-    """, (limite,))
-    return cr.fetchall()
+    """, (max(limite - 2, 1),))
+    celdas = cr.fetchall()
+
+    # 🔴 Caso de borde FIJO: producto SIN valor FIFO, cuya salida genera una capa
+    # de valor exactamente 0. Ahí no aplica ninguna rama del `create` de
+    # tchistorico, y ese hueco escondía una diferencia real en
+    # `moneda_reporte_id` que sólo apareció al subir la muestra de 9 a 12
+    # celdas. Va siempre, no por azar del `LIMIT`.
+    cr.execute("""
+        SELECT q.product_id, q.location_id, q.quantity
+          FROM stock_quant q
+          JOIN stock_location l ON l.id = q.location_id AND l.usage = 'internal'
+          JOIN product_product pp ON pp.id = q.product_id
+          JOIN product_template pt ON pt.id = pp.product_tmpl_id
+         WHERE q.company_id = 1 AND q.quantity > 10 AND pt.tracking = 'none'
+           AND q.reserved_quantity = 0
+           AND q.lot_id IS NULL AND q.package_id IS NULL AND q.owner_id IS NULL
+           -- La marca del borde: capas CON saldo en cantidad pero SIN valor, así
+           -- la salida vale exactamente 0 y no aplica ninguna rama del create.
+           AND EXISTS (SELECT 1 FROM stock_valuation_layer sl
+                        WHERE sl.product_id = q.product_id AND sl.company_id = 1
+                          AND sl.remaining_qty > 0 AND coalesce(sl.remaining_value, 0) = 0)
+           AND NOT EXISTS (SELECT 1 FROM stock_valuation_layer sl
+                            WHERE sl.product_id = q.product_id AND sl.company_id = 1
+                              AND sl.remaining_qty < 0)
+           AND (SELECT count(*) FROM stock_quant q2 WHERE q2.product_id = q.product_id
+                 AND q2.location_id = q.location_id AND q2.lot_id IS NULL
+                 AND q2.package_id IS NULL AND q2.owner_id IS NULL) = 1
+         ORDER BY q.id LIMIT 2
+    """)
+    borde = [c for c in cr.fetchall() if c not in celdas]
+    if not borde:
+        print("  AVISO: no hay productos sin valor FIFO en esta base; el caso de "
+              "borde de moneda_reporte_id NO se está cubriendo.")
+    return celdas + borde
 
 
 def sembrar(env, batch, celdas):
@@ -132,7 +165,13 @@ def sembrar(env, batch, celdas):
     filas = []
     for i, (pid, lid, qty) in enumerate(celdas):
         # Mix deliberado: entrada, salida y contado 0.
-        nueva = {0: float(qty) + 7, 1: float(qty) - 3, 2: float(qty)}[i % 3]
+        # Mix deliberado: entrada, salida y contado 0. Las dos últimas celdas
+        # son las del caso de borde y van SIEMPRE como salida, que es donde la
+        # capa queda en valor 0.
+        if i >= len(celdas) - 2 and len(celdas) > 2:
+            nueva = float(qty) - 3
+        else:
+            nueva = {0: float(qty) + 7, 1: float(qty) - 3, 2: float(qty)}[i % 3]
         cr.execute("""
             INSERT INTO {t} (product_id, location_id, company_id, cantidad, apply_seq,
                              xid, procesado, resultado_carga)
