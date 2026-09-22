@@ -270,7 +270,17 @@ def revisar_precondiciones(env, modo):
             % (secundaria.name, hoy))
 
 
-def comparar(vol_sql, vol_orm, excluir_campos):
+# 🔴 La numeración del diario sale de una secuencia de Postgres, que no vuelve
+# atrás con el rollback: la segunda corrida saca números distintos por
+# construcción. No es una diferencia del motor. Que la numeración sea correcta
+# lo cubren los invariantes 5b y 5c del módulo, no este arnés.
+SECUENCIA_DIARIO = {
+    "account_move": {"name", "sequence_number"},
+    "account_move_line": {"move_name"},
+}
+
+
+def comparar(vol_sql, vol_orm, excluir_campos, publicado=False):
     """Diferencias por tabla. Devuelve {tabla: [(fila, columna, sql, orm)]}."""
     dif = {}
     for tabla in TABLAS:
@@ -286,6 +296,8 @@ def comparar(vol_sql, vol_orm, excluir_campos):
         for n, (fs, fo) in enumerate(zip(filas_s, filas_o)):
             for col, vs, vo in zip(cols_s, fs, fo):
                 if col in excluir_campos.get(tabla, ()):
+                    continue
+                if publicado and col in SECUENCIA_DIARIO.get(tabla, ()):
                     continue
                 if vs != vo:
                     d.append((n, col, vs, vo))
@@ -346,7 +358,7 @@ def main():
                 cr.rollback()   # cada camino parte del MISMO estado
 
         print("\n=== PARIDAD en estado %s (%d celdas) ===" % (modo.upper(), len(celdas)))
-        dif = comparar(volcados["sql"], volcados["orm"], excluir)
+        dif = comparar(volcados["sql"], volcados["orm"], excluir, publicar)
         if not dif:
             for tabla in TABLAS:
                 print("  OK    %-24s %d filas idénticas"

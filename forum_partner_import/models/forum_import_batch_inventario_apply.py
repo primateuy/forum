@@ -1334,6 +1334,26 @@ class ForumImportBatchInventarioApply(models.Model):
                                 WHERE l.move_id = am.id AND l.debit <> 0)
         """, {"desde": self.apply_started_at})
 
+        # 4g. La referencia enriquecida es un DESVÍO deliberado del core, así
+        # que queda fuera del diff de paridad (`--excluir account_move.ref,
+        # account_move_line.name`). Un campo excluido sin control propio es un
+        # campo sin cobertura: éste lo verifica acá.
+        revisar("4g. referencia enriquecida mal formada", """
+            SELECT count(*) FROM account_move am
+              JOIN stock_move m ON m.id = am.stock_move_id
+              JOIN account_move_line l ON l.move_id = am.id
+              JOIN product_product pp ON pp.id = l.product_id
+             WHERE m.is_inventory AND am.create_date >= %(desde)s
+               AND (
+                    coalesce(am.ref, '') = ''                      -- vacía
+                 OR length(am.ref) > {largo}                        -- pasada de largo
+                 OR am.ref IS DISTINCT FROM l.name                  -- cabecera y línea distintas
+                 OR (pp.default_code IS NOT NULL AND pp.default_code <> ''
+                     AND position(pp.default_code in am.ref) = 0)   -- sin el código del producto
+               )
+        """.replace("{largo}", str(self.LARGO_REFERENCIA)),
+           {"desde": self.apply_started_at})
+
         # 6. Sin quants duplicados, sin conteos pendientes, sin asientos huérfanos.
         revisar("6a. par producto/ubicación con más de un quant", """
             SELECT count(*) FROM (
@@ -1739,6 +1759,35 @@ class ForumImportBatchInventarioApply(models.Model):
         ("diario", "property_stock_journal"),
     )
 
+    # Largo máximo de la referencia enriquecida. 120 entra cómodo en la columna
+    # y en las pantallas de Odoo sin que el texto quede cortado en la mitad de
+    # un atributo; el `display_name` arranca con el `[default_code]`, así que
+    # aunque se trunque el final el identificador siempre sobrevive.
+    LARGO_REFERENCIA = 120
+
+    def _apl_nombres_producto(self):
+        """Tabla temporal `forum_apl_prod`: el `display_name` de cada variante.
+
+        Se lee por ORM una vez por tanda y por producto —no por celda— porque
+        `display_name` arma `[código] plantilla (atributos)` recorriendo los
+        valores de atributo, y replicar eso en SQL sería duplicar una fórmula
+        del core para ganar nada: son cientos de productos, no cientos de miles.
+        """
+        cr = self.env.cr
+        cr.execute("SELECT DISTINCT product_id FROM forum_apl WHERE NOT es_cero")
+        ids = [r[0] for r in cr.fetchall()]
+        cr.execute("DROP TABLE IF EXISTS forum_apl_prod")
+        cr.execute("CREATE TEMP TABLE forum_apl_prod "
+                   "(product_id int PRIMARY KEY, display_name varchar) ON COMMIT DROP")
+        if not ids:
+            return
+        productos = self.env["product.product"].browse(ids)
+        filas = [(p.id, p.display_name or "") for p in productos]
+        cr.execute("INSERT INTO forum_apl_prod (product_id, display_name) "
+                   "SELECT * FROM unnest(%s::int[], %s::varchar[])",
+                   ([f[0] for f in filas], [f[1] for f in filas]))
+        cr.execute("ANALYZE forum_apl_prod")
+
     def _apl_categ_cuentas(self):
         """Tabla temporal `forum_apl_categ`: las propiedades contables ya
         resueltas para cada par (compañía, categoría) de la tanda.
@@ -1803,12 +1852,24 @@ class ForumImportBatchInventarioApply(models.Model):
         # Capas de la tanda que generan asiento: producto con valuación en
         # tiempo real y valor distinto de cero. Mismo filtro que el ORM.
         self._apl_categ_cuentas()
+        self._apl_nombres_producto()
         cr.execute("""
             DROP TABLE IF EXISTS forum_apl_asiento;
             CREATE TEMP TABLE forum_apl_asiento ON COMMIT DROP AS
             WITH base AS (
                 SELECT a.row_num, a.svl_id, a.move_id, a.company_id, a.product_id,
                        a.diff, a.dec_cia, a.prod_name,
+                       -- 🔴 Desvío DELIBERADO del core: la referencia lleva el
+                       -- `display_name` de la VARIANTE (código y atributos) y la
+                       -- sucursal. El core usa `product_id.name`, que en una
+                       -- variante es el nombre de la PLANTILLA: medido en esta
+                       -- misma base, 828.784 asientos con sólo 1.030 textos
+                       -- distintos para 23.541 variantes —22,9 por texto, peor
+                       -- caso 4.495—. Revisar cientos de miles de borradores a
+                       -- mano con ese texto es imposible.
+                       left(coalesce(pd.display_name, a.prod_name)
+                            || ' · ' || coalesce(w.name, ls.complete_name, '')
+                            || ' · ' || %(nombre_upd)s, 120) AS referencia,
                        l.value AS valor,
                        abs(l.value) AS importe,
                        l.quantity AS cantidad_capa,
@@ -1843,6 +1904,8 @@ class ForumImportBatchInventarioApply(models.Model):
                   JOIN res_company c ON c.id = a.company_id
                   JOIN stock_location li ON li.id = a.inv_loc
                   JOIN stock_location ls ON ls.id = a.location_id
+                  LEFT JOIN stock_warehouse w ON w.id = ls.warehouse_id
+                  LEFT JOIN forum_apl_prod pd ON pd.product_id = a.product_id
                   JOIN forum_apl_categ pcat ON pcat.company_id = a.company_id
                                            AND pcat.categ_id = a.categ_id
                  WHERE NOT a.es_cero
@@ -1854,7 +1917,7 @@ class ForumImportBatchInventarioApply(models.Model):
             SELECT base.*,
                    CASE WHEN diff > 0 THEN cta_src ELSE cta_dest END AS cta_contra
               FROM base
-        """)
+        """, params)
         cr.execute("SELECT count(*) FROM forum_apl_asiento")
         if not cr.fetchone()[0]:
             return 0
@@ -1914,7 +1977,7 @@ class ForumImportBatchInventarioApply(models.Model):
             "id": "a.am_id", "company_id": "a.company_id", "journal_id": "a.diario",
             "currency_id": "a.currency_id", "date": "%(fecha_asiento)s",
             "state": "'draft'", "move_type": "'entry'", "auto_post": "'no'",
-            "ref": "%(nombre_upd)s || ' - ' || a.prod_name",
+            "ref": "a.referencia",
             "stock_move_id": "a.move_id",
             # Sin partner: `_get_partner_id_for_valuation_lines` sale del picking
             # y un movimiento de inventario no tiene.
@@ -2008,7 +2071,12 @@ class ForumImportBatchInventarioApply(models.Model):
                 "id": "a.aml_%s" % lado,
                 "move_id": "a.am_id", "company_id": "a.company_id",
                 "account_id": cuenta,
-                "name": "%(nombre_upd)s || ' - ' || a.prod_name",
+                # `name` es la etiqueta que se ve en la línea y va enriquecida,
+                # igual que el `ref` de la cabecera: son los dos campos que mira
+                # quien revisa. El `ref` de la LÍNEA se deja como el core, así
+                # sigue cubierto por la paridad y el desvío queda acotado a dos
+                # campos y no a tres.
+                "name": "a.referencia",
                 "ref": "%(nombre_upd)s || ' - ' || a.prod_name",
                 "date": "%(fecha_asiento)s",
                 "parent_state": "'draft'", "display_type": "'product'",
