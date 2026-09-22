@@ -301,6 +301,46 @@ diario dentro del rango** (los asientos ajenos intercalados no son huecos) y
 Cambia la unidad del contador —el viejo contaba *saltos*, el nuevo cuenta
 *prefijos con huecos*— y en los dos el valor esperado es **0**.
 
+## Defecto propio: la paridad comparaba estados distintos del ciclo de vida
+
+El cliente abrió los asientos del ajuste en support —en borrador a propósito,
+porque la fase 3 no se corrió— y los vio **todos en `0,00 $`**. Las líneas
+estaban bien; lo que estaba vacío era la cabecera: `amount_total` y sus ocho
+hermanos son **calculados-almacenados**, el `INSERT` crudo no los computa y
+quedan en `NULL`, que Odoo dibuja como cero. Publicar los recalcula, así que el
+hueco **sólo existe mientras el asiento está en borrador**.
+
+**Por qué la paridad no lo vio, que es lo que importa.** El arnés normalizaba el
+**estado** del asiento, con este argumento —textual del README de entonces—:
+
+> el **estado** del asiento, porque el ORM publica dentro de
+> `_validate_accounting_entries` mientras el SQL los deja en borrador a propósito
+
+Suena razonable y es exactamente el error: al normalizar el estado se estaba
+comparando **borrador contra publicado**, y eso **deja sin cobertura todo lo que
+llena la transición**. No es que faltara un campo en la lista de comparación:
+faltaba un estado entero del ciclo de vida. Los nueve campos de importe estaban
+en NULL de un lado y llenos del otro, y el diff daba **0 diferencias**.
+
+### La lección, que generaliza
+
+**Una prueba de paridad tiene que comparar el MISMO punto del ciclo de vida.**
+Si los dos caminos terminan en estados distintos, no se normaliza la diferencia:
+se **frena al que va más lejos** y se compara en cada estado por separado.
+Normalizar un estado es decidir no mirar todo lo que ese estado cambia, y eso no
+se nota — el diff sigue dando verde.
+
+Es la misma forma que la del invariante caro de abajo: **una verificación que da
+«0» no prueba nada si la condición que tenía que ver está fuera de su alcance.**
+Allá el control era más caro que lo verificado y nadie lo corría; acá el control
+corría y miraba el lado equivocado.
+
+El arnés vive ahora en el repo (`forum/tools/paridad_inventario/`) y compara
+**borrador contra borrador** y **publicado contra publicado**, frenando el
+`_post` de la gemela ORM para el primero. La primera corrida en modo borrador
+encontró, además de los nueve importes ya corregidos, **17 campos de cabecera y
+16 de línea** que el ORM llena y la réplica dejaba en NULL.
+
 ### La lección de método, que es la que importa
 El defecto no lo encontró ninguna prueba: lo encontró **mirar el proceso mientras
 corría**. Y estuvo a punto de no encontrarse, porque un proceso trabado en una
