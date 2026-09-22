@@ -1067,6 +1067,10 @@ class ForumImportBatchInventarioApply(models.Model):
         #        y se escribe tal cual en staging. Van en `contadores`, que pasa
         #        `_apl_procesar_filas` y lee al cerrar la tanda.
         asientos = self._apl_asientos(params)
+        # Va acá y no dentro de `_apl_asientos` porque tiene que correr SIEMPRE:
+        # el valor de reporte del quant depende de las capas del producto, y esas
+        # cambian aunque la tanda no genere ni un asiento (capas con valor cero).
+        self._apl_recalcular_localizacion()
         # Capas con valor de ESTA tanda y de ESTE camino: se cuentan por los
         # svl_id que repartió la tanda, no por fecha de creación (el camino ORM
         # crea las suyas en el mismo instante y quedarían sumadas dos veces).
@@ -1808,6 +1812,12 @@ class ForumImportBatchInventarioApply(models.Model):
                        l.value AS valor,
                        abs(l.value) AS importe,
                        l.quantity AS cantidad_capa,
+                       -- Cotización y moneda de reporte de LA CAPA: las escribe
+                       -- este mismo motor al replicar tchistorico, así que
+                       -- propagarlas a la línea del asiento no es duplicar una
+                       -- fórmula ajena, es reusar un valor propio.
+                       l."cotizacionDia" AS cotiz_dia,
+                       l.moneda_reporte_id AS moneda_rep,
                        pt.uom_id,
                        c.currency_id,
                        pcat.cta_valuacion,
@@ -1909,7 +1919,10 @@ class ForumImportBatchInventarioApply(models.Model):
             # Sin partner: `_get_partner_id_for_valuation_lines` sale del picking
             # y un movimiento de inventario no tiene.
             "partner_id": "NULL",
-            "name": "'/'", "posted_before": "false",
+            # 🔴 `posted_before` va en NULL, no en false: el ORM lo deja sin
+            # valor y la regla es quedar IDÉNTICOS, aunque un false y un NULL
+            # se lean igual desde Python. Acá el que se desviaba era el SQL.
+            "name": "'/'", "posted_before": "NULL",
             "create_uid": "%(uid)s", "write_uid": "%(uid)s",
             "create_date": "now() AT TIME ZONE 'UTC'", "write_date": "now() AT TIME ZONE 'UTC'",
         }
@@ -1943,6 +1956,32 @@ class ForumImportBatchInventarioApply(models.Model):
             # La localización le pone default de hoy a TODO asiento, incluidos
             # los manuales; se replica para que la paridad no se vaya por acá.
             explicitos_am["invoice_date"] = "%(fecha_asiento)s"
+        # Resto de campos calculados-almacenados de la cabecera. Los pone el ORM
+        # al crear y el INSERT crudo los dejaba en NULL; la lista salió del arnés
+        # de paridad en modo borrador (`tools/paridad_inventario`). Se filtran
+        # por existencia porque varios los agrega la localización y no están en
+        # todas las bases.
+        #
+        # Los de LocalizACIÓN que sí son un cálculo de verdad —no una
+        # constante— NO se replican acá: los computa el ORM después del INSERT
+        # (ver `_apl_recalcular_localizacion`). Mismo criterio que dejar la
+        # publicación en manos del ORM: no se duplica una fórmula cuyo dueño es
+        # otro módulo.
+        constantes_am = {
+            "always_tax_exigible": "true",
+            "depreciation_value": "0",
+            "extract_state_processed": "false",
+            "is_in_extractable_state": "false",
+            "is_storno": "false",
+            "metodoUnico": "false",
+            "payment_distribution_complete": "false",
+            "payment_state": "'not_paid'",
+            "sequence_number": "0",
+            "sequence_prefix": "''",
+            "uy_nc_tc_forzado": "0",
+            "invoice_date_due": "%(fecha_asiento)s",
+        }
+        explicitos_am.update({c: v for c, v in constantes_am.items() if c in Move._fields})
         cols_d, vals_d, params_d = self._apl_defaults("account.move", explicitos_am)
         params.update(params_d)
         cr.execute("""
@@ -1984,6 +2023,39 @@ class ForumImportBatchInventarioApply(models.Model):
                 "create_uid": "%(uid)s", "write_uid": "%(uid)s",
                 "create_date": "now() AT TIME ZONE 'UTC'", "write_date": "now() AT TIME ZONE 'UTC'",
             }
+            # Resto de calculados-almacenados de la LÍNEA, también salidos del
+            # arnés en modo borrador. `journal_id` y `account_root_id` no son
+            # cosmética: son `related` almacenados que usan filtros e informes,
+            # y estaban en NULL.
+            constantes_aml = {
+                "journal_id": "a.diario",
+                "move_name": "'/'",
+                "account_root_id": ("(SELECT ac.root_id FROM account_account ac "
+                                    "WHERE ac.id = %s)" % cuenta),
+                "price_subtotal": "0",
+                "price_total": "0",
+                "price_unit": "0",
+                "reconciled": "false",
+                "tax_tag_invert": "false",
+                # 🔴 En la LÍNEA estos dos no tienen `compute`: los escribe el
+                # `create()` de `tchistorico` (`general_primate`), así que el
+                # ORM no los puede calcular a pedido y hay que ponerlos acá.
+                # La fórmula es la de ese módulo: la cotización de la capa, y el
+                # importe convertido. Sin moneda de reporte, ambos en cero.
+                # El promedio ponderado de la CABECERA sí lo computa el ORM
+                # desde estas líneas: por eso da distinto (0,025068 contra
+                # 0,025083) y por eso no se replica.
+                "cotizacion_historica": (
+                    "CASE WHEN a.moneda_rep IS NOT NULL THEN a.cotiz_dia ELSE 0 END"),
+                "valor_moneda_reportes": aml(
+                    "valor_moneda_reportes",
+                    "CASE WHEN a.moneda_rep IS NOT NULL "
+                    "THEN a.importe * a.cotiz_dia ELSE 0 END"),
+                "cfe_no_send_description": "false",
+                "invoice_date": "%(fecha_asiento)s",
+            }
+            explicitos_aml.update({c: v for c, v in constantes_aml.items()
+                                   if c in MoveLine._fields})
             cols_l, vals_l, params_l = self._apl_defaults("account.move.line", explicitos_aml)
             params.update(params_l)
             lineas.append((explicitos_aml, cols_l, vals_l))
@@ -2003,6 +2075,73 @@ class ForumImportBatchInventarioApply(models.Model):
         for modelo in ("account.move", "account.move.line"):
             self.env[modelo].invalidate_model()
         return creados
+
+    # Campos calculados-almacenados que NO se replican en SQL: son cálculos de
+    # verdad —no constantes— y su dueño es otro módulo (la localización). El
+    # criterio es el mismo por el que la publicación se dejó en manos del ORM:
+    # duplicar una fórmula ajena es firmar que va a driftear en silencio con el
+    # próximo cambio de `LocalizacionUy`. Que `cotizacion_historica` valga
+    # distinto en la cabecera (0,025068) y en la línea (0,025083) del MISMO
+    # asiento es la prueba de que no es una constante disfrazada.
+    _CAMPOS_POR_ORM = {
+        "account.move": ("cotizacion_historica", "moneda_reportes_id",
+                         "valor_moneda_reportes",
+                         # Del core, pero tampoco es constante: sale de una
+                         # cadena TRADUCIDA y del nombre de quien creó.
+                         "invoice_partner_display_name"),
+        # El quant NO se crea, se actualiza, así que el INSERT no lo toca y se
+        # quedaba con el valor de reporte VIEJO: el compute depende de las capas
+        # del producto, que esta tanda acaba de cambiar. `_compute_value_report`
+        # escribe también `unit_value_report`, por eso alcanza con pedir uno.
+        "stock.quant": ("value_report",),
+        "account.move.line": ("tipo_cambio", "amount_secondary",
+                              # 🔴 Parecían constantes en cero y NO lo son: el
+                              # arnés mostró líneas con 0 y líneas con el saldo,
+                              # según si la cuenta es conciliable.
+                              "amount_residual", "amount_residual_currency"),
+    }
+
+    def _apl_recalcular_localizacion(self):
+        """Deja que el ORM calcule los campos de la localización de la tanda.
+
+        Se hace sobre los asientos que acaba de crear el INSERT y **acotado a
+        esos campos**: no es un recompute general, que costaría como el camino
+        ORM que este motor justamente evita.
+        """
+        # 🔴 Como el usuario del proceso, no como el de la sesión: el flush
+        # escribe, y escribir deja `write_uid`. Corriéndolo con el usuario
+        # equivocado la réplica se desviaba del ORM en ese campo —lo encontró
+        # el arnés de paridad, que es exactamente para esto—.
+        env = self.env(user=self.inventory_user_id or self.env.user)
+        cr = env.cr
+        cr.execute("SELECT to_regclass('forum_apl_asiento') IS NOT NULL")
+        hay_asientos = cr.fetchone()[0]
+        ids_am, ids_aml = [], []
+        if hay_asientos:
+            cr.execute("SELECT am_id FROM forum_apl_asiento")
+            ids_am = [r[0] for r in cr.fetchall()]
+            cr.execute("SELECT aml_debito FROM forum_apl_asiento "
+                       "UNION ALL SELECT aml_credito FROM forum_apl_asiento")
+            ids_aml = [r[0] for r in cr.fetchall()]
+        cr.execute("SELECT quant_id FROM forum_apl WHERE quant_id IS NOT NULL")
+        ids_quant = [r[0] for r in cr.fetchall()]
+
+        for modelo, ids in (("account.move", ids_am), ("account.move.line", ids_aml),
+                            ("stock.quant", ids_quant)):
+            Modelo = env[modelo]
+            campos = [Modelo._fields[c] for c in self._CAMPOS_POR_ORM[modelo]
+                      if c in Modelo._fields and Modelo._fields[c].compute
+                      and Modelo._fields[c].store]
+            if not campos:
+                continue
+            registros = Modelo.browse(ids)
+            for campo in campos:
+                env.add_to_compute(campo, registros)
+        env.flush_all()
+        # El flush deja la caché del ORM con estos registros; invalidarla evita
+        # que una tanda posterior lea valores viejos.
+        for modelo in self._CAMPOS_POR_ORM:
+            env[modelo].invalidate_model()
 
     def _apl_fifo_valores(self, params):
         """Reparto FIFO de las salidas de la tanda, como lo hace `_run_fifo`.
