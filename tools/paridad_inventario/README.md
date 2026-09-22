@@ -49,6 +49,29 @@ del movimiento (es el reloj de la corrida, no el motor) y las claves foráneas
 que apuntan a filas creadas en la misma corrida, cuyos ids los da una secuencia.
 **Todo lo demás se compara, incluido el estado del asiento.**
 
+## 🔴 Cuándo hay que correrlo, obligatorio
+
+**Ante cualquier cambio en `LocalizacionUy`, en `general_primate` o en nuestro
+motor**, en `--modo ambos`. No es una recomendación.
+
+Es la **única cobertura** de dos cosas:
+
+1. **Los campos que calculamos vía ORM** (`cotizacion_historica`,
+   `valor_moneda_reportes`, `moneda_reportes_id`, `tipo_cambio`,
+   `amount_secondary`, `amount_residual`…). No los replicamos a propósito —su
+   dueño es otro módulo— así que si ese módulo cambia su fórmula, acá no hay
+   nada que avise: sólo el diff contra el ORM.
+2. **Los desvíos deliberados**, que están fuera del diff y dependen de su
+   invariante.
+
+```bash
+python3 paridad.py -c forum.conf -d <base> --modo ambos \
+    --excluir account_move.ref,account_move_line.name
+```
+
+Código de salida 0 = pasa. Si el modo publicado dice que falta la cotización de
+la moneda secundaria del día, cargala: publicar la exige de la fecha exacta.
+
 ## Desvíos deliberados del core
 
 Lo que se aparta del core a propósito se saca del diff con `--excluir` y queda

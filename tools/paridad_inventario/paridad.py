@@ -117,6 +117,14 @@ def elegir_celdas(env, batch, limite):
            AND NOT EXISTS (SELECT 1 FROM stock_valuation_layer sl
                             WHERE sl.product_id = q.product_id AND sl.company_id = 1
                               AND sl.remaining_qty < 0)
+           -- Los del caso de borde se agregan aparte y SIEMPRE como salida, así
+           -- que se los saca de acá: si la consulta principal se los llevaba,
+           -- después quedaban descartados por duplicados y el borde dejaba de
+           -- cubrirse sin que se notara más que en el aviso.
+           AND NOT EXISTS (SELECT 1 FROM stock_valuation_layer sl
+                            WHERE sl.product_id = q.product_id AND sl.company_id = 1
+                              AND sl.remaining_qty > 0
+                              AND coalesce(sl.remaining_value, 0) = 0)
            AND (SELECT count(*) FROM stock_quant q2 WHERE q2.product_id = q.product_id
                  AND q2.location_id = q.location_id AND q2.lot_id IS NULL
                  AND q2.package_id IS NULL AND q2.owner_id IS NULL) = 1
