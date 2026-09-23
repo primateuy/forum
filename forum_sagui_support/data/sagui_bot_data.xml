@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!--
+            El agente es un usuario ARCHIVADO: así no consume licencia y su partner publica igual,
+            porque todo el relay corre server-side con sudo.
+
+            OJO con CÓMO se archiva. Acá se crea ACTIVO y lo archiva el post_init_hook, en dos
+            pasos, por una razón medida: al CREAR un res.users con `active=False`, el valor viaja
+            también al partner —res.users hereda de res.partner por _inherits y el create reparte
+            los valores entre los dos—, y queda un contacto dado de baja como autor de todos los
+            mensajes del bot. Archivarlo DESPUÉS, con un write, no cascadea: el usuario queda
+            archivado y el partner activo, que es lo que hace falta.
+
+            Y no se puede arreglar con un segundo <record> que reafirme `active`: `noupdate` se
+            guarda en ir.model.data por registro, no por declaración, así que una vez marcado
+            ningún update posterior lo toca. Para las bases que ya quedaron mal está la migración
+            17.0.1.0.1.
+
+            Consecuencia del archivado que hay que conocer: un usuario archivado NO aparece en la
+            búsqueda de «Nuevo mensaje» —`mail/models/res_partner.py:335` filtra
+            `('active','=',True)` sobre res.users—. Por eso el DM se SIEMBRA, igual que OdooBot.
+        -->
+        <record id="partner_sagui_soporte" model="res.partner">
+            <field name="name">Sagui</field>
+            <field name="email">sagui@primate.uy</field>
+        </record>
+
+        <record id="user_sagui_soporte" model="res.users">
+            <field name="name">Sagui</field>
+            <field name="login">sagui_soporte</field>
+            <field name="partner_id" ref="partner_sagui_soporte"/>
+            <field name="groups_id" eval="[(6, 0, [ref('base.group_user')])]"/>
+        </record>
+    </data>
+</odoo>

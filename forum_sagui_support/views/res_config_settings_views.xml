@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_sagui" model="ir.ui.view">
+        <field name="name">res.config.settings.form.sagui.soporte</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base_setup.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <!-- Desde la 16, los ajustes se arman con <app>/<block>/<setting>, no con markup
+                 suelto: un <h2> y un <div class="row"> ahí adentro hacen que Odoo rechace la
+                 vista entera con un ParseError genérico que no dice cuál es el problema. -->
+            <xpath expr="//app[@name='general_settings']" position="inside">
+                <block title="Agente de soporte Sagui" name="sagui_soporte_container">
+                    <setting id="sagui_conexion_setting" string="Conexión con Sagui"
+                             help="Lo único que se configura de este lado. La documentación, los umbrales y los responsables viven en Sagui.">
+                        <div class="content-group mt16">
+                            <div class="row">
+                                <label for="sagui_url" class="col-lg-4 o_light_label"/>
+                                <field name="sagui_url" placeholder="https://sagui.primate.uy"/>
+                            </div>
+                            <div class="row">
+                                <label for="sagui_token" class="col-lg-4 o_light_label"/>
+                                <field name="sagui_token" password="True"/>
+                            </div>
+                        </div>
+                    </setting>
+                    <setting id="sagui_timeout_setting" string="Tiempos"
+                             help="El timeout corta la espera de una consulta. El long-poll baja la latencia de las respuestas de un responsable; en 0 queda el sondeo de una vez por minuto.">
+                        <div class="content-group mt16">
+                            <div class="row">
+                                <label for="sagui_timeout" class="col-lg-4 o_light_label"/>
+                                <field name="sagui_timeout"/>
+                            </div>
+                            <div class="row">
+                                <label for="sagui_longpoll_wait" class="col-lg-4 o_light_label"/>
+                                <field name="sagui_longpoll_wait"/>
+                            </div>
+                        </div>
+                    </setting>
+                    <setting id="sagui_canal_setting" string="Chat del sitio"
+                             help="La regla que conecta el guion con el sitio es configuración a mano de cada alta, y cuando queda mal no falla nada: el chat simplemente deja de tener bot. Esto lo comprueba.">
+                        <button name="action_verificar_canal_sitio" type="object"
+                                string="Verificar canal del sitio" class="btn-secondary"
+                                icon="fa-stethoscope"/>
+                    </setting>
+                    <setting id="sagui_fallback_setting" string="Si Sagui no responde"
+                             help="A quién se le deja la actividad. Es el único caso en que este módulo decide algo: con Sagui caído, no hay a quién preguntarle a quién derivar.">
+                        <field name="sagui_fallback_user_id"/>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

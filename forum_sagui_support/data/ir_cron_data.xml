@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- El PISO de latencia. El long-poll baja la espera de un chat en vivo, pero puede no
+             estar disponible: apagado por config, sin cupo de peticiones retenidas, o el proceso
+             reiniciándose. Este cron garantiza que una respuesta llegue igual — tarde, pero
+             siempre. Es la diferencia entre "lento" y "perdido". -->
+        <record id="cron_sagui_traer_respuestas" model="ir.cron">
+            <field name="name">Sagui soporte: traer respuestas pendientes</field>
+            <field name="model_id" ref="model_sagui_relay"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_traer_respuestas()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">minutes</field>
+            <!-- `numbercall` a -1 = sin límite. Sin esto el default es 1: el cron corre UNA vez,
+                 Odoo lo desactiva solo y el piso de latencia desaparece en silencio a los sesenta
+                 segundos de instalar. Medido acá: corrió a las 15:30:45 y quedó `active=f`.
+                 (En v18 el campo está deprecado; en 17 sigue vivo y hay que ponerlo.) -->
+            <field name="numbercall">-1</field>
+            <field name="doall" eval="False"/>
+            <field name="active" eval="True"/>
+        </record>
+    </data>
+</odoo>

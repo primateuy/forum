@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="chatbot_script_sagui" model="chatbot.script">
+            <field name="title">Sagui — Soporte</field>
+            <field name="operator_partner_id" ref="partner_sagui_soporte"/>
+        </record>
+
+        <!-- Paso 1: presentación. -->
+        <record id="step_sagui_bienvenida" model="chatbot.script.step">
+            <field name="chatbot_script_id" ref="chatbot_script_sagui"/>
+            <field name="sequence">1</field>
+            <field name="step_type">text</field>
+            <field name="message">¡Hola! Soy Sagui. Respondo con la documentación del equipo y te digo en qué documento me baso. Si algo no está documentado, lo derivo a la persona que corresponda.</field>
+        </record>
+
+        <!-- Paso 2: el correo, ANTES de la consulta.
+             Una sesión de livechat es anónima y se muere cuando el visitante cierra la pestaña.
+             Si su consulta queda derivada y no dejó correo, la respuesta del responsable no tiene
+             dónde aterrizar. Se pide acá, y el paso siguiente le avisa si no lo dejó. -->
+        <record id="step_sagui_correo" model="chatbot.script.step">
+            <field name="chatbot_script_id" ref="chatbot_script_sagui"/>
+            <field name="sequence">2</field>
+            <field name="step_type">question_email</field>
+            <field name="message">Antes de empezar, ¿me dejás tu correo? Es por si tengo que derivar tu consulta y cerrás el chat: así te respondemos igual.</field>
+        </record>
+
+        <!-- Paso 3: la conversación. El módulo sobrescribe `_process_answer` y NO avanza de paso,
+             así que este es el paso donde se queda mientras dure la charla. -->
+        <record id="step_sagui_consulta" model="chatbot.script.step">
+            <field name="chatbot_script_id" ref="chatbot_script_sagui"/>
+            <field name="sequence">3</field>
+            <field name="step_type">free_input_multi</field>
+            <field name="message">Contame en qué te puedo ayudar.</field>
+        </record>
+
+        <!-- Paso 4: el pase a un humano. No se alcanza siguiendo el guion: lo invoca el módulo
+             cuando Sagui deriva y hay un operador conectado. -->
+        <record id="step_sagui_operador" model="chatbot.script.step">
+            <field name="chatbot_script_id" ref="chatbot_script_sagui"/>
+            <field name="sequence">4</field>
+            <field name="step_type">forward_operator</field>
+            <field name="message">Te paso con alguien del equipo.</field>
+        </record>
+    </data>
+</odoo>
