@@ -24,6 +24,8 @@ import os
 import tempfile
 from datetime import datetime
 
+from psycopg2.extras import execute_values
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
@@ -137,6 +139,18 @@ class ForumImportBatchInventario(models.Model):
         return [
             (_("Creando la tabla de trabajo"),          self._inv_crear_staging),
             (_("Leyendo el archivo"),                   self._inv_leer_xlsx),
+        ] + self._inv_pasos_post_origen()
+
+    def _inv_pasos_post_origen(self):
+        """Lo que va DESPUÉS de leer el origen, sea cual sea el origen.
+
+        Está separado a propósito: el archivo no es la única forma de armar un
+        conteo. `cargar_celdas_externas` usa exactamente estos pasos, así que
+        un conteo que viene de otro sistema pasa por las mismas validaciones,
+        el mismo filtrado y la misma decisión de acción por celda que uno que
+        viene de un Excel. Si estos pasos cambian, cambian para los dos.
+        """
+        return [
             (_("Resolviendo ubicaciones"),              self._inv_resolver_ubicaciones),
             (_("Resolviendo productos"),                self._inv_resolver_productos),
             (_("Filtrando almacenables y con lote"),    self._inv_filtrar_productos),
@@ -144,6 +158,126 @@ class ForumImportBatchInventario(models.Model):
             (_("Definiendo la acción de cada celda"),   self._inv_accion_efectiva),
             (_("Calculando estadísticas"),              self._pp_analyze),
         ]
+
+    # ------------------------------------------------------------------
+    # Costura pública: un conteo armado por otro módulo
+    # ------------------------------------------------------------------
+    def cargar_celdas_externas(self, filas, origen=""):
+        """Arma el staging con celdas que preparó OTRO módulo. Contrato público.
+
+        Pensado para orígenes que no son un archivo —hoy, la conciliación de
+        stock contra WIS, que arma el conteo consultando el WMS—. El que llama
+        no necesita conocer la tabla de trabajo ni sus columnas: entrega las
+        celdas y el motor hace el resto, con las mismas validaciones que el
+        camino del Excel.
+
+        🔴 **Se llama, no se hereda.** Heredar `forum.import.batch` obligaría al
+        otro módulo a depender de éste, y el que tiene que usarlo es un módulo
+        COMPARTIDO entre clientes: no puede depender de un módulo de Forum.
+        Llamarlo sólo pide que el modelo exista::
+
+            Batch = self.env.get("forum.import.batch")
+            if Batch is not None:
+                batch.cargar_celdas_externas(filas, origen="WIS")
+
+        `filas`: iterable de dicts con
+
+            product_id   (int, obligatorio)  la variante a ajustar
+            location_id  (int, obligatorio)  la ubicación del conteo
+            cantidad     (float, obligatorio) lo contado, NUNCA la diferencia
+
+        🔴 `cantidad` es **el stock que debe quedar**, no el delta: es lo mismo
+        que dice una celda del Excel. Pasar la diferencia haría un ajuste que
+        parece correcto y deja el stock en cualquier lado.
+
+        Deja el batch en `ready`, listo para «Aplicar ajuste». No publica ni
+        aplica nada: esa sigue siendo una decisión de una persona.
+
+        Corre sincrónico y no por el cron, a diferencia del Excel: acá las
+        filas ya vienen armadas y lo que queda son consultas SQL sobre la tabla
+        de trabajo. Leer 918.061 celdas de un xlsx tarda minutos; esto no.
+        """
+        self.ensure_one()
+        if not self._es_inventario():
+            raise UserError(_("Este batch no es de ajuste de inventario."))
+        if self.state in ("applying", "posting", "reconciling"):
+            raise UserError(_("El batch está en proceso: no se puede recargar el conteo."))
+        # El responsable sí se valida —sin él el ajuste no se puede aplicar—,
+        # pero no `_validar_configuracion` entera: exige openpyxl, y acá no hay
+        # ningún archivo que leer.
+        if not self.inventory_user_id:
+            raise UserError(_("Falta completar el responsable del conteo."))
+        if not self.inventory_user_id.has_group("stock.group_stock_manager"):
+            raise UserError(_("%s no es administrador de inventario: no va a poder "
+                              "aplicar el ajuste.") % self.inventory_user_id.display_name)
+
+        filas = list(filas)
+        if not filas:
+            raise UserError(_("No hay celdas para cargar."))
+
+        faltantes = [c for c in ("product_id", "location_id", "cantidad")
+                     if any(f.get(c) is None for f in filas)]
+        if faltantes:
+            raise UserError(_("Faltan datos en las celdas recibidas: %s.")
+                            % ", ".join(sorted(set(faltantes))))
+
+        self.write(dict(self._valores_reset_carga(), state="loading",
+                        loading_step=0, loading_steps_total=len(self._inv_pasos_post_origen()) + 1,
+                        loading_phase=_("Armando el conteo"),
+                        loading_started_at=fields.Datetime.now()))
+
+        self._inv_crear_staging()
+        self._inv_insertar_celdas_externas(filas)
+        self._log("Conteo recibido de %s: %d celdas." % (origen or _("otro módulo"), len(filas)))
+
+        for i, (etiqueta, metodo) in enumerate(self._inv_pasos_post_origen(), start=2):
+            self.write({"loading_step": i - 1, "loading_phase": etiqueta})
+            metodo()
+
+        self.env.cr.execute("SELECT count(*) FROM %s" % self._staging_name())
+        total = self.env.cr.fetchone()[0]
+        self.write({"state": "ready", "total_rows": total,
+                    "loading_step": len(self._inv_pasos_post_origen()) + 1,
+                    "loading_phase": _("Listo")})
+        self._log("Staging armado desde %s. %s"
+                  % (origen or _("otro módulo"), self._resumen_staging()))
+        return True
+
+    def _inv_insertar_celdas_externas(self, filas):
+        """Vuelca las celdas recibidas en la tabla de trabajo.
+
+        La ubicación se escribe por NOMBRE, igual que la trae el Excel, para
+        que `_inv_resolver_ubicaciones` la valide como a cualquier otra: que
+        exista, que sea interna, que no esté repetida y que tenga compañía. El
+        `location_id` que nos pasaron no se usa como atajo — si no resuelve,
+        que falle acá y no al aplicar.
+        """
+        self.ensure_one()
+        ubicaciones = self.env["stock.location"].browse(
+            list({f["location_id"] for f in filas})).exists()
+        nombres = {u.id: u.complete_name for u in ubicaciones}
+        productos = self.env["product.product"].browse(
+            list({f["product_id"] for f in filas})).exists()
+        codigos = {p.id: (p.default_code or "", p.display_name or "") for p in productos}
+
+        valores = []
+        for n, fila in enumerate(filas, start=1):
+            codigo, nombre = codigos.get(fila["product_id"], ("", ""))
+            valores.append((
+                n,                                    # fila_excel: para el dedup
+                1,                                    # col_excel
+                codigo,                               # default_code (informativo)
+                nombre,                               # producto (informativo)
+                nombres.get(fila["location_id"], ""), # ubicacion, por nombre
+                str(fila["cantidad"]),                # cantidad_raw
+                fila["cantidad"],                     # cantidad
+                fila["product_id"],                   # ya resuelto
+            ))
+        execute_values(self.env.cr, """
+            INSERT INTO {t} (fila_excel, col_excel, default_code, producto,
+                             ubicacion, cantidad_raw, cantidad, product_id)
+            VALUES %s
+        """.format(t=self._staging_name()), valores, page_size=5000)
 
     def _procesar_tanda(self):
         if not self._es_inventario():

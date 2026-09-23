@@ -604,6 +604,49 @@ ubicación (el quant lo necesita igual al de la ubicación, es un related stored
 y la aplicación agrupa por compañía para valuar con la correcta. El log de carga
 muestra el reparto de ubicaciones por compañía.
 
+## Un conteo que no viene de un Excel: `cargar_celdas_externas`
+
+El archivo no es la única forma de armar un conteo. Hay una **costura pública**
+para que otro módulo entregue las celdas y el motor haga el resto:
+
+```python
+Batch = self.env.get("forum.import.batch")      # sin depender de este módulo
+if Batch is not None:
+    batch = Batch.create({"name": motivo, "import_type": "inventario",
+                          "inventory_user_id": uid, "inventory_reason": motivo})
+    batch.cargar_celdas_externas(filas, origen="WIS")
+```
+
+`filas` son dicts con `product_id`, `location_id` y `cantidad`.
+
+🔴 **`cantidad` es el stock que debe QUEDAR, no la diferencia** — lo mismo que
+dice una celda del Excel. Pasar el delta produce un ajuste que parece correcto y
+deja el stock en cualquier lado.
+
+**Se llama, no se hereda.** El primer consumidor es la conciliación de stock
+contra WIS, que vive en `integracion_wis`, un módulo **compartido entre
+clientes**: no puede depender de un módulo de Forum. Heredar `forum.import.batch`
+lo obligaría; llamar un método sólo pide que el modelo exista.
+
+El conteo externo pasa por **exactamente los mismos pasos** que el del Excel —
+`_inv_pasos_post_origen()`: resolver ubicaciones, resolver productos, filtrar
+almacenables y con lote, buscar quants, decidir la acción de cada celda y las
+estadísticas—. Si esos pasos cambian, cambian para los dos. La ubicación se
+escribe **por nombre**, igual que la trae el Excel, para que la valide el mismo
+código: que exista, que sea interna, que no esté repetida y que tenga compañía.
+
+Corre sincrónico y no por el cron, al revés que el Excel: las filas ya vienen
+armadas y lo que queda son consultas SQL sobre la tabla de trabajo. Leer 918.061
+celdas de un xlsx tarda minutos; esto no.
+
+Deja el batch en `ready`. **No aplica ni publica nada**: de ahí en adelante son
+las acciones de siempre —aplicar, publicar, conciliar—, todas por tandas y todas
+disparadas por una persona.
+
+Medido con la conciliación de WIS en `o17_support_forum`: 1.301 celdas con
+diferencia, batch en `ready` en 0,2 s, clasificadas en 1.279 «crear» y 22
+«actualizar».
+
 ## Fase 1: carga del conteo
 
 Upsert de `stock_quant` por tandas de celdas. En cada tanda:
