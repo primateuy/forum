@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- ================================================================
+         RESTRICCIONES DE CAMPO — noupdate="1" A PROPOSITO
+
+         El XML siembra la linea base en la instalacion y despues manda la
+         interfaz. Son ajustes de presentacion, de bajo riesgo, que el
+         administrador funcional va a querer tocar seguido sin pedir un
+         deploy. Si se cambian a mano, el proximo -u NO los pisa.
+
+         Lo que NO va acá: el costo. Esta capa inyecta `invisible` en los
+         nodos <field> de la vista, o sea que es cosmetica — no saca el
+         campo de fields_get ni impide un read por RPC. El costo va con
+         groups= nativo, en models/product.py y models/stock_quant_report.py.
+         ================================================================ -->
+
+    <record id="field_readonly_template_list_price" model="generic.security.restriction.field">
+        <field name="model_id" ref="product.model_product_template"/>
+        <field name="field_id" ref="product.field_product_template__list_price"/>
+        <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
+        <field name="set_readonly" eval="True"/>
+    </record>
+
+    <record id="field_readonly_product_lst_price" model="generic.security.restriction.field">
+        <field name="model_id" ref="product.model_product_product"/>
+        <field name="field_id" ref="product.field_product_product__lst_price"/>
+        <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
+        <field name="set_readonly" eval="True"/>
+    </record>
+
+    <record id="field_readonly_template_categ" model="generic.security.restriction.field">
+        <field name="model_id" ref="product.model_product_template"/>
+        <field name="field_id" ref="product.field_product_template__categ_id"/>
+        <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
+        <field name="set_readonly" eval="True"/>
+        <field name="set_no_open" eval="True"/>
+        <field name="set_no_create" eval="True"/>
+    </record>
+
+    <record id="field_readonly_template_routes" model="generic.security.restriction.field">
+        <field name="model_id" ref="product.model_product_template"/>
+        <field name="field_id" ref="stock.field_product_template__route_ids"/>
+        <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
+        <field name="set_readonly" eval="True"/>
+    </record>
+
+    <record id="field_readonly_template_sellers" model="generic.security.restriction.field">
+        <field name="model_id" ref="product.model_product_template"/>
+        <field name="field_id" ref="product.field_product_template__seller_ids"/>
+        <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
+        <field name="set_readonly" eval="True"/>
+    </record>
+
+</odoo>

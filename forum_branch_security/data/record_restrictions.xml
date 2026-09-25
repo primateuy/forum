@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="0">
+    <!-- ================================================================
+         RESTRICCIONES DE REGISTRO — noupdate="0" A PROPOSITO
+
+         El XML es la fuente de verdad. Un -u del modulo restaura la linea
+         base. Si alguien afloja un dominio a mano desde la interfaz y se
+         olvida, el proximo update lo corrige: son los recortes que, mal
+         puestos, dejan ver datos de otras sucursales.
+
+         Todos se evaluan con safe_eval sobre ir.rule._eval_context(), que
+         expone user, company_id, company_ids y time.
+
+         NO hay ninguna ir.rule nueva acá. generic_security_restriction
+         AND-ea estos dominios dentro de ir.rule._compute_domain, y saltea
+         todo cuando self.env.su es True.
+         ================================================================ -->
+
+    <record id="restrict_stock_warehouse" model="generic.security.model.restriction">
+        <field name="name">Sucursal — Almacenes propios</field>
+        <field name="model_id" ref="stock.model_stock_warehouse"/>
+        <field name="domain_type">code</field>
+        <field name="domain_code">[('id', 'in', user.branch_warehouse_ids.ids)]</field>
+        <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
+    </record>
+
+    <record id="restrict_stock_picking_type" model="generic.security.model.restriction">
+        <field name="name">Sucursal — Tipos de operación del almacén</field>
+        <field name="model_id" ref="stock.model_stock_picking_type"/>
+        <field name="domain_type">code</field>
+        <field name="domain_code">[('warehouse_id', 'in', user.branch_warehouse_ids.ids)]</field>
+        <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
+    </record>
+
+    <record id="restrict_stock_picking" model="generic.security.model.restriction">
+        <field name="name">Sucursal — Transferencias del almacén</field>
+        <field name="model_id" ref="stock.model_stock_picking"/>
+        <field name="domain_type">code</field>
+        <field name="domain_code">[('picking_type_id.warehouse_id', 'in', user.branch_warehouse_ids.ids)]</field>
+        <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
+    </record>
+
+    <!-- stock.move y stock.move.line van por UBICACION, no por picking_type.
+         Un ajuste de inventario no tiene picking_type_id, asi que un dominio
+         sobre ese campo dejaria los ajustes del propio local fuera de alcance
+         y el flujo se rompe. La ubicacion es ademas el hecho fisico: el
+         movimiento es visible si sale de una ubicacion nuestra o entra a una.
+         Eso deja ver las recepciones del CD y los despachos a otros locales,
+         que es justamente lo que el perfil necesita. -->
+    <record id="restrict_stock_move" model="generic.security.model.restriction">
+        <field name="name">Sucursal — Movimientos que tocan el almacén</field>
+        <field name="model_id" ref="stock.model_stock_move"/>
+        <field name="domain_type">code</field>
+        <field name="domain_code">['|', ('location_id', 'child_of', user.branch_warehouse_ids.view_location_id.ids), ('location_dest_id', 'child_of', user.branch_warehouse_ids.view_location_id.ids)]</field>
+        <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
+    </record>
+
+    <record id="restrict_stock_move_line" model="generic.security.model.restriction">
+        <field name="name">Sucursal — Líneas de movimiento que tocan el almacén</field>
+        <field name="model_id" ref="stock.model_stock_move_line"/>
+        <field name="domain_type">code</field>
+        <field name="domain_code">['|', ('location_id', 'child_of', user.branch_warehouse_ids.view_location_id.ids), ('location_dest_id', 'child_of', user.branch_warehouse_ids.view_location_id.ids)]</field>
+        <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
+    </record>
+
+    <!-- stock.quant.warehouse_id es related SIN store en 17.0, asi que no
+         sirve en un dominio: hay que ir por la ubicacion. -->
+    <record id="restrict_stock_quant" model="generic.security.model.restriction">
+        <field name="name">Sucursal — Existencias del almacén</field>
+        <field name="model_id" ref="stock.model_stock_quant"/>
+        <field name="domain_type">code</field>
+        <field name="domain_code">[('location_id', 'child_of', user.branch_warehouse_ids.view_location_id.ids)]</field>
+        <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
+    </record>
+
+    <!-- El dominio mas delicado del perfil. Si se cierra de mas se rompen las
+         recepciones del CD, los despachos a otros locales y las devoluciones.
+         Ademas de las ubicaciones propias entran las de transito, proveedor,
+         cliente, inventario y produccion, que son las contrapartes de esos
+         cuatro flujos. Quedan fuera las ubicaciones internas y de vista de
+         OTROS almacenes, que es lo que se quiere ocultar. -->
+    <record id="restrict_stock_location" model="generic.security.model.restriction">
+        <field name="name">Sucursal — Ubicaciones propias y contrapartes del circuito</field>
+        <field name="model_id" ref="stock.model_stock_location"/>
+        <field name="domain_type">code</field>
+        <field name="domain_code">['|', ('id', 'child_of', user.branch_warehouse_ids.view_location_id.ids), ('usage', 'in', ('supplier', 'customer', 'inventory', 'production', 'transit'))]</field>
+        <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
+    </record>
+
+    <!-- Reabastecimiento: solo lectura del propio almacen. El write, create y
+         unlink los bloquea la ACL, no este dominio. -->
+    <record id="restrict_stock_orderpoint" model="generic.security.model.restriction">
+        <field name="name">Sucursal — Reglas de reabastecimiento del almacén</field>
+        <field name="model_id" ref="stock.model_stock_warehouse_orderpoint"/>
+        <field name="domain_type">code</field>
+        <field name="domain_code">[('warehouse_id', 'in', user.branch_warehouse_ids.ids)]</field>
+        <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
+        <field name="apply_mode_read" eval="True"/>
+        <field name="apply_mode_write" eval="False"/>
+        <field name="apply_mode_create" eval="False"/>
+        <field name="apply_mode_unlink" eval="False"/>
+    </record>
+
+    <record id="restrict_pos_config" model="generic.security.model.restriction">
+        <field name="name">Sucursal — PDV del local</field>
+        <field name="model_id" ref="point_of_sale.model_pos_config"/>
+        <field name="domain_type">code</field>
+        <field name="domain_code">[('id', 'in', user.branch_warehouse_ids.branch_pos_config_ids.ids)]</field>
+        <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
+    </record>
+
+    <record id="restrict_pos_session" model="generic.security.model.restriction">
+        <field name="name">Sucursal — Sesiones de caja del local</field>
+        <field name="model_id" ref="point_of_sale.model_pos_session"/>
+        <field name="domain_type">code</field>
+        <field name="domain_code">[('config_id', 'in', user.branch_warehouse_ids.branch_pos_config_ids.ids)]</field>
+        <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
+    </record>
+
+    <!-- La busqueda de pedidos de otros locales y otras companias de
+         pos_forum_order_search_expand NO se rompe con esto: ese modulo usa
+         sudo() acotado a search_paid_order_ids y export_for_ui, y
+         generic_security_restriction saltea el recorte cuando env.su es True.
+         Hay un test que lo verifica. -->
+    <record id="restrict_pos_order" model="generic.security.model.restriction">
+        <field name="name">Sucursal — Pedidos del local</field>
+        <field name="model_id" ref="point_of_sale.model_pos_order"/>
+        <field name="domain_type">code</field>
+        <field name="domain_code">[('config_id', 'in', user.branch_warehouse_ids.branch_pos_config_ids.ids)]</field>
+        <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
+    </record>
+
+    <!-- ================================================================
+         NEGACIONES POR MODO
+
+         ir.model.access es ADITIVA: las ACL de varios grupos se combinan con
+         OR, asi que agregar una ACL mas restrictiva para el perfil no recorta
+         nada mientras stock.group_stock_user o point_of_sale.group_pos_user
+         sigan otorgando el permiso. La unica forma de bajar por debajo de un
+         grupo implicado —sin dejar de implicarlo— es un dominio que no
+         matchee nada, aplicado solo al modo que se quiere cerrar.
+
+         Los cuatro huecos verificados sobre la base:
+           pos.config          write
+           pos.order           unlink
+           pos.session         (write y create quedan: los necesita la caja)
+           stock.picking.type  create
+         ================================================================ -->
+
+    <record id="deny_pos_config_write" model="generic.security.model.restriction">
+        <field name="name">Sucursal — No configura el PDV</field>
+        <field name="model_id" ref="point_of_sale.model_pos_config"/>
+        <field name="domain_type">code</field>
+        <field name="domain_code">[('id', '=', False)]</field>
+        <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
+        <field name="apply_mode_read" eval="False"/>
+        <field name="apply_mode_write" eval="True"/>
+        <field name="apply_mode_create" eval="True"/>
+        <field name="apply_mode_unlink" eval="True"/>
+    </record>
+
+    <record id="deny_pos_order_unlink" model="generic.security.model.restriction">
+        <field name="name">Sucursal — No borra pedidos de PDV</field>
+        <field name="model_id" ref="point_of_sale.model_pos_order"/>
+        <field name="domain_type">code</field>
+        <field name="domain_code">[('id', '=', False)]</field>
+        <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
+        <field name="apply_mode_read" eval="False"/>
+        <field name="apply_mode_write" eval="False"/>
+        <field name="apply_mode_create" eval="False"/>
+        <field name="apply_mode_unlink" eval="True"/>
+    </record>
+
+    <record id="deny_picking_type_create" model="generic.security.model.restriction">
+        <field name="name">Sucursal — No crea tipos de operación</field>
+        <field name="model_id" ref="stock.model_stock_picking_type"/>
+        <field name="domain_type">code</field>
+        <field name="domain_code">[('id', '=', False)]</field>
+        <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
+        <field name="apply_mode_read" eval="False"/>
+        <field name="apply_mode_write" eval="True"/>
+        <field name="apply_mode_create" eval="True"/>
+        <field name="apply_mode_unlink" eval="True"/>
+    </record>
+
+</odoo>

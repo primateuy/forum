@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- ================================================================
+         LISTA BLANCA DE MENUS — noupdate="1" A PROPOSITO
+
+         Lista blanca (menu_access_only), no lista negra. Es mas segura —lo
+         que no esta listado no se ve, incluidos los menus que agregue un
+         modulo nuevo manana— y mas facil de auditar.
+
+         El XML siembra la linea base y despues manda la interfaz: agregar o
+         sacar un menu del perfil es algo que el administrador funcional va a
+         hacer seguido y no justifica un deploy. Un -u NO pisa los cambios.
+
+         QUEDAN FUERA, por omision: Contabilidad, Ventas, Compras,
+         Configuracion de Inventario (almacenes, ubicaciones, rutas, tipos de
+         operacion, reabastecimiento), Configuracion de PDV, Promociones,
+         Listas de precios, alta y edicion de Productos, Empleados, Ajustes,
+         el menu Tecnico y Valoracion de inventario.
+
+         TODO Tablero: sin definir si la reporteria de locales va por Odoo o
+         por Hinweiss. Hasta que se decida, el perfil no tiene ningun tablero.
+         ================================================================ -->
+
+    <record id="group_branch_user" model="res.groups">
+        <field name="menu_access_only" eval="[(6, 0, [
+            ref('stock.menu_stock_root'),
+            ref('stock.menu_stock_warehouse_mgmt'),
+            ref('stock.menu_stock_transfers'),
+            ref('stock.menu_stock_adjustments'),
+            ref('stock.stock_picking_type_menu'),
+            ref('stock.menu_stock_inventory_control'),
+            ref('forum_branch_security.menu_stock_query_branch'),
+            ref('point_of_sale.menu_point_root'),
+            ref('point_of_sale.menu_pos_dashboard'),
+            ref('point_of_sale.menu_point_of_sale'),
+            ref('point_of_sale.menu_pos_session_all'),
+            ref('point_of_sale.menu_point_ofsale'),
+            ref('stock_barcode.stock_barcode_menu'),
+            ref('knowledge.knowledge_menu_root'),
+        ])]"/>
+    </record>
+
+</odoo>
