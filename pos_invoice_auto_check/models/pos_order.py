@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 # Part of BrowseInfo. See LICENSE file for full copyright and licensing details.
 
-from odoo import models, fields,_
+from odoo import models, fields, _
+from odoo.exceptions import UserError
 import base64
 
 
@@ -22,7 +23,13 @@ class POSOrder(models.Model):
                 continue
 
             if not order.partner_id:
-                raise UserError(_('Please provide a partner for the sale.'))
+                # UserError no estaba importado: esto reventaba con NameError y le
+                # llegaba al PDV un 500 en vez de un mensaje entendible.
+                raise UserError(_(
+                    "La venta %s se factura pero no tiene cliente asignado. "
+                    "Seleccione un cliente en el PDV y vuelva a validar.",
+                    order.pos_reference or order.name or '',
+                ))
 
             move_vals = order._prepare_invoice_vals()
             new_move = order._create_invoice(move_vals)

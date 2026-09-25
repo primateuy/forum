@@ -3,7 +3,7 @@
 
 {
     "name" : "POS Invoice Auto Check in odoo",
-    "version" : "17.0.0.2",
+    "version" : "17.0.0.3",
     "category" : "Point of Sale",
     "depends" : ['base','sale','point_of_sale'],
     "author": "BROWSEINFO",

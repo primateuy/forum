@@ -48,9 +48,29 @@ patch(PaymentScreen.prototype, {
             let hasError;
 
             // 1. Save order to server.
+            //
+            // 🔴 El bloqueo de pantalla va con try/finally SIEMPRE. Acá es donde
+            // el servidor emite el CFE, y cualquier error de facturación
+            // electrónica —un receptor sin configurar, Uruware caído, un dato
+            // fiscal faltante— sale por excepción. Con el `unblock` suelto detrás
+            // de la llamada, esa excepción se lo saltea y el velo de bloqueo queda
+            // puesto: el PDV no responde más. Peor: el servicio ui lleva un
+            // contador, así que cada intento fallido deja un bloqueo colgado y ya
+            // no se recupera ni con una operación posterior exitosa; hay que
+            // recargar el PDV. El PDV nunca debe quedar trancado por un error de
+            // facturación: la venta ya está cobrada y el cajero tiene que poder
+            // corregir y reintentar.
+            //
+            // De desmarcar la orden se encarga el core: ante un error que no sea
+            // de conexión, _flush_orders le pone finalized = false y la devuelve a
+            // «no pagada», así que queda editable para reintentar.
+            let syncOrderResult;
             this.env.services.ui.block();
-            const syncOrderResult = await this.pos.push_single_order(this.currentOrder);
-            this.env.services.ui.unblock();
+            try {
+                syncOrderResult = await this.pos.push_single_order(this.currentOrder);
+            } finally {
+                this.env.services.ui.unblock();
+            }
 
             if (syncOrderResult instanceof ConnectionLostError) {
                 this.pos.showScreen(this.nextScreen);
