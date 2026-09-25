@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <t t-name="pos_forum_cfe_pendiente.CfePendienteScreen">
+        <div class="screen d-flex flex-column align-items-center justify-content-center h-100 p-4 bg-100">
+            <div class="text-center" style="max-width: 640px;">
+                <i class="fa fa-exclamation-triangle text-warning mb-3" style="font-size: 3.5rem;"/>
+                <h2 class="mb-2">No se pudo emitir el comprobante fiscal</h2>
+                <p class="text-muted mb-4">
+                    La venta <b t-esc="referencia"/> quedó registrada y la factura está en
+                    borrador. Resolvé el problema y reintentá la emisión: hasta que el
+                    comprobante salga, esta caja no puede seguir operando ni cerrarse.
+                </p>
+
+                <div class="alert alert-danger text-start" t-if="state.error">
+                    <div class="fw-bold mb-1">Motivo</div>
+                    <div style="white-space: pre-wrap;" t-esc="state.error"/>
+                </div>
+
+                <div class="text-muted mb-3" t-if="state.intentos">
+                    Intentos de emisión: <b t-esc="state.intentos"/>
+                </div>
+
+                <button class="btn btn-primary btn-lg w-100"
+                        t-att-disabled="state.reintentando"
+                        t-on-click="reintentar">
+                    <t t-if="state.reintentando">
+                        <i class="fa fa-circle-o-notch fa-spin me-2"/>Emitiendo…
+                    </t>
+                    <t t-else="">
+                        <i class="fa fa-refresh me-2"/>Reintentar emisión
+                    </t>
+                </button>
+            </div>
+        </div>
+    </t>
+
+    <!--
+        Mientras hay una emisión pendiente se oculta la barra superior: es la
+        única forma de que no se pueda salir de la pantalla por «Órdenes», por
+        el cambio de caja o por el botón de cerrar.
+    -->
+    <t t-name="pos_forum_cfe_pendiente.ChromeSinBarra" t-inherit="point_of_sale.Chrome" t-inherit-mode="extension">
+        <xpath expr="//Navbar" position="attributes">
+            <attribute name="t-if">!pos.cfeEmisionPendiente</attribute>
+        </xpath>
+    </t>
+
+</templates>

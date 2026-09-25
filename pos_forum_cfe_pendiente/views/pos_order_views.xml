@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!--
+            Las ventas con la emisión pendiente tienen que poder encontrarse desde
+            el backend: son las que trancan el cierre de caja.
+        -->
+        <record id="view_pos_order_form_cfe_pendiente" model="ir.ui.view">
+            <field name="name">pos.order.form.cfe.pendiente</field>
+            <field name="model">pos.order</field>
+            <field name="inherit_id" ref="point_of_sale.view_pos_pos_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='session_id']" position="after">
+                    <field name="cfe_emision_pendiente" readonly="1"/>
+                    <field name="cfe_emision_intentos" readonly="1"
+                           invisible="not cfe_emision_pendiente"/>
+                    <field name="cfe_emision_ultimo_intento" readonly="1"
+                           invisible="not cfe_emision_pendiente"/>
+                    <field name="cfe_emision_error" readonly="1"
+                           invisible="not cfe_emision_pendiente"/>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="view_pos_order_filter_cfe_pendiente" model="ir.ui.view">
+            <field name="name">pos.order.search.cfe.pendiente</field>
+            <field name="model">pos.order</field>
+            <field name="inherit_id" ref="point_of_sale.view_pos_order_filter"/>
+            <field name="arch" type="xml">
+                <xpath expr="//filter[@name='order_date']" position="before">
+                    <filter name="cfe_emision_pendiente" string="CFE sin emitir"
+                            domain="[('cfe_emision_pendiente', '=', True)]"/>
+                    <separator/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>
