@@ -401,3 +401,58 @@ qty_to_order es un stored compute con readonly=False. Si Odoo lo recalcula (camb
 product_min_qty, el pronóstico, etc.) el reparto se pierde, igual que antes de este cambio.
 La diferencia es que ahora la foto lo hace recuperable con "Restaurar Demanda Original". No
 se agregó ninguna guarda contra el recálculo: sería pelearse con el campo del core.
+
+
+17.0.2.2.1 — el recálculo del faltante no terminaba
+---------------------------------------------------
+
+Detectado al verificar el deploy sobre 17.0.staging (02/09/2026), después del merge del
+PR #12. "Recalcular Faltante en Origen" se colgó más de diez minutos sin escribir una sola
+fila; en la 17.0.2.1.0 el mismo recálculo tardaba 18 segundos.
+
+## La causa: volvió el error cuadrático, por otra puerta
+
+_write_origin_qty_shortfall acumulaba recordsets dentro del loop:
+
+    alcanzadas |= datos['orderpoints']      # una unión por grupo (9.773)
+    por_valor[valor] |= op                  # una unión por regla (204.897)
+
+Cada `|=` copia la tupla entera de ids, así que el costo crece con el cuadrado de lo ya
+acumulado. Es exactamente lo que la 17.0.2.0.0 había corregido en el agrupador y dejado
+anotado ("si se vuelve a tocar este agrupador, no volver a instanciar recordsets por
+registro"): la advertencia estaba en el agrupador, pero el escritor hacía lo mismo.
+
+No se notó antes porque la 17.0.2.2.0 cambió el dominio de candidatas a la demanda EFECTIVA:
+las candidatas pasaron de ~63.000 a 204.897 y el costo cuadrático se multiplicó por diez.
+
+`alcanzadas` era además una variable muerta: se acumulaba y no se usaba en ningún lado.
+
+## La corrección
+
+- Se acumulan ids en listas, no recordsets, y se instancia con browse() una sola vez, al
+  escribir.
+- Se elimina `alcanzadas`.
+- _group_candidates_by_origin recorre las candidatas con search_read en vez de search + loop
+  sobre el recordset: solo necesita tres enteros por fila, y no hace falta instanciar 204.897
+  registros para leer dos many2one.
+
+## Medido sobre o17_forum (02/09/2026)
+
+  antes:  > 10 min sin terminar (cortado)
+  ahora:  18,0 s
+
+Mismo resultado, no solo más rápido: 204.815 reglas escritas, 545.979 unidades de faltante,
+idéntico al total que devuelve el motor de agrupación, y 0 filas con decimales (la invariante
+del reparto por resto mayor sigue en pie).
+
+7 checks en verde: columna igual al motor, el filtro de no cumplibles responde en 2,1 s,
+campo y filtro coinciden, cumplibles y no cumplibles disjuntos, el camino restrict_to (el que
+usan la pantalla y el wizard) escribe el grupo completo en 0,03 s y sin decimales, y la
+validación bloqueante sigue agrupando por qty_to_order y no por la demanda efectiva.
+
+## Al desplegar
+
+El faltante es un valor almacenado que solo se puebla con la acción de recálculo. Después de
+actualizar el módulo hay que correr "Recalcular Faltante en Origen" desde el menú Acciones de
+la lista de Reabastecimiento; si no, la columna queda en cero y parece que no hay faltante.
+Con esta corrección la acción entra cómoda en el tiempo de una petición web; antes no.
