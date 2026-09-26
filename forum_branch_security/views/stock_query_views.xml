@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ================================================================
+         CONSULTA DE STOCK PARA EL PERFIL
+
+         El menu que existe hoy apunta a la accion "Costo por ubicacion",
+         cuya vista por defecto es un PIVOT. En un pivot las medidas se
+         eligen en runtime desde un desplegable que se arma con fields_get:
+         mutilar esa accion no alcanza, porque el usuario agregaria la
+         medida de costo a mano.
+
+         En vez de mutilarla se crea una accion propia, en vista lista, con
+         las columnas de disponibilidad y ninguna de valor. El groups= de
+         los campos de costo (models/stock_quant_report.py) es el que hace
+         la seguridad de verdad; esto es la pantalla correcta para el puesto.
+         ================================================================ -->
+
+    <record id="view_stock_query_branch_tree" model="ir.ui.view">
+        <field name="name">stock.quant.product.location.report.branch.tree</field>
+        <field name="model">stock.quant.product.location.report</field>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <tree string="Consulta de stock" create="false" edit="false" delete="false">
+                <field name="product_id"/>
+                <field name="product_tmpl_id" optional="hide"/>
+                <field name="location_id"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                <field name="quantity" sum="Disponible"/>
+                <field name="reserved_quantity" sum="Reservado" optional="show"/>
+                <field name="available_quantity" sum="No reservado" optional="show"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_stock_query_branch_search" model="ir.ui.view">
+        <field name="name">stock.quant.product.location.report.branch.search</field>
+        <field name="model">stock.quant.product.location.report</field>
+        <field name="arch" type="xml">
+            <search string="Consulta de stock">
+                <field name="product_id"/>
+                <field name="location_id"/>
+                <filter name="con_stock" string="Con existencia" domain="[('quantity', '&gt;', 0)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_product" string="Producto" context="{'group_by': 'product_id'}"/>
+                    <filter name="group_location" string="Ubicación" context="{'group_by': 'location_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_stock_query_branch" model="ir.actions.act_window">
+        <field name="name">Consulta de stock</field>
+        <field name="res_model">stock.quant.product.location.report</field>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="view_stock_query_branch_tree"/>
+        <field name="search_view_id" ref="view_stock_query_branch_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No hay existencias para esa búsqueda</p>
+            <p>Buscá un artículo para ver su disponibilidad por ubicación y por talle.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_stock_query_branch"
+              name="Consulta de stock"
+              parent="stock.menu_stock_inventory_control"
+              action="action_stock_query_branch"
+              sequence="15"
+              groups="forum_branch_security.group_branch_user"/>
+
+</odoo>

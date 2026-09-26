@@ -1,0 +1,12 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_branch_stock_query,Sucursal - Consulta de stock,tchistorico.model_stock_quant_product_location_report,forum_branch_security.group_branch_user,1,0,0,0
+access_branch_warehouse,Sucursal - Almacenes,stock.model_stock_warehouse,forum_branch_security.group_branch_user,1,0,0,0
+access_branch_location,Sucursal - Ubicaciones,stock.model_stock_location,forum_branch_security.group_branch_user,1,0,0,0
+access_branch_route,Sucursal - Rutas,stock.model_stock_route,forum_branch_security.group_branch_user,1,0,0,0
+access_branch_picking_type,Sucursal - Tipos de operacion,stock.model_stock_picking_type,forum_branch_security.group_branch_user,1,0,0,0
+access_branch_orderpoint,Sucursal - Reglas de reabastecimiento,stock.model_stock_warehouse_orderpoint,forum_branch_security.group_branch_user,1,0,0,0
+access_branch_pos_config,Sucursal - PDV,point_of_sale.model_pos_config,forum_branch_security.group_branch_user,1,0,0,0
+access_branch_product_template,Sucursal - Productos,product.model_product_template,forum_branch_security.group_branch_user,1,0,0,0
+access_branch_product_product,Sucursal - Variantes,product.model_product_product,forum_branch_security.group_branch_user,1,0,0,0
+access_branch_pricelist,Sucursal - Listas de precios,product.model_product_pricelist,forum_branch_security.group_branch_user,1,0,0,0
+access_branch_loyalty_program,Sucursal - Programas de lealtad,loyalty.model_loyalty_program,forum_branch_security.group_branch_user,1,0,0,0

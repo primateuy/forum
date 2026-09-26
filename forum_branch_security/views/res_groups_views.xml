@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ================================================================
+         VISTA CONSOLIDADA DEL PERFIL
+
+         El objetivo concreto: abrir Ajustes > Usuarios y Companias > Grupos >
+         Usuario Sucursal y ver en UNA pantalla todo lo que el perfil puede y
+         no puede hacer, y poder cambiarlo ahi mismo.
+
+         Antes habia que mirar en cinco lugares: la pestana de menus del
+         grupo, los Security Fields en ir.model, el menu de
+         generic.security.model.restriction, cada ir.actions.report uno por
+         uno, y los permisos de acceso en Tecnico.
+         ================================================================ -->
+
+    <record id="view_groups_form_branch_profile" model="ir.ui.view">
+        <field name="name">res.groups.form.branch.profile</field>
+        <field name="model">res.groups</field>
+        <field name="inherit_id" ref="base.view_groups_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+
+                <page string="Menús" name="branch_menus">
+                    <div class="text-muted mb-2">
+                        Lista blanca: si está vacía el grupo ve todos los menús que le
+                        permitan sus grupos implicados. Si tiene algo, el grupo ve
+                        <strong>solo</strong> lo listado.
+                    </div>
+                    <field name="menu_access_only" nolabel="1">
+                        <tree>
+                            <field name="complete_name"/>
+                        </tree>
+                    </field>
+                </page>
+
+                <page string="Registros" name="branch_records">
+                    <div class="text-muted mb-2">
+                        Dominios que se AND-ean dentro de
+                        <code>ir.rule._compute_domain</code>. Solo recortan: nunca
+                        amplían lo que una regla global ya permite ver.
+                        <strong>Un -u del módulo restaura estos dominios.</strong>
+                    </div>
+                    <field name="model_restriction_ids" nolabel="1">
+                        <tree editable="bottom">
+                            <field name="name"/>
+                            <field name="model_id"/>
+                            <field name="domain_type"/>
+                            <field name="domain_code"/>
+                            <field name="apply_mode_read" string="L"/>
+                            <field name="apply_mode_write" string="E"/>
+                            <field name="apply_mode_create" string="C"/>
+                            <field name="apply_mode_unlink" string="B"/>
+                            <field name="active" optional="show"/>
+                        </tree>
+                    </field>
+                </page>
+
+                <page string="Campos" name="branch_fields">
+                    <div class="text-muted mb-2">
+                        Capa de <strong>presentación</strong>: inyecta
+                        <code>invisible</code> o <code>readonly</code> en los nodos
+                        <code>&lt;field&gt;</code> de la vista. No saca el campo de
+                        <code>fields_get</code> ni impide un <code>read</code> por RPC.
+                        Para el costo se usa <code>groups=</code> nativo, que no aparece
+                        acá. Estos cambios sobreviven a un -u.
+                    </div>
+                    <field name="branch_field_restriction_ids" nolabel="1">
+                        <tree editable="bottom">
+                            <field name="model_id"/>
+                            <field name="field_id"/>
+                            <field name="set_invisible"/>
+                            <field name="set_readonly"/>
+                            <field name="hide_stat_button"/>
+                            <field name="set_no_open" optional="hide"/>
+                            <field name="set_no_create" optional="hide"/>
+                        </tree>
+                    </field>
+                </page>
+
+                <page string="Reportes" name="branch_reports">
+                    <div class="text-muted mb-2">
+                        Reportes bloqueados. Se bloquean también en backend, en
+                        <code>report_action</code>, no solo en la interfaz.
+                    </div>
+                    <field name="hidden_report_ids" nolabel="1">
+                        <tree>
+                            <field name="name"/>
+                            <field name="model"/>
+                            <field name="report_type"/>
+                        </tree>
+                    </field>
+                </page>
+
+                <page string="Permisos" name="branch_access">
+                    <div class="text-muted mb-2">
+                        Las ACL del grupo. <strong>Un -u del módulo las restaura</strong>:
+                        destildar una acá y olvidarse es lo que ya rompió el
+                        <code>load_pos_data</code> del POS en dos bases.
+                    </div>
+                    <field name="branch_access_ids" nolabel="1">
+                        <tree editable="bottom">
+                            <field name="name"/>
+                            <field name="model_id"/>
+                            <field name="perm_read"/>
+                            <field name="perm_write"/>
+                            <field name="perm_create"/>
+                            <field name="perm_unlink"/>
+                        </tree>
+                    </field>
+                </page>
+
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

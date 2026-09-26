@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ================================================================
+         El perfil es una CATEGORIA con varios grupos, no un grupo suelto.
+         Cuando una categoria tiene mas de un grupo, Odoo la renderiza en el
+         formulario de usuario como un desplegable en vez de checkboxes: en la
+         ficha se lee "Perfil: Usuario Sucursal" y se cambia desde ahi.
+         ================================================================ -->
+    <record id="module_category_forum_profile" model="ir.module.category">
+        <field name="name">FORUM / Perfil</field>
+        <field name="description">Perfiles de puesto de FORUM. Cada usuario tiene uno.</field>
+        <field name="sequence">5</field>
+    </record>
+
+    <record id="group_branch_user" model="res.groups">
+        <field name="name">Usuario Sucursal</field>
+        <field name="category_id" ref="module_category_forum_profile"/>
+        <field name="implied_ids" eval="[(6, 0, [
+            ref('stock.group_stock_user'),
+            ref('point_of_sale.group_pos_user'),
+        ])]"/>
+        <field name="allowed_use_debug_mode" eval="False"/>
+        <field name="comment">Usuario de local. Opera el inventario de su sucursal y la
+            caja de su PDV. No ve costos ni margenes, no configura nada, y no ve datos de
+            otras sucursales.</field>
+    </record>
+
+    <record id="group_branch_supervisor" model="res.groups">
+        <field name="name">Supervisor de Sucursal</field>
+        <field name="category_id" ref="module_category_forum_profile"/>
+        <field name="implied_ids" eval="[(6, 0, [ref('group_branch_user')])]"/>
+        <field name="allowed_use_debug_mode" eval="False"/>
+        <field name="comment">Mismo perfil que Usuario Sucursal. La diferencia la hace el
+            dato, no el grupo: un supervisor tiene varias sucursales asignadas en
+            branch_warehouse_ids y por eso los dominios le devuelven todas.</field>
+    </record>
+
+    <!-- ================================================================
+         Grupo que habilita ver el costo.
+
+         No lo implica nadie a proposito. Si lo implicara base.group_user lo
+         tendria todo el mundo, incluido el perfil sucursal, y no serviria de
+         nada: los grupos solo suman, no restan.
+
+         La migracion se lo otorga a todos los usuarios internos actuales
+         MENOS a los del perfil sucursal, asi que el dia del deploy no cambia
+         nada para nadie. Despues se saca gente deliberadamente.
+
+         Consecuencia operativa: un usuario interno nuevo NO lo recibe solo.
+         Hay que darselo a mano o el costo le queda oculto.
+         ================================================================ -->
+    <record id="group_product_cost" model="res.groups">
+        <field name="name">Ver costo de productos</field>
+        <field name="category_id" ref="base.module_category_hidden"/>
+        <field name="comment">Habilita los campos de costo y valoracion. Odoo lo aplica
+            en fields_get y en el read del ORM: sin este grupo el campo no se lee, no
+            viaja al cliente y no aparece entre las medidas de un pivot.</field>
+    </record>
+
+</odoo>
