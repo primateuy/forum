@@ -3,13 +3,20 @@
 El perfil de permisos del usuario de local. Se apoya en el ancla de sucursal de
 `retail_branch`, que vive en `retail-ecommerce/` y no depende de ningún módulo de pago.
 
-## Para el administrador funcional: qué podés tocar y qué se revierte
+## Para el administrador funcional
+
+> ⚠️ **Dar de alta a alguien en el perfil son dos pasos.** Asignarle *Usuario Sucursal* no
+> le quita *Ver costo de productos*: hay que destildarlo aparte o va a seguir viendo el
+> costo mientras el resto del recorte funciona. Ver
+> [Asignar el perfil son DOS pasos](#asignar-el-perfil-son-dos-pasos-no-uno).
+
+### Qué podés tocar y qué se revierte
 
 Esta es la regla, y está partida a propósito. Lo que cambia seguido y es de bajo riesgo
 queda bajo control de la interfaz; lo que rompe cosas si queda mal se restaura con un
 `-u`.
 
-### Podés cambiarlo desde la interfaz y **sobrevive** a un update
+#### Podés cambiarlo desde la interfaz y **sobrevive** a un update
 
 | Qué | Dónde |
 |---|---|
@@ -17,7 +24,7 @@ queda bajo control de la interfaz; lo que rompe cosas si queda mal se restaura c
 | Campos ocultos o de solo lectura | pestaña **Campos** |
 | Reportes bloqueados | pestaña **Reportes** |
 
-### Se **revierte** en el próximo update
+#### Se **revierte** en el próximo update
 
 | Qué | Por qué |
 |---|---|
@@ -86,6 +93,35 @@ El atributo `groups=` nativo sí: Odoo lo aplica en `fields_get` y en el `read` 
 > que dárselo a mano o el costo le queda oculto. El grupo no lo implica nadie a propósito:
 > si lo implicara `base.group_user` lo tendría todo el mundo, incluido el perfil sucursal,
 > y no serviría de nada.
+
+#### Asignar el perfil son DOS pasos, no uno
+
+**Poner a alguien en el perfil Usuario Sucursal no le quita el grupo de costo.** Son grupos
+independientes, y los grupos en Odoo solo suman.
+
+Un usuario que ya existía cuando se instaló el módulo recibió `group_product_cost` por la
+siembra de radio cero. Si después le asignás el perfil y no hacés nada más, **va a seguir
+viendo el costo**, y todo lo demás del recorte va a funcionar igual — lo que hace fácil dar
+por bueno un perfil que todavía filtra costos.
+
+Para que el recorte de costo aplique hay que hacer las dos cosas:
+
+1. Ficha del usuario → **FORUM / Perfil** → *Usuario Sucursal*
+2. **Destildar** *Ver costo de productos* en la pestaña de permisos
+
+Esto es lo que quiere decir "después se saca gente deliberadamente": la siembra monta el
+mecanismo sin mover a nadie, y cada quita es una decisión explícita.
+
+**Cómo verificarlo**, sin depender de mirar una pantalla:
+
+```python
+e = env(user=usuario)
+'standard_price' in e['product.template'].fields_get()          # False si quedó bien
+[c for c in ('value_report', 'management_cost', 'management_value', 'management_rate')
+ if c in e['stock.quant.product.location.report'].fields_get()]  # [] si quedó bien
+```
+
+Si el campo sigue apareciendo en `fields_get`, el usuario conserva el grupo de costo.
 
 ### La Consulta de Stock: acción propia, no mutilada
 
