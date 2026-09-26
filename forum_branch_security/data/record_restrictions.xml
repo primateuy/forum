@@ -32,11 +32,24 @@
         <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
     </record>
 
+    <!-- Tres ramas, y la tercera no es opcional:
+           1. los pickings de los almacenes del local
+           2. los del PDV propio, acotados por la sesion
+           3. los del tipo de operacion del PDV que TODAVIA no tienen sesion
+
+         El POS crea el picking sin pos_session_id, le agrega los movimientos,
+         hace _action_done() y RECIEN DESPUES escribe la sesion
+         (pos_order.py:1041). Sin la tercera rama, crear el picking del cierre de
+         caja da AccessError: al momento del create ninguna de las otras dos
+         matchea. Y no alcanza con abrir por tipo de operacion a secas, porque el
+         tipo "Ordenes de PdV" del almacen tecnico lo comparten los cuatro
+         locales de la franquicia: la condicion de sesion vacia limita la apertura
+         a los pickings en vuelo. -->
     <record id="restrict_stock_picking" model="generic.security.model.restriction">
         <field name="name">Sucursal — Transferencias del almacén</field>
         <field name="model_id" ref="stock.model_stock_picking"/>
         <field name="domain_type">code</field>
-        <field name="domain_code">['|', ('picking_type_id.warehouse_id', 'in', user.branch_warehouse_ids.ids), ('pos_session_id.config_id', 'in', user.branch_warehouse_ids.branch_pos_config_ids.ids)]</field>
+        <field name="domain_code">['|', '|', ('picking_type_id.warehouse_id', 'in', user.branch_warehouse_ids.ids), ('pos_session_id.config_id', 'in', user.branch_warehouse_ids.branch_pos_config_ids.ids), '&amp;', ('picking_type_id', 'in', user._branch_pos_picking_type_ids()), ('pos_session_id', '=', False)]</field>
         <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
     </record>
 
