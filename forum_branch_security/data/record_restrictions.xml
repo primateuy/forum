@@ -28,7 +28,7 @@
         <field name="name">Sucursal — Tipos de operación del almacén</field>
         <field name="model_id" ref="stock.model_stock_picking_type"/>
         <field name="domain_type">code</field>
-        <field name="domain_code">[('warehouse_id', 'in', user.branch_warehouse_ids.ids)]</field>
+        <field name="domain_code">['|', ('warehouse_id', 'in', user.branch_warehouse_ids.ids), ('id', 'in', user._branch_pos_picking_type_ids())]</field>
         <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
     </record>
 
@@ -36,7 +36,7 @@
         <field name="name">Sucursal — Transferencias del almacén</field>
         <field name="model_id" ref="stock.model_stock_picking"/>
         <field name="domain_type">code</field>
-        <field name="domain_code">[('picking_type_id.warehouse_id', 'in', user.branch_warehouse_ids.ids)]</field>
+        <field name="domain_code">['|', ('picking_type_id.warehouse_id', 'in', user.branch_warehouse_ids.ids), ('pos_session_id.config_id', 'in', user.branch_warehouse_ids.branch_pos_config_ids.ids)]</field>
         <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
     </record>
 
@@ -51,7 +51,7 @@
         <field name="name">Sucursal — Movimientos que tocan el almacén</field>
         <field name="model_id" ref="stock.model_stock_move"/>
         <field name="domain_type">code</field>
-        <field name="domain_code">['|', ('location_id', 'child_of', user.branch_warehouse_ids.view_location_id.ids), ('location_dest_id', 'child_of', user.branch_warehouse_ids.view_location_id.ids)]</field>
+        <field name="domain_code">['|', ('location_id', 'child_of', user._branch_view_location_ids()), ('location_dest_id', 'child_of', user._branch_view_location_ids())]</field>
         <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
     </record>
 
@@ -59,7 +59,7 @@
         <field name="name">Sucursal — Líneas de movimiento que tocan el almacén</field>
         <field name="model_id" ref="stock.model_stock_move_line"/>
         <field name="domain_type">code</field>
-        <field name="domain_code">['|', ('location_id', 'child_of', user.branch_warehouse_ids.view_location_id.ids), ('location_dest_id', 'child_of', user.branch_warehouse_ids.view_location_id.ids)]</field>
+        <field name="domain_code">['|', ('location_id', 'child_of', user._branch_view_location_ids()), ('location_dest_id', 'child_of', user._branch_view_location_ids())]</field>
         <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
     </record>
 
@@ -69,7 +69,7 @@
         <field name="name">Sucursal — Existencias del almacén</field>
         <field name="model_id" ref="stock.model_stock_quant"/>
         <field name="domain_type">code</field>
-        <field name="domain_code">[('location_id', 'child_of', user.branch_warehouse_ids.view_location_id.ids)]</field>
+        <field name="domain_code">[('location_id', 'child_of', user._branch_view_location_ids())]</field>
         <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
     </record>
 
@@ -83,7 +83,7 @@
         <field name="name">Sucursal — Ubicaciones propias y contrapartes del circuito</field>
         <field name="model_id" ref="stock.model_stock_location"/>
         <field name="domain_type">code</field>
-        <field name="domain_code">['|', ('id', 'child_of', user.branch_warehouse_ids.view_location_id.ids), ('usage', 'in', ('supplier', 'customer', 'inventory', 'production', 'transit'))]</field>
+        <field name="domain_code">['|', ('id', 'child_of', user._branch_view_location_ids()), ('usage', 'in', ('supplier', 'customer', 'inventory', 'production', 'transit'))]</field>
         <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
     </record>
 
