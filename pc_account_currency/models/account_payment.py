@@ -45,25 +45,26 @@ class AccountPayment(models.Model):
         return res
 
     def change_account_payment(self):
-        if self.payment_id.account_journal_id:
-            account_id = self.payment_id.account_journal_id.account_currency_ids.filtered(lambda l: l.currency_id == self.currency_id).account_id
-            currency_account_receivable = self.partner_id.property_account_receivable_id.currency_id.id if self.partner_id.property_account_receivable_id.currency_id else self.env.company.currency_id.id
-            if self.payment_id.account_journal_id.type == 'sale' and self.currency_id.id == currency_account_receivable:
-                account_id = self.partner_id.property_account_receivable_id
+        # Se itera porque action_post puede llegar con varios pagos (publicación masiva)
+        for rec in self:
+            if rec.payment_id.account_journal_id:
+                account_id = rec.payment_id.account_journal_id.account_currency_ids.filtered(lambda l: l.currency_id == rec.currency_id).account_id
+                currency_account_receivable = rec.partner_id.property_account_receivable_id.currency_id.id if rec.partner_id.property_account_receivable_id.currency_id else self.env.company.currency_id.id
+                if rec.payment_id.account_journal_id.type == 'sale' and rec.currency_id.id == currency_account_receivable:
+                    account_id = rec.partner_id.property_account_receivable_id
 
-            currency_account_payable = self.partner_id.property_account_payable_id.currency_id.id if self.partner_id.property_account_payable_id.currency_id else self.env.company.currency_id.id
-            if self.payment_id.account_journal_id.type == 'purchase' and self.currency_id.id == currency_account_payable:
-                account_id = self.partner_id.property_account_payable_id
+                currency_account_payable = rec.partner_id.property_account_payable_id.currency_id.id if rec.partner_id.property_account_payable_id.currency_id else self.env.company.currency_id.id
+                if rec.payment_id.account_journal_id.type == 'purchase' and rec.currency_id.id == currency_account_payable:
+                    account_id = rec.partner_id.property_account_payable_id
 
-            if account_id and self.move_id.journal_id.type != 'general':
-                for line in self.move_id.line_ids.filtered(lambda l: l.account_id.account_type in ('asset_receivable', 'liability_payable')):
-                    line.account_id = account_id
-        else:
-            AccountAccount = self.env['account.journal']
-            journal_ids = False
-            if self.payment_id.partner_type == 'customer':
-                journal_ids = AccountAccount.search([('type', '=', 'sale')], limit=1)
-            elif self.payment_id.partner_type == 'supplier':
-                journal_ids = AccountAccount.search([('type', '=', 'purchase')], limit=1)
-            self.payment_id.account_journal_id = journal_ids
-
+                if account_id and rec.move_id.journal_id.type != 'general':
+                    for line in rec.move_id.line_ids.filtered(lambda l: l.account_id.account_type in ('asset_receivable', 'liability_payable')):
+                        line.account_id = account_id
+            else:
+                AccountAccount = self.env['account.journal']
+                journal_ids = False
+                if rec.payment_id.partner_type == 'customer':
+                    journal_ids = AccountAccount.search([('type', '=', 'sale')], limit=1)
+                elif rec.payment_id.partner_type == 'supplier':
+                    journal_ids = AccountAccount.search([('type', '=', 'purchase')], limit=1)
+                rec.payment_id.account_journal_id = journal_ids
