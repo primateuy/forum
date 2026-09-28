@@ -645,6 +645,12 @@ class ForumImportBatchInventarioApply(models.Model):
                     AND q.lot_id IS NULL AND q.package_id IS NULL AND q.owner_id IS NULL
              WHERE f.cantidad <> 0 AND q.id IS NULL
             """,
+            # contado NEGATIVO (sólo lo admite `cargar_celdas_externas` con
+            # `permitir_negativos`): la réplica SQL no está validada para dejar
+            # un quant en negativo; el core sí lo hace.
+            """
+            SELECT DISTINCT f.product_id FROM forum_apl_f f WHERE f.cantidad < 0
+            """,
             # par con quants duplicados
             """
             SELECT DISTINCT f.product_id
@@ -2197,6 +2203,12 @@ class ForumImportBatchInventarioApply(models.Model):
         """, params)
         cr.execute("SELECT count(*) FROM forum_apl_asiento")
         if not cr.fetchone()[0]:
+            # 🔴 Sin capas con valor (productos con costo 0) no hay asientos: la
+            # tabla se borra, porque `_apl_recalcular_localizacion` decide por
+            # su EXISTENCIA y la leería sin las columnas `am_id`/`aml_*`, que
+            # se agregan más abajo. Pasaba al aplicar la conciliación de WIS
+            # sobre productos sin costo (28-09-2026).
+            cr.execute("DROP TABLE forum_apl_asiento")
             return 0
         # Un producto que valúa en tiempo real sin cuentas o sin diario es un
         # error de configuración: el ORM corta con UserError y acá también, en

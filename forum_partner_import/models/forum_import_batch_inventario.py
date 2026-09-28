@@ -70,6 +70,13 @@ class ForumImportBatchInventario(models.Model):
         help="Queda como responsable de cada quant contado y es el usuario con "
              "el que se aplica el ajuste: tiene que ser administrador de inventario.",
     )
+    inventory_permite_negativos = fields.Boolean(
+        string="Admite contado negativo", readonly=True, copy=False,
+        help="Sólo lo prende quien carga el conteo por `cargar_celdas_externas`. "
+             "La conciliación de stock de WIS lo usa para dejar en negativo la "
+             "ubicación de diferencias, que después el operador regulariza con un "
+             "movimiento. Un Excel nunca admite negativos.",
+    )
     inventory_reason = fields.Char(
         string="Motivo del ajuste",
         help="Se guarda en el motivo del quant y viaja al origen de cada "
@@ -124,7 +131,8 @@ class ForumImportBatchInventario(models.Model):
 
     def _valores_reset_carga(self):
         valores = super()._valores_reset_carga()
-        valores.update({"quants_created": 0, "quants_updated": 0, "quants_zero": 0})
+        valores.update({"quants_created": 0, "quants_updated": 0, "quants_zero": 0,
+                        "inventory_permite_negativos": False})
         return valores
 
     def _antes_de_iniciar(self):
@@ -162,7 +170,7 @@ class ForumImportBatchInventario(models.Model):
     # ------------------------------------------------------------------
     # Costura pública: un conteo armado por otro módulo
     # ------------------------------------------------------------------
-    def cargar_celdas_externas(self, filas, origen=""):
+    def cargar_celdas_externas(self, filas, origen="", permitir_negativos=False):
         """Arma el staging con celdas que preparó OTRO módulo. Contrato público.
 
         Pensado para orígenes que no son un archivo —hoy, la conciliación de
@@ -189,6 +197,11 @@ class ForumImportBatchInventario(models.Model):
         🔴 `cantidad` es **el stock que debe quedar**, no el delta: es lo mismo
         que dice una celda del Excel. Pasar la diferencia haría un ajuste que
         parece correcto y deja el stock en cualquier lado.
+
+        `permitir_negativos`: acepta `cantidad` < 0 (por defecto es un error de
+        la celda, como en el Excel). Esas celdas se aplican siempre por el ORM
+        (`_apply_inventory` del core): la réplica SQL no está validada para
+        dejar un quant en negativo.
 
         Deja el batch en `ready`, listo para «Aplicar ajuste». No publica ni
         aplica nada: esa sigue siendo una decisión de una persona.
@@ -222,6 +235,7 @@ class ForumImportBatchInventario(models.Model):
                             % ", ".join(sorted(set(faltantes))))
 
         self.write(dict(self._valores_reset_carga(), state="loading",
+                        inventory_permite_negativos=bool(permitir_negativos),
                         loading_step=0, loading_steps_total=len(self._inv_pasos_post_origen()) + 1,
                         loading_phase=_("Armando el conteo"),
                         loading_started_at=fields.Datetime.now()))
@@ -569,8 +583,8 @@ class ForumImportBatchInventario(models.Model):
             UPDATE {t} SET error = coalesce(error || ' | ', '') ||
                    CASE WHEN cantidad IS NULL THEN 'Cantidad no numérica: ' || cantidad_raw
                         ELSE 'Cantidad negativa' END
-             WHERE cantidad IS NULL OR cantidad < 0
-        """.format(t=t))
+             WHERE cantidad IS NULL OR (cantidad < 0 AND NOT %s)
+        """.format(t=t), (bool(self.inventory_permite_negativos),))
         # Mismo par (producto, ubicación) dos veces: por un ID externo repetido
         # o por dos IDs externos del mismo producto. Gana la primera fila.
         cr.execute("""
