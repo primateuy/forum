@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ================================================================
+         LISTA DE PAGOS
+
+         Hereda la vista nativa en lugar de redefinirla, para no perder los
+         cambios que traiga una actualización de Odoo ni pisar lo que agregue
+         otro módulo sobre el mismo modelo.
+         ================================================================ -->
+    <record id="view_pos_payment_tree_forum" model="ir.ui.view">
+        <field name="name">pos.payment.tree.forum</field>
+        <field name="model">pos.payment</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_payment_tree"/>
+        <field name="arch" type="xml">
+
+            <!-- Dónde se hizo la venta -->
+            <xpath expr="//field[@name='payment_date']" position="after">
+                <field name="config_id" optional="show"/>
+                <field name="session_id" optional="hide"/>
+            </xpath>
+
+            <!-- El núcleo traduce "Order" como "Ordenar", que en una columna
+                 se lee como un verbo. -->
+            <xpath expr="//field[@name='pos_order_id']" position="attributes">
+                <attribute name="string">Orden</attribute>
+            </xpath>
+
+            <!-- Quién y a quién -->
+            <xpath expr="//field[@name='pos_order_id']" position="after">
+                <field name="user_id" optional="hide"/>
+                <field name="partner_id" optional="hide"/>
+            </xpath>
+
+            <!-- El importe suma por grupo: es lo que se lee al agrupar por
+                 forma de pago o por local. -->
+            <xpath expr="//field[@name='amount']" position="attributes">
+                <attribute name="sum">Total</attribute>
+            </xpath>
+
+            <!-- Datos de la tarjeta y el vínculo con el adquirente -->
+            <xpath expr="//field[@name='amount']" position="after">
+                <field name="issuer_name" optional="show"/>
+                <field name="card_last_four" optional="hide"/>
+                <field name="installments" optional="hide"/>
+                <field name="payment_transaction_id" optional="show"/>
+                <field name="invoice_number" optional="hide"/>
+                <field name="is_change" optional="hide"/>
+                <field name="card_type" optional="hide" string="Cód. adquirente"/>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- ================================================================
+         BÚSQUEDA, FILTROS Y AGRUPACIONES
+         ================================================================ -->
+    <record id="view_pos_payment_search_forum" model="ir.ui.view">
+        <field name="name">pos.payment.search.forum</field>
+        <field name="model">pos.payment</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_payment_search"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//field[@name='pos_order_id']" position="after">
+                <field name="config_id"/>
+                <field name="payment_method_id"/>
+                <field name="partner_id"/>
+                <field name="user_id"/>
+                <field name="payment_transaction_id"/>
+                <field name="issuer_name"/>
+            </xpath>
+
+            <xpath expr="//field[@name='pos_order_id']" position="before">
+                <filter name="filtro_hoy" string="Hoy"
+                        domain="[('payment_date', '>=', datetime.datetime.combine(context_today(), datetime.time(0,0,0)))]"/>
+                <filter name="filtro_ayer" string="Ayer"
+                        domain="[('payment_date', '>=', datetime.datetime.combine(context_today() + relativedelta(days=-1), datetime.time(0,0,0))),
+                                 ('payment_date', '&lt;', datetime.datetime.combine(context_today(), datetime.time(0,0,0)))]"/>
+                <filter name="filtro_semana" string="Esta semana"
+                        domain="[('payment_date', '>=', datetime.datetime.combine(context_today() + relativedelta(weeks=-1, weekday=0), datetime.time(0,0,0)))]"/>
+                <filter name="filtro_mes" string="Este mes"
+                        domain="[('payment_date', '>=', datetime.datetime.combine(context_today().replace(day=1), datetime.time(0,0,0)))]"/>
+                <separator/>
+                <filter name="filtro_con_transaccion" string="Con transacción del adquirente"
+                        domain="[('payment_transaction_id', '!=', False)]"/>
+                <filter name="filtro_sin_vuelto" string="Excluir vueltos"
+                        domain="[('is_change', '=', False)]"/>
+                <separator/>
+            </xpath>
+
+            <!-- Los cortes que pidió el local. El nativo solo trae forma de
+                 pago y sesión. -->
+            <xpath expr="//filter[@name='group_by_session']" position="after">
+                <filter name="group_by_config" string="Punto de venta"
+                        domain="[]" context="{'group_by': 'config_id'}"/>
+                <filter name="group_by_user" string="Cajero"
+                        domain="[]" context="{'group_by': 'user_id'}"/>
+                <filter name="group_by_partner" string="Cliente"
+                        domain="[]" context="{'group_by': 'partner_id'}"/>
+                <filter name="group_by_issuer" string="Sello"
+                        domain="[]" context="{'group_by': 'issuer_name'}"/>
+                <filter name="group_by_cuotas" string="Cuotas"
+                        domain="[]" context="{'group_by': 'installments'}"/>
+                <separator/>
+                <filter name="group_by_fecha_dia" string="Fecha: día"
+                        domain="[]" context="{'group_by': 'payment_date:day'}"/>
+                <filter name="group_by_fecha_mes" string="Fecha: mes"
+                        domain="[]" context="{'group_by': 'payment_date:month'}"/>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- ================================================================
+         VISTA DINÁMICA — el cruce forma de pago por día, que es la lectura
+         más directa de "cuánto se vendió y con qué".
+         ================================================================ -->
+    <record id="view_pos_payment_pivot_forum" model="ir.ui.view">
+        <field name="name">pos.payment.pivot.forum</field>
+        <field name="model">pos.payment</field>
+        <field name="arch" type="xml">
+            <pivot string="Ventas por forma de pago" sample="1">
+                <field name="payment_method_id" type="row"/>
+                <field name="payment_date" interval="day" type="col"/>
+                <field name="amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_pos_payment_graph_forum" model="ir.ui.view">
+        <field name="name">pos.payment.graph.forum</field>
+        <field name="model">pos.payment</field>
+        <field name="arch" type="xml">
+            <graph string="Ventas por forma de pago" type="bar" sample="1">
+                <field name="payment_method_id"/>
+                <field name="amount" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- ================================================================
+         ACCIÓN Y MENÚ PROPIOS
+
+         No se toca la acción nativa: los administradores del PDV siguen
+         teniendo su menú de siempre. Este entra agrupado por forma de pago y
+         acotado al día, que es como se consulta a diario.
+         ================================================================ -->
+    <record id="action_pos_payment_report_forum" model="ir.actions.act_window">
+        <field name="name">Ventas por forma de pago</field>
+        <field name="res_model">pos.payment</field>
+        <field name="view_mode">tree,pivot,graph,form</field>
+        <field name="context">{
+            'search_default_filtro_hoy': 1,
+            'search_default_group_by_payment_method': 1,
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay pagos registrados para el filtro seleccionado
+            </p><p>
+                Probá quitando el filtro de fecha. Si seguís sin ver nada,
+                verificá que tengas puntos de venta asignados en tu usuario.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_pos_payment_report_forum"
+              name="Ventas por forma de pago"
+              parent="point_of_sale.menu_point_of_sale"
+              action="action_pos_payment_report_forum"
+              sequence="4"
+              groups="group_pos_payment_report"/>
+
+    <!-- NO se agrega este grupo a la aplicación «Punto de venta»
+         (point_of_sale.menu_point_root) a propósito.
+
+         Hacerlo dejaría entrar a la app a alguien sin permisos de PDV, y con
+         ello al Tablero, que lista los 52 puntos de venta con el botón de
+         abrir sesión. Se probó y el resultado era peor que el problema: mucho
+         más a la vista de lo que corresponde a un permiso de consulta.
+
+         El grupo de consulta se otorga junto con «Usuario» de Punto de venta,
+         que es lo que ya tienen los usuarios de sucursal y lo que habilita la
+         aplicación. Ver el README. -->
+
+</odoo>

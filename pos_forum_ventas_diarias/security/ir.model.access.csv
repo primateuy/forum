@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_pos_payment_report,pos.payment consulta ventas,point_of_sale.model_pos_payment,pos_forum_ventas_diarias.group_pos_payment_report,1,0,0,0
+access_pos_order_report,pos.order consulta ventas,point_of_sale.model_pos_order,pos_forum_ventas_diarias.group_pos_payment_report,1,0,0,0
+access_pos_session_report,pos.session consulta ventas,point_of_sale.model_pos_session,pos_forum_ventas_diarias.group_pos_payment_report,1,0,0,0
+access_pos_config_report,pos.config consulta ventas,point_of_sale.model_pos_config,pos_forum_ventas_diarias.group_pos_payment_report,1,0,0,0
+access_pos_payment_method_report,pos.payment.method consulta ventas,point_of_sale.model_pos_payment_method,pos_forum_ventas_diarias.group_pos_payment_report,1,0,0,0

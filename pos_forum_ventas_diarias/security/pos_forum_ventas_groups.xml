@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Categoría propia a propósito: un grupo sin categoría solo aparece con
+         el modo desarrollador activo, y colgarlo de una categoría existente
+         convertiría a sus grupos en excluyentes entre sí (se muestran como
+         opciones de una lista, no como casillas). Con categoría propia y un
+         único grupo, queda como una casilla independiente en la ficha del
+         usuario. -->
+    <record id="module_category_forum_consultas" model="ir.module.category">
+        <field name="name">FORUM / Consultas</field>
+        <field name="description">Permisos de consulta sobre datos operativos de FORUM.</field>
+        <field name="sequence">22</field>
+    </record>
+
+    <record id="group_pos_payment_report" model="res.groups">
+        <field name="name">Consulta de ventas por forma de pago</field>
+        <field name="category_id" ref="module_category_forum_consultas"/>
+        <field name="comment">Habilita el menú de consulta de pagos del punto de venta.
+Cada usuario ve únicamente los puntos de venta que tiene asignados en la
+pestaña «Punto de venta» de su ficha.</field>
+    </record>
+
+</odoo>
