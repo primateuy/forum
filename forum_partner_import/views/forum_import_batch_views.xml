@@ -78,14 +78,25 @@
               <field name="file_info" readonly="1" nolabel="1" class="oe_inline"/>
             </div>
             <div class="alert alert-info" role="alert"
-                 invisible="not file_ok or state != 'draft'">
+                 invisible="not file_ok or state != 'draft' or import_type == 'inventario'">
               El archivo se lee del filesystem del servidor, desde adentro del módulo.
               No se sube por la interfaz ni se guarda en la base.
+            </div>
+            <div class="alert alert-info" role="alert"
+                 invisible="import_type != 'inventario' or state != 'draft'">
+              Subí el xlsx del conteo tal como lo manda el cliente (la matriz con
+              «IdArtículo» en A1) o la tabla exportada de Odoo. Si no subís nada se
+              lee el archivo que viaja dentro del módulo. Lo que no se pueda
+              ajustar queda explicado en el Log, agrupado por causa.
             </div>
 
             <group>
               <group string="Archivo de origen">
                 <field name="import_type" readonly="state != 'draft'"/>
+                <field name="inventory_file" filename="inventory_filename"
+                       invisible="import_type != 'inventario'"
+                       readonly="state not in ('draft', 'ready', 'error')"/>
+                <field name="inventory_filename" invisible="1"/>
                 <field name="file_path" readonly="1"/>
                 <field name="file_info" readonly="1"/>
                 <field name="file_path_resolved" readonly="1"
@@ -118,6 +129,8 @@
                        required="import_type == 'inventario'"
                        readonly="state not in ('draft', 'ready', 'done')"
                        options="{'no_create': True}"/>
+                <field name="inventory_count_date"
+                       readonly="state not in ('draft', 'ready', 'error')"/>
                 <field name="inventory_reason"
                        readonly="state not in ('draft', 'ready', 'done')"
                        placeholder="Se completa solo al cargar"/>

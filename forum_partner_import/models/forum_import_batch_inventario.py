@@ -5,6 +5,19 @@ El archivo es una tabla: una fila por variante, una columna por sucursal, y en
 el cruce la cantidad contada. Se "des-pivotea" al cargar: cada celda con valor
 pasa a ser una fila de staging (producto, ubicación, cantidad).
 
+Se aceptan dos formatos, que se distinguen por la celda A1:
+
+- **Matriz del cliente** («Disponibilidad Sucursales - Matriz Odoo»): una sola
+  fila de cabecera `IdArtículo | Artículo | <ubicación> | …`, datos desde la
+  fila 2. El producto se busca por la referencia interna (y si no, por el
+  código de barras). Es el formato con el que el cliente manda el conteo.
+- **Tabla exportada de Odoo** (el primer formato): filas ALMACENES y
+  UBICACIONES, cabecera `id | default_code | name…` en la fila 3 y el producto
+  por ID externo.
+
+El archivo se sube en el formulario del lote. Si no se sube ninguno, se lee el
+que viaja dentro del módulo (`data/`).
+
 Dos fases, cada una con su puntero, su cron y su avance en pantalla:
 
 1. **Carga** (`processing`). Upsert de `stock.quant` por SQL, por tandas: deja
@@ -49,6 +62,29 @@ PRIMERA_FILA_DATOS = 4
 COLUMNAS_PRODUCTO = ("id", "default_code", "name")
 PRIMERA_COLUMNA_UBICACION = 6   # F
 
+# Formato «matriz» del cliente: una fila de cabecera, datos desde la 2.
+MATRIZ_PRIMERA_FILA_DATOS = 2
+MATRIZ_PRIMERA_COLUMNA_UBICACION = 3   # C
+# Filas que el cliente marca para que no se lean (la fila de control del total).
+MARCA_NO_IMPORTAR = "NO IMPORTAR"
+# Cuántos códigos se nombran por grupo en el log; el resto va en el export.
+MAX_CODIGOS_EN_LOG = 30
+
+# Descripción de una variante para los mensajes: [id] Plantilla (valores).
+SQL_VARIANTE = """
+    '[' || p.id || '] ' || coalesce(pt.name->>'es_UY', pt.name->>'en_US')
+    || coalesce(' (' || (
+        SELECT string_agg(btrim(coalesce(v.name->>'es_UY', v.name->>'en_US')), ', '
+                          ORDER BY a.sequence, a.id)
+          FROM product_variant_combination pvc
+          JOIN product_template_attribute_value ptav
+            ON ptav.id = pvc.product_template_attribute_value_id
+          JOIN product_attribute_value v ON v.id = ptav.product_attribute_value_id
+          JOIN product_attribute a ON a.id = v.attribute_id
+         WHERE pvc.product_product_id = p.id) || ')', '')
+"""
+
+
 # Acciones del staging que llegan a tocar un quant.
 ACCIONES_QUANT = ("crear", "actualizar", "en_cero")
 
@@ -72,10 +108,21 @@ class ForumImportBatchInventario(models.Model):
     )
     inventory_permite_negativos = fields.Boolean(
         string="Admite contado negativo", readonly=True, copy=False,
-        help="Sólo lo prende quien carga el conteo por `cargar_celdas_externas`. "
-             "La conciliación de stock de WIS lo usa para dejar en negativo la "
-             "ubicación de diferencias, que después el operador regulariza con un "
-             "movimiento. Un Excel nunca admite negativos.",
+        help="Lo prende la matriz del cliente (su stock puede venir negativo) y "
+             "quien carga el conteo por `cargar_celdas_externas`: la conciliación "
+             "de stock de WIS lo usa para dejar en negativo la ubicación de "
+             "diferencias. La tabla exportada de Odoo no admite negativos.",
+    )
+    inventory_file = fields.Binary(
+        string="Archivo del conteo", attachment=True, copy=False,
+        help="El xlsx que manda el cliente. Si se deja vacío se lee el que viaja "
+             "dentro del módulo.",
+    )
+    inventory_filename = fields.Char(string="Nombre del archivo", copy=False)
+    inventory_count_date = fields.Date(
+        string="Fecha del conteo", default=fields.Date.context_today,
+        help="Sólo para identificar el ajuste: va en el motivo que se completa "
+             "al cargar. La fecha contable es otro campo.",
     )
     inventory_reason = fields.Char(
         string="Motivo del ajuste",
@@ -95,13 +142,21 @@ class ForumImportBatchInventario(models.Model):
              "ya está en cero, no hace falta crear nada.",
     )
 
-    @api.onchange("import_type")
+    def _inv_fecha_conteo_txt(self):
+        fecha = self.inventory_count_date
+        return fecha.strftime("%d/%m/%Y") if fecha else FECHA_CONTEO
+
+    @api.onchange("import_type", "inventory_count_date")
     def _onchange_import_type_nombre(self):
         """Ajusta el nombre sugerido mientras siga siendo uno de los por defecto."""
         por_defecto = {
             "clientes": _("Importación de clientes FORUM"),
-            "inventario": _("Ajuste de inventario FORUM %s") % FECHA_CONTEO,
+            "inventario": _("Ajuste de inventario FORUM %s") % self._inv_fecha_conteo_txt(),
         }
+        # Los nombres por defecto de cualquier fecha también se consideran
+        # "no tocados": cambiar la fecha tiene que cambiar el nombre.
+        if self.name and self.name.startswith(_("Ajuste de inventario FORUM ")):
+            self.name = False
         if not self.name or self.name in por_defecto.values() \
                 or self.name == "Importación de clientes FORUM":
             self.name = por_defecto.get(self.import_type, self.name)
@@ -115,8 +170,33 @@ class ForumImportBatchInventario(models.Model):
 
     def _ruta_relativa_archivo(self):
         if self._es_inventario():
+            if self.inventory_file:
+                return self.inventory_filename or _("archivo subido")
             return RUTA_XLSX
         return super()._ruta_relativa_archivo()
+
+    def _ruta_absoluta_archivo(self):
+        """El archivo subido se lee de donde lo guardó el filestore.
+
+        Si la base guarda los adjuntos en la base de datos en vez del
+        filestore, se vuelca a un archivo temporal. Sin archivo subido, el del
+        módulo, como siempre.
+        """
+        if not (self._es_inventario() and self.inventory_file):
+            return super()._ruta_absoluta_archivo()
+        adjunto = self.env["ir.attachment"].sudo().search([
+            ("res_model", "=", self._name), ("res_id", "=", self.id),
+            ("res_field", "=", "inventory_file")], limit=1)
+        if adjunto.store_fname:
+            return adjunto._full_path(adjunto.store_fname)
+        ruta = os.path.join(tempfile.gettempdir(), "forum_conteo_batch_%d.xlsx" % self.id)
+        with open(ruta, "wb") as fh:
+            fh.write(adjunto.raw or b"")
+        return ruta
+
+    @api.depends("state", "import_type", "inventory_file")
+    def _compute_file_info(self):
+        return super()._compute_file_info()
 
     def _validar_configuracion(self):
         if not self._es_inventario():
@@ -306,7 +386,7 @@ class ForumImportBatchInventario(models.Model):
         cr.execute("SELECT accion_efectiva, count(*) FROM %s GROUP BY 1 ORDER BY 1" % t)
         reparto = ", ".join("%s=%s" % (a, n) for a, n in cr.fetchall())
         cr.execute("""
-            SELECT coalesce(motivo, error), count(*) FROM {t}
+            SELECT split_part(coalesce(motivo, error), ':', 1), count(*) FROM {t}
              WHERE accion_efectiva IN ('ignorar', 'error')
              GROUP BY 1 ORDER BY 2 DESC
         """.format(t=t))
@@ -400,7 +480,8 @@ class ForumImportBatchInventario(models.Model):
         cr.execute("CREATE INDEX {t}_pend_idx ON {t} (row_num) WHERE procesado = false".format(t=t))
         cr.execute("CREATE INDEX {t}_xid_idx ON {t} (xid)".format(t=t))
         if not self.inventory_reason:
-            self.inventory_reason = "Ajuste inventario FORUM %s - batch %d" % (FECHA_CONTEO, self.id)
+            self.inventory_reason = "Ajuste inventario FORUM %s - batch %d" % (
+                self._inv_fecha_conteo_txt(), self.id)
         self._log("Tabla staging %s creada." % t)
 
     def _inv_leer_xlsx(self):
@@ -409,53 +490,27 @@ class ForumImportBatchInventario(models.Model):
         `read_only=True` hace que openpyxl no arme el árbol de toda la hoja: va
         fila por fila. Cada celda con valor se escribe a un CSV temporal, que
         entra de una sola vez con COPY. Una celda vacía no genera fila; un 0 sí.
+
+        El formato se reconoce por A1: `IdArtículo` es la matriz del cliente;
+        cualquier otra cosa, la tabla exportada de Odoo (que valida su cabecera).
         """
         self.ensure_one()
         ruta = self._ruta_absoluta_archivo()
-        libro = openpyxl.load_workbook(ruta, read_only=True, data_only=True)
+        # Se abre como archivo y no por ruta: openpyxl exige la extensión .xlsx
+        # en el nombre, y el adjunto subido vive en el filestore sin extensión.
+        # En read_only el archivo tiene que quedar abierto mientras se itera.
+        fh = open(ruta, "rb")
+        libro = openpyxl.load_workbook(fh, read_only=True, data_only=True)
         try:
             hoja = libro.worksheets[0]
-            ubicaciones, almacenes = {}, {}
-            celdas, sin_encabezado = 0, set()
+            filas = hoja.iter_rows(values_only=True)
+            primera = next(filas, None) or ()
             with tempfile.TemporaryFile("w+", newline="", encoding="utf-8") as tmp:
                 escritor = csv.writer(tmp)
-                for n_fila, fila in enumerate(hoja.iter_rows(values_only=True), start=1):
-                    if n_fila == FILA_ALMACENES:
-                        almacenes = self._inv_mapa_columnas(fila)
-                        continue
-                    if n_fila == FILA_UBICACIONES:
-                        ubicaciones = self._inv_mapa_columnas(fila)
-                        continue
-                    if n_fila == FILA_CABECERA:
-                        self._inv_validar_cabecera(fila, ubicaciones)
-                        continue
-                    xid = fila[0] if fila else None
-                    if xid is None or not str(xid).strip():
-                        if any(v not in (None, "") for v in fila):
-                            _logger.warning("[forum_partner_import] fila %d sin id con datos", n_fila)
-                        continue
-                    xid = str(xid).strip()
-                    codigo = fila[1] if len(fila) > 1 else None
-                    nombre = fila[2] if len(fila) > 2 else None
-                    for n_col in range(PRIMERA_COLUMNA_UBICACION, len(fila) + 1):
-                        valor = fila[n_col - 1]
-                        if valor is None or (isinstance(valor, str) and not valor.strip()):
-                            continue
-                        if n_col not in ubicaciones:
-                            sin_encabezado.add(n_col)
-                            continue
-                        escritor.writerow((
-                            n_fila, n_col, xid, codigo, nombre,
-                            almacenes.get(n_col), ubicaciones[n_col],
-                            repr(valor) if isinstance(valor, float) else str(valor).strip(),
-                        ))
-                        celdas += 1
-                if sin_encabezado:
-                    raise UserError(_(
-                        "Hay cantidades en columnas sin ubicación en la fila %(fila)d: %(cols)s. "
-                        "No se carga nada.",
-                        fila=FILA_UBICACIONES,
-                        cols=", ".join(openpyxl.utils.get_column_letter(c) for c in sorted(sin_encabezado))))
+                if self._inv_es_matriz(primera):
+                    celdas, n_ubic = self._inv_leer_matriz(primera, filas, escritor)
+                else:
+                    celdas, n_ubic = self._inv_leer_tabla_odoo(primera, filas, escritor)
                 tmp.seek(0)
                 self.env.cr.copy_expert("""
                     COPY {t} (fila_excel, col_excel, xid, default_code, producto,
@@ -464,12 +519,112 @@ class ForumImportBatchInventario(models.Model):
                 """.format(t=self._staging_name()), tmp)
         finally:
             libro.close()
+            fh.close()
 
         self.env.cr.execute("""
             UPDATE {t} SET cantidad = CASE
                 WHEN cantidad_raw ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN cantidad_raw::numeric END
         """.format(t=self._staging_name()))
-        self._log("Archivo leído: %d celdas con valor en %d ubicaciones." % (celdas, len(ubicaciones)))
+        self._log("Archivo leído: %d celdas con valor en %d ubicaciones." % (celdas, n_ubic))
+
+    @staticmethod
+    def _inv_es_matriz(primera):
+        """A1 = «IdArtículo» (con o sin tilde, en cualquier caja)."""
+        a1 = str((primera[0] if primera else None) or "").strip().lower()
+        return a1.replace("í", "i").startswith("idarticulo")
+
+    @staticmethod
+    def _inv_valor_celda(valor):
+        return repr(valor) if isinstance(valor, float) else str(valor).strip()
+
+    def _inv_leer_matriz(self, cabecera, filas, escritor):
+        """Matriz del cliente: `IdArtículo | Artículo | <ubicación>…`.
+
+        - El código va a `default_code` (no hay ID externo) y el nombre a
+          `producto`: con eso se resuelve y se explica cualquier error.
+        - Las filas marcadas «NO IMPORTAR» (la fila de control del total) se
+          saltean y se avisa en el log.
+        - Una columna sin título y sin datos se ignora; con datos, se frena.
+        - Su stock puede venir negativo: se admite (lo decidió Forum).
+        """
+        ubicaciones = {}
+        for n_col in range(MATRIZ_PRIMERA_COLUMNA_UBICACION, len(cabecera) + 1):
+            valor = cabecera[n_col - 1]
+            if valor is not None and str(valor).strip():
+                ubicaciones[n_col] = str(valor).strip()
+        self._inv_validar_ubicaciones_cabecera(ubicaciones, fila=1)
+        self.inventory_permite_negativos = True
+
+        celdas, sin_encabezado, salteadas = 0, set(), []
+        for n_fila, fila in enumerate(filas, start=MATRIZ_PRIMERA_FILA_DATOS):
+            codigo = fila[0] if fila else None
+            if codigo is None or not str(codigo).strip():
+                if any(v not in (None, "") for v in fila or ()):
+                    _logger.warning("[forum_partner_import] fila %d sin IdArtículo con datos", n_fila)
+                continue
+            codigo = str(codigo).strip()
+            if MARCA_NO_IMPORTAR in codigo.upper():
+                salteadas.append("%d (%s)" % (n_fila, codigo))
+                continue
+            nombre = fila[1] if len(fila) > 1 else None
+            for n_col in range(MATRIZ_PRIMERA_COLUMNA_UBICACION, len(fila) + 1):
+                valor = fila[n_col - 1]
+                if valor is None or (isinstance(valor, str) and not valor.strip()):
+                    continue
+                if n_col not in ubicaciones:
+                    sin_encabezado.add(n_col)
+                    continue
+                escritor.writerow((n_fila, n_col, None, codigo, nombre, None,
+                                   ubicaciones[n_col], self._inv_valor_celda(valor)))
+                celdas += 1
+        if sin_encabezado:
+            raise UserError(_(
+                "Hay cantidades en columnas sin ubicación en la fila 1: %(cols)s. No se carga nada.",
+                cols=", ".join(openpyxl.utils.get_column_letter(c) for c in sorted(sin_encabezado))))
+        self._log("Formato: matriz del cliente (IdArtículo por referencia interna). "
+                  "Se admiten cantidades negativas.")
+        if salteadas:
+            self._log("Filas marcadas «%s», no se leen: %s." % (MARCA_NO_IMPORTAR, ", ".join(salteadas)))
+        return celdas, len(ubicaciones)
+
+    def _inv_leer_tabla_odoo(self, primera, filas, escritor):
+        """Tabla exportada de Odoo: ALMACENES / UBICACIONES / cabecera / datos."""
+        almacenes = self._inv_mapa_columnas(primera)
+        ubicaciones = {}
+        celdas, sin_encabezado = 0, set()
+        for n_fila, fila in enumerate(filas, start=FILA_ALMACENES + 1):
+            if n_fila == FILA_UBICACIONES:
+                ubicaciones = self._inv_mapa_columnas(fila)
+                continue
+            if n_fila == FILA_CABECERA:
+                self._inv_validar_cabecera(fila, ubicaciones)
+                continue
+            xid = fila[0] if fila else None
+            if xid is None or not str(xid).strip():
+                if any(v not in (None, "") for v in fila):
+                    _logger.warning("[forum_partner_import] fila %d sin id con datos", n_fila)
+                continue
+            xid = str(xid).strip()
+            codigo = fila[1] if len(fila) > 1 else None
+            nombre = fila[2] if len(fila) > 2 else None
+            for n_col in range(PRIMERA_COLUMNA_UBICACION, len(fila) + 1):
+                valor = fila[n_col - 1]
+                if valor is None or (isinstance(valor, str) and not valor.strip()):
+                    continue
+                if n_col not in ubicaciones:
+                    sin_encabezado.add(n_col)
+                    continue
+                escritor.writerow((n_fila, n_col, xid, codigo, nombre,
+                                   almacenes.get(n_col), ubicaciones[n_col],
+                                   self._inv_valor_celda(valor)))
+                celdas += 1
+        if sin_encabezado:
+            raise UserError(_(
+                "Hay cantidades en columnas sin ubicación en la fila %(fila)d: %(cols)s. "
+                "No se carga nada.",
+                fila=FILA_UBICACIONES,
+                cols=", ".join(openpyxl.utils.get_column_letter(c) for c in sorted(sin_encabezado))))
+        return celdas, len(ubicaciones)
 
     @staticmethod
     def _inv_mapa_columnas(fila):
@@ -485,16 +640,21 @@ class ForumImportBatchInventario(models.Model):
         """Estructura mínima: 'id' en A3 y ubicaciones únicas en la fila 2."""
         if not fila or str(fila[0] or "").strip().lower() != "id":
             raise UserError(_(
-                "La celda A%(fila)d tiene que decir 'id' (ID externo de la variante). "
-                "¿Cambió el formato del archivo?", fila=FILA_CABECERA))
+                "No se reconoce el formato del archivo. Se aceptan dos: la matriz del "
+                "cliente, con «IdArtículo» en A1, o la tabla exportada de Odoo, con "
+                "'id' en A%(fila)d.", fila=FILA_CABECERA))
+        self._inv_validar_ubicaciones_cabecera(ubicaciones, fila=FILA_UBICACIONES)
+
+    def _inv_validar_ubicaciones_cabecera(self, ubicaciones, fila):
+        """Que haya al menos una ubicación y ninguna repetida."""
         if not ubicaciones:
-            raise UserError(_("La fila %d no tiene ninguna ubicación.") % FILA_UBICACIONES)
+            raise UserError(_("La fila %d no tiene ninguna ubicación.") % fila)
         vistas, repetidas = set(), set()
         for nombre in ubicaciones.values():
             (repetidas if nombre in vistas else vistas).add(nombre)
         if repetidas:
             raise UserError(_("Ubicaciones repetidas en la fila %(fila)d: %(nombres)s.",
-                              fila=FILA_UBICACIONES, nombres=", ".join(sorted(repetidas))))
+                              fila=fila, nombres=", ".join(sorted(repetidas))))
 
     # ==================================================================
     # Pre-procesamiento (set-based)
@@ -528,9 +688,9 @@ class ForumImportBatchInventario(models.Model):
         """.format(t=t))
         problemas = cr.fetchall()
         if problemas:
-            raise UserError(_("No se carga nada: %(n)d ubicación/es de la fila %(fila)d no "
-                              "resuelven. %(detalle)s",
-                              n=len(problemas), fila=FILA_UBICACIONES,
+            raise UserError(_("No se carga nada: %(n)d ubicación/es de la cabecera del archivo "
+                              "no resuelven. %(detalle)s",
+                              n=len(problemas),
                               detalle="; ".join("'%s' %s" % p for p in problemas)))
         cr.execute("""
             UPDATE {t} s SET location_id = l.id, company_id = l.company_id
@@ -553,6 +713,7 @@ class ForumImportBatchInventario(models.Model):
         """
         t = self._staging_name()
         cr = self.env.cr
+        self._inv_resolver_por_codigo()
         cr.execute("""
             UPDATE {t} s SET product_id = d.res_id
               FROM ir_model_data d
@@ -569,7 +730,7 @@ class ForumImportBatchInventario(models.Model):
                         THEN 'El ID externo no es de una variante de producto'
                     ELSE 'ID externo no encontrado en la base'
                 END
-             WHERE s.product_id IS NULL
+             WHERE s.product_id IS NULL AND s.xid IS NOT NULL
         """.format(t=t))
         # La variante pudo haberse borrado dejando el ir_model_data huérfano.
         cr.execute("""
@@ -598,6 +759,171 @@ class ForumImportBatchInventario(models.Model):
               FROM rep r
              WHERE r.row_num = s.row_num AND s.fila_excel > r.primera
         """.format(t=t))
+
+    def _inv_resolver_por_codigo(self):
+        """Matriz del cliente: IdArtículo → variante, por referencia interna.
+
+        Se busca primero por `default_code` entre las variantes activas y, si
+        no aparece, por `barcode` (en Forum suelen ser el mismo número). Lo
+        que no se puede resolver queda con un error que dice QUÉ pasa y con
+        qué productos, para que el usuario lo corrija en Odoo o en el archivo:
+
+        - «Código repetido en Odoo»: más de una variante activa con ese código;
+        - «Código de una variante archivada»: sólo lo tiene una archivada;
+        - «Código inexistente en Odoo»: ni referencia interna ni código de barras.
+
+        Sólo toca filas sin ID externo ni producto: las de la tabla exportada
+        de Odoo y las de `cargar_celdas_externas` siguen su camino.
+        """
+        t = self._staging_name()
+        cr = self.env.cr
+        # Sin estadísticas el planificador cruza las 600.000 celdas contra los
+        # códigos con un nested loop: 5 minutos en vez de segundos.
+        cr.execute("ANALYZE %s" % t)
+        cr.execute("DROP TABLE IF EXISTS forum_inv_codigos")
+        cr.execute("""
+            CREATE TEMP TABLE forum_inv_codigos ON COMMIT DROP AS
+            WITH codigos AS (
+                SELECT DISTINCT default_code AS codigo FROM {t}
+                 WHERE xid IS NULL AND product_id IS NULL AND default_code IS NOT NULL
+            ),
+            por_ref AS (
+                SELECT c.codigo, array_agg(p.id ORDER BY p.id) AS ids
+                  FROM codigos c JOIN product_product p
+                    ON p.default_code = c.codigo AND p.active
+                 GROUP BY 1
+            ),
+            por_barra AS (
+                SELECT c.codigo, array_agg(p.id ORDER BY p.id) AS ids
+                  FROM codigos c JOIN product_product p
+                    ON p.barcode = c.codigo AND p.active
+                 WHERE c.codigo NOT IN (SELECT codigo FROM por_ref)
+                 GROUP BY 1
+            ),
+            archivadas AS (
+                SELECT c.codigo, array_agg(p.id ORDER BY p.id) AS ids
+                  FROM codigos c JOIN product_product p
+                    ON (p.default_code = c.codigo OR p.barcode = c.codigo) AND NOT p.active
+                 WHERE c.codigo NOT IN (SELECT codigo FROM por_ref)
+                   AND c.codigo NOT IN (SELECT codigo FROM por_barra)
+                 GROUP BY 1
+            )
+            SELECT c.codigo,
+                   coalesce(r.ids, b.ids) AS ids,
+                   ar.ids AS ids_archivadas
+              FROM codigos c
+              LEFT JOIN por_ref r ON r.codigo = c.codigo
+              LEFT JOIN por_barra b ON b.codigo = c.codigo
+              LEFT JOIN archivadas ar ON ar.codigo = c.codigo
+        """.format(t=t))
+        cr.execute("ANALYZE forum_inv_codigos")
+        cr.execute("""
+            UPDATE {t} s SET product_id = k.ids[1]
+              FROM forum_inv_codigos k
+             WHERE k.codigo = s.default_code AND cardinality(k.ids) = 1
+               AND s.xid IS NULL AND s.product_id IS NULL
+        """.format(t=t))
+        cr.execute("""
+            WITH descr AS (
+                SELECT k.codigo, cardinality(k.ids) AS n,
+                       string_agg({variante}, ' / ' ORDER BY p.id) AS variantes
+                  FROM forum_inv_codigos k
+                  JOIN product_product p ON p.id = ANY(k.ids)
+                  JOIN product_template pt ON pt.id = p.product_tmpl_id
+                 WHERE cardinality(k.ids) > 1
+                 GROUP BY 1, 2
+            )
+            UPDATE {t} s SET error = 'Código repetido en Odoo: ' || d.codigo || ' lo tienen '
+                   || d.n || ' variantes activas: ' || d.variantes
+                   || '. Corregir la referencia interna de la que no corresponde.'
+              FROM descr d
+             WHERE d.codigo = s.default_code AND s.xid IS NULL AND s.product_id IS NULL
+        """.format(t=t, variante=SQL_VARIANTE))
+        cr.execute("""
+            WITH descr AS (
+                SELECT k.codigo, string_agg({variante}, ' / ' ORDER BY p.id) AS variantes
+                  FROM forum_inv_codigos k
+                  JOIN product_product p ON p.id = ANY(k.ids_archivadas)
+                  JOIN product_template pt ON pt.id = p.product_tmpl_id
+                 WHERE k.ids IS NULL
+                 GROUP BY 1
+            )
+            UPDATE {t} s SET error = 'Código de una variante archivada: ' || d.codigo
+                   || ' es de ' || d.variantes || '. Desarchivarla o corregir el código.'
+              FROM descr d
+             WHERE d.codigo = s.default_code AND s.xid IS NULL AND s.product_id IS NULL
+               AND s.error IS NULL
+        """.format(t=t, variante=SQL_VARIANTE))
+        cr.execute("""
+            UPDATE {t} SET error = 'Código inexistente en Odoo: ' || default_code
+                   || ' («' || coalesce(producto, '') || '») no es la referencia interna '
+                   || 'ni el código de barras de ninguna variante.'
+             WHERE xid IS NULL AND product_id IS NULL AND error IS NULL
+               AND default_code IS NOT NULL
+        """.format(t=t))
+        self._inv_log_errores_codigo()
+
+    def _inv_log_errores_codigo(self):
+        """Explica en el log, agrupado, por qué no se resolvió cada código.
+
+        Los repetidos se agrupan por el par de productos que comparte el
+        código: así se ve de un vistazo «el Excel dice Pantalón, y en Odoo ese
+        código lo tienen Pantalón y Campera FORUM 1». Los demás, por tipo, con
+        los primeros códigos. El detalle celda por celda está en «Exportar
+        errores».
+        """
+        t = self._staging_name()
+        cr = self.env.cr
+        cr.execute("""
+            SELECT string_agg(DISTINCT coalesce(pt.name->>'es_UY', pt.name->>'en_US'), ' / ')
+                       AS plantillas,
+                   k.codigo, min(s.producto) AS en_excel
+              FROM forum_inv_codigos k
+              JOIN product_product p ON p.id = ANY(k.ids)
+              JOIN product_template pt ON pt.id = p.product_tmpl_id
+              JOIN {t} s ON s.default_code = k.codigo AND s.xid IS NULL
+             WHERE cardinality(k.ids) > 1
+             GROUP BY k.codigo
+        """.format(t=t))
+        grupos = {}
+        for plantillas, codigo, en_excel in cr.fetchall():
+            grupo = grupos.setdefault(plantillas, {"codigos": [], "excel": set()})
+            grupo["codigos"].append(codigo)
+            if en_excel:
+                grupo["excel"].add(en_excel.split(" C:")[0].strip())
+        lineas = []
+        for plantillas, g in sorted(grupos.items(), key=lambda x: -len(x[1]["codigos"])):
+            codigos = sorted(g["codigos"])
+            rango = codigos[0] if len(codigos) == 1 else "%s a %s" % (codigos[0], codigos[-1])
+            lineas.append(_(
+                "  · %(rango)s (%(n)d códigos): en el archivo es «%(excel)s»; en Odoo ese "
+                "código lo tienen %(plantillas)s.",
+                rango=rango, n=len(codigos), excel=" / ".join(sorted(g["excel"])) or "-",
+                plantillas=" y ".join("«%s»" % x for x in plantillas.split(" / "))))
+        if lineas:
+            self._log(_("CÓDIGO REPETIDO EN ODOO (%(n)d códigos, no se ajustan): más de una "
+                        "variante activa tiene la misma referencia interna. Corregir la "
+                        "referencia de la variante que no corresponde y volver a cargar.\n%(det)s",
+                        n=sum(len(g["codigos"]) for g in grupos.values()),
+                        det="\n".join(lineas)))
+        for prefijo, titulo, accion in (
+                ("Código de una variante archivada", _("CÓDIGO DE UNA VARIANTE ARCHIVADA"),
+                 _("desarchivar la variante o corregir el código en el archivo")),
+                ("Código inexistente en Odoo", _("CÓDIGO INEXISTENTE EN ODOO"),
+                 _("dar de alta el producto o corregir el código en el archivo"))):
+            cr.execute("""
+                SELECT default_code, min(producto) FROM {t}
+                 WHERE error LIKE %s GROUP BY 1 ORDER BY 1
+            """.format(t=t), (prefijo + "%",))
+            filas = cr.fetchall()
+            if not filas:
+                continue
+            muestra = "\n".join("  · %s «%s»" % (c, n or "") for c, n in filas[:MAX_CODIGOS_EN_LOG])
+            resto = len(filas) - MAX_CODIGOS_EN_LOG
+            self._log(_("%(titulo)s (%(n)d códigos, no se ajustan): %(accion)s.\n%(muestra)s%(resto)s",
+                        titulo=titulo, n=len(filas), accion=accion, muestra=muestra,
+                        resto=(_("\n  … y %d más: la lista completa sale en «Exportar errores».") % resto)
+                        if resto > 0 else ""))
 
     def _inv_filtrar_productos(self):
         """No almacenables y con lote/serie se ignoran, con motivo. No son error."""
