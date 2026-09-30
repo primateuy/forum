@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_movimiento_caja_tree" model="ir.ui.view">
+        <field name="name">pos.forum.movimiento.caja.tree</field>
+        <field name="model">pos.forum.movimiento.caja</field>
+        <field name="arch" type="xml">
+            <tree string="Movimientos de caja" create="0" edit="0" delete="0"
+                  decoration-muted="tipo in ('apertura', 'cierre')"
+                  decoration-danger="tipo in ('retiro', 'diferencia')"
+                  decoration-info="tipo == 'ingreso'">
+                <field name="currency_id" column_invisible="True"/>
+                <field name="date"/>
+                <field name="tipo"/>
+                <field name="config_id" optional="show"/>
+                <field name="session_id" optional="hide"/>
+                <field name="user_id" optional="hide"/>
+                <field name="concepto"/>
+                <field name="amount" sum="Total"/>
+                <field name="issuer_name" optional="hide"/>
+                <field name="installments" optional="hide"/>
+                <field name="partner_id" optional="hide"/>
+                <field name="pos_order_id" optional="hide"/>
+                <field name="payment_transaction_id" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_movimiento_caja_pivot" model="ir.ui.view">
+        <field name="name">pos.forum.movimiento.caja.pivot</field>
+        <field name="model">pos.forum.movimiento.caja</field>
+        <field name="arch" type="xml">
+            <pivot string="Movimientos de caja" sample="1">
+                <field name="tipo" type="row"/>
+                <field name="date" interval="day" type="col"/>
+                <field name="amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_movimiento_caja_search" model="ir.ui.view">
+        <field name="name">pos.forum.movimiento.caja.search</field>
+        <field name="model">pos.forum.movimiento.caja</field>
+        <field name="arch" type="xml">
+            <search string="Movimientos de caja">
+                <field name="concepto"/>
+                <field name="config_id"/>
+                <field name="session_id"/>
+                <field name="user_id"/>
+                <field name="payment_method_id"/>
+                <field name="partner_id"/>
+
+                <filter name="filtro_hoy" string="Hoy"
+                        domain="[('date', '>=', datetime.datetime.combine(context_today(), datetime.time(0,0,0)))]"/>
+                <filter name="filtro_ayer" string="Ayer"
+                        domain="[('date', '>=', datetime.datetime.combine(context_today() + relativedelta(days=-1), datetime.time(0,0,0))),
+                                 ('date', '&lt;', datetime.datetime.combine(context_today(), datetime.time(0,0,0)))]"/>
+                <filter name="filtro_semana" string="Esta semana"
+                        domain="[('date', '>=', datetime.datetime.combine(context_today() + relativedelta(weeks=-1, weekday=0), datetime.time(0,0,0)))]"/>
+                <filter name="filtro_mes" string="Este mes"
+                        domain="[('date', '>=', datetime.datetime.combine(context_today().replace(day=1), datetime.time(0,0,0)))]"/>
+                <separator/>
+                <filter name="filtro_ventas" string="Solo ventas"
+                        domain="[('tipo', '=', 'venta')]"/>
+                <filter name="filtro_efectivo" string="Solo movimientos de efectivo"
+                        domain="[('tipo', 'in', ('ingreso', 'retiro'))]"/>
+                <filter name="filtro_retiros" string="Solo retiros"
+                        domain="[('tipo', '=', 'retiro')]"/>
+                <filter name="filtro_saldos" string="Aperturas y cierres"
+                        domain="[('tipo', 'in', ('apertura', 'cierre'))]"/>
+                <separator/>
+
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_by_tipo" string="Tipo"
+                            domain="[]" context="{'group_by': 'tipo'}"/>
+                    <filter name="group_by_config" string="Punto de venta"
+                            domain="[]" context="{'group_by': 'config_id'}"/>
+                    <filter name="group_by_session" string="Sesión"
+                            domain="[]" context="{'group_by': 'session_id'}"/>
+                    <filter name="group_by_user" string="Cajero"
+                            domain="[]" context="{'group_by': 'user_id'}"/>
+                    <filter name="group_by_metodo" string="Forma de pago"
+                            domain="[]" context="{'group_by': 'payment_method_id'}"/>
+                    <filter name="group_by_sello" string="Sello"
+                            domain="[]" context="{'group_by': 'issuer_name'}"/>
+                    <separator/>
+                    <filter name="group_by_dia" string="Fecha: día"
+                            domain="[]" context="{'group_by': 'date:day'}"/>
+                    <filter name="group_by_mes" string="Fecha: mes"
+                            domain="[]" context="{'group_by': 'date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_movimiento_caja" model="ir.actions.act_window">
+        <field name="name">Movimientos de caja</field>
+        <field name="res_model">pos.forum.movimiento.caja</field>
+        <field name="view_mode">tree,pivot</field>
+        <field name="context">{
+            'search_default_filtro_hoy': 1,
+            'search_default_group_by_tipo': 1,
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay movimientos para el filtro seleccionado
+            </p><p>
+                Este reporte junta las ventas con los ingresos y retiros de
+                efectivo y con los saldos declarados al abrir y cerrar la caja.
+                El total general no debe leerse como una suma: agrupá por tipo
+                para interpretarlo.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_movimiento_caja"
+              name="Movimientos de caja"
+              parent="point_of_sale.menu_point_of_sale"
+              action="action_movimiento_caja"
+              sequence="5"
+              groups="group_pos_payment_report,point_of_sale.group_pos_manager"/>
+
+</odoo>

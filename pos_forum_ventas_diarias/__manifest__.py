@@ -31,6 +31,7 @@ usuario a los puntos de venta que tiene asignados.
         'security/ir.model.access.csv',
         'security/pos_forum_ventas_rules.xml',
         'views/pos_payment_views.xml',
+        'report/pos_movimiento_caja_views.xml',
     ],
     'post_init_hook': 'post_init_hook',
     'installable': True,

@@ -168,7 +168,7 @@
               parent="point_of_sale.menu_point_of_sale"
               action="action_pos_payment_report_forum"
               sequence="4"
-              groups="group_pos_payment_report"/>
+              groups="group_pos_payment_report,point_of_sale.group_pos_manager"/>
 
     <!-- NO se agrega este grupo a la aplicación «Punto de venta»
          (point_of_sale.menu_point_root) a propósito.

@@ -23,4 +23,66 @@
         <field name="perm_unlink" eval="False"/>
     </record>
 
+    <!-- Excepción para los administradores de Punto de venta.
+
+         Las reglas de distintos grupos se combinan con OR, así que un usuario
+         que tenga este grupo y además el de consulta ve todo: gana la regla
+         permisiva. Hace falta declararla de forma explícita — no alcanza con
+         que el grupo no tenga regla propia, porque en ese caso igual se le
+         aplican las de los otros grupos a los que pertenece.
+
+         Un administrador ve todos los puntos de venta sin importar lo que
+         tenga cargado en «Puntos de venta permitidos». El recorte sigue
+         valiendo para quien solo tenga el permiso de consulta. -->
+    <record id="rule_pos_payment_manager" model="ir.rule">
+        <field name="name">Pagos del POS: los administradores ven todos los puntos de venta</field>
+        <field name="model_id" ref="point_of_sale.model_pos_payment"/>
+        <field name="groups" eval="[(4, ref('point_of_sale.group_pos_manager'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_movimiento_caja_manager" model="ir.rule">
+        <field name="name">Movimientos de caja: los administradores ven todos los puntos de venta</field>
+        <field name="model_id" ref="model_pos_forum_movimiento_caja"/>
+        <field name="groups" eval="[(4, ref('point_of_sale.group_pos_manager'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <!-- Recorte por compañía.
+
+         Imprescindible en este modelo: al ser una vista SQL lee las tablas
+         directamente, así que NO hereda las reglas de compañía que protegen
+         a pos.payment y a las líneas de extracto. Sin esta regla, un usuario
+         de FORUM vería también los movimientos de las otras cinco empresas.
+
+         Es global (sin grupos), como las reglas de compañía del núcleo. -->
+    <record id="rule_movimiento_caja_company" model="ir.rule">
+        <field name="name">Movimientos de caja: multi-compañía</field>
+        <field name="model_id" ref="model_pos_forum_movimiento_caja"/>
+        <field name="global" eval="True"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <!-- El mismo recorte por punto de venta sobre el reporte. Hace falta
+         aparte: una regla se aplica a un modelo, y el reporte es un modelo
+         propio aunque lea de pos.payment y de las líneas de extracto. -->
+    <record id="rule_movimiento_caja_allowed_pos" model="ir.rule">
+        <field name="name">Movimientos de caja: solo los puntos de venta asignados</field>
+        <field name="model_id" ref="model_pos_forum_movimiento_caja"/>
+        <field name="groups" eval="[(4, ref('group_pos_payment_report'))]"/>
+        <field name="domain_force">[('config_id', 'in', user.allowed_pos.ids)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
 </odoo>

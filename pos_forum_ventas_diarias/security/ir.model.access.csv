@@ -4,3 +4,5 @@ access_pos_order_report,pos.order consulta ventas,point_of_sale.model_pos_order,
 access_pos_session_report,pos.session consulta ventas,point_of_sale.model_pos_session,pos_forum_ventas_diarias.group_pos_payment_report,1,0,0,0
 access_pos_config_report,pos.config consulta ventas,point_of_sale.model_pos_config,pos_forum_ventas_diarias.group_pos_payment_report,1,0,0,0
 access_pos_payment_method_report,pos.payment.method consulta ventas,point_of_sale.model_pos_payment_method,pos_forum_ventas_diarias.group_pos_payment_report,1,0,0,0
+access_movimiento_caja_report,pos.forum.movimiento.caja consulta,model_pos_forum_movimiento_caja,pos_forum_ventas_diarias.group_pos_payment_report,1,0,0,0
+access_movimiento_caja_pos_manager,pos.forum.movimiento.caja administrador PDV,model_pos_forum_movimiento_caja,point_of_sale.group_pos_manager,1,0,0,0
