@@ -1,0 +1,11 @@
+{
+  "_comentario": [
+    "Copiá este archivo como config.staging.json o config.prod.json. NINGÚN config.<env>.json va al repo.",
+    "La herramienta sólo LEE (search_count / search_read): alcanza un usuario con lectura de contactos."
+  ],
+  "url": "https://support-forum.primateuy.com",
+  "db": "nombre_de_la_base",
+  "username": "usuario@dominio.com",
+  "api_key": "API_KEY",
+  "sleep": 0.5
+}

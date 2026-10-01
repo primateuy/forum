@@ -1,0 +1,2 @@
+# Python 3.10+. La conexión es la de ../knowledge_export (kexport/odoo_rpc.py).
+certifi>=2024.2.2
