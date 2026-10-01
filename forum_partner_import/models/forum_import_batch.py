@@ -32,7 +32,7 @@ from odoo.exceptions import UserError
 _logger = logging.getLogger(__name__)
 
 # Nombre del CSV dentro del módulo. El módulo lee SIEMPRE este archivo.
-NOMBRE_CSV = "forum_clientes_puntos_20260831.csv"
+NOMBRE_CSV = "forum_clientes_puntos_20260930.csv"
 RUTA_CSV = "forum_partner_import/data/" + NOMBRE_CSV
 
 # Columnas del CSV, en orden. El COPY las nombra explícitamente.
