@@ -149,6 +149,19 @@ class OdooRPC:
                 return False
             raise
 
+    def tiene_campo(self, modelo, campo):
+        """True si el modelo del destino tiene ese campo.
+
+        Se usa para distinguir versiones POR LA CAPACIDAD y no por el número:
+        `documents.document` existe en la 17 y en la 19, pero los campos de
+        acceso por enlace (`access_via_link`) son de la 18 en adelante. Escribir
+        un campo inexistente es un Fault que corta la subida entera.
+        """
+        try:
+            return campo in self.execute(modelo, "fields_get", [campo], attributes=["type"])
+        except xmlrpc.client.Fault:
+            return False
+
     # ------------------------------------------------------------------
     def _con_reintentos(self, funcion, *args):
         ultimo = None

@@ -90,6 +90,7 @@ python3 export_knowledge.py --skip-upload      # exporta a out/, sin subir
 python3 export_knowledge.py --only-upload      # sube lo ya generado
 python3 export_knowledge.py                    # exporta y sube
 python3 export_knowledge.py --root-id 87       # sólo ese subárbol
+python3 export_knowledge.py --only-access      # arregla el acceso por enlace de lo ya subido
 ```
 
 | flag | qué hace |
@@ -105,6 +106,9 @@ python3 export_knowledge.py --root-id 87       # sólo ese subárbol
 | `--upload-html` | subir también los HTML |
 | `--upload-mode flat\|mirror` | cómo quedan los PDFs en Documentos (default `flat`) |
 | `--on-conflict skip\|replace` | qué hacer si el documento ya existe (default `replace`) |
+| `--link-access none\|view\|edit` | «Acceso con enlace» de los documentos subidos (default `view`). Ver más abajo |
+| `--no-discoverable` | dejar «Descubrible» en No. Por defecto quedan descubribles |
+| `--only-access` | sólo corregir el acceso por enlace de lo ya subido, sin exportar ni re-subir. Con `--dry-run`, sólo cuenta |
 | `--pdf-engine auto\|weasyprint\|wkhtmltopdf` | forzar motor |
 | `--keep-duplicate-title` | no quitar el encabezado que repite el título |
 | `--no-http-images` | no bajar por HTTP las imágenes que no estén en `ir.attachment` |
@@ -295,6 +299,44 @@ las dos.
 `documents.document` de la 19 tampoco tiene campo `description`, así que la
 trazabilidad del origen se anota en el `ir.attachment` del documento:
 `forum:knowledge.article:<id>`.
+
+### 🔴 Acceso por enlace: qué link se reparte y cuál no
+
+Los documentos se suben con **«Acceso con enlace»** activo (`access_via_link`)
+para que el agente de soporte de Sagui pueda pasarle el link del documento a
+quien preguntó. Tres cosas que no son obvias:
+
+**El link que copia Odoo no le sirve a un usuario externo.** El botón «Copiar
+enlace» y el campo `access_url` dan `{base}/odoo/documents/<token>`, y `/odoo/…`
+es la ruta del webclient: `web/controllers/home.py:46-52` redirige a
+`/web/login` a cualquiera que no tenga sesión. El link que hay que repartir es:
+
+```
+https://<destino>/documents/<access_token>          # página pública, con descarga
+https://<destino>/documents/content/<access_token>  # descarga directa
+```
+
+`/documents/<token>` sirve para los dos públicos: al usuario externo le muestra
+la página pública y al interno lo redirige al backend.
+
+**«Descubrible» ya venía en Sí.** `is_access_via_link_hidden` es `False` por
+defecto. Lo que está en `'none'` por defecto —y por eso el link no abría— es
+`access_via_link`. Se escriben los dos igual, explícitos.
+
+**El acceso se hereda de la carpeta al CREAR el documento**
+(`documents_document.py::_prepare_create_values`), no al escribirlo después. Por
+eso las corridas anteriores dejaron todo en `none` y por eso existe
+`--only-access`: arregla lo ya subido escribiendo dos campos, sin pagar de nuevo
+la subida de los 98 PDFs.
+
+El default es `view` y no `edit`: para abrir y descargar alcanza —el controlador
+sólo exige `access_via_link != 'none'`— y `edit` le da a **cualquiera con el
+link** el permiso de modificar, renombrar y borrar el documento. Si se pide
+`edit`, la pantalla de confirmación lo avisa.
+
+El acceso se aplica a los **documentos**, no a las carpetas: `access_via_link` en
+una carpeta la vuelve enlazable entera, o sea un solo link que expone toda la
+documentación.
 
 ### Idempotencia
 

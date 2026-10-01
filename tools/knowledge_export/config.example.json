@@ -28,6 +28,10 @@
     "raiz": "Forum",
     "ambiente": "Producción",
     "upload_mode": "flat",
-    "_upload_mode": "flat: todos los PDFs sueltos en raiz/ambiente, con la posición en el árbol en el nombre. mirror: árbol de carpetas espejo. Lo pisa --upload-mode."
+    "_upload_mode": "flat: todos los PDFs sueltos en raiz/ambiente, con la posición en el árbol en el nombre. mirror: árbol de carpetas espejo. Lo pisa --upload-mode.",
+    "link_access": "view",
+    "_link_access": "«Acceso con enlace» de los documentos. view: quien tenga el link abre y descarga (alcanza para que el agente de soporte pase links). edit: además puede modificar, renombrar y borrar. none: sin acceso por enlace. Lo pisa --link-access.",
+    "discoverable": true,
+    "_discoverable": "«Descubrible» de la pantalla de compartir (is_access_via_link_hidden en falso). Lo apaga --no-discoverable."
   }
 }

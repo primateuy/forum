@@ -103,6 +103,8 @@ def confirmar_ambientes(cfg, args, va_a_subir):
         print("                      carpeta %s / %s · modo %s · conflictos: %s"
               % (destino.get("raiz", "?"), destino.get("ambiente", "?"),
                  modo_subida(cfg, args), args.on_conflict))
+        print("                      acceso con enlace: %s · descubrible: %s"
+              % (acceso_enlace(cfg, args), "sí" if descubrible(cfg, args) else "no"))
     else:
         print("  %-20s (no se sube: %s)"
               % ("DESTINO",
@@ -114,6 +116,9 @@ def confirmar_ambientes(cfg, args, va_a_subir):
                       % (destino.get("url"), destino.get("db")))
     if va_a_subir and args.on_conflict == "replace":
         avisos.append("Los documentos que ya existan con el mismo nombre se REEMPLAZAN")
+    if va_a_subir and acceso_enlace(cfg, args) == "edit":
+        avisos.append("Acceso con enlace en EDITOR: cualquiera con el link va a poder "
+                      "modificar, renombrar y borrar los documentos")
     if avisos:
         print("-" * ancho)
         for a in avisos:
@@ -157,6 +162,29 @@ def modo_subida(cfg, args):
         raise SystemExit("upload_mode inválido: %r. Valores: %s"
                          % (modo, ", ".join(tree.MODOS)))
     return modo
+
+
+def acceso_enlace(cfg, args):
+    """`none`, `view` o `edit` para `access_via_link`. La CLI pisa al config.
+
+    El default es `view`: alcanza para abrir y descargar —el controlador sólo
+    exige `access_via_link != 'none'`— y no le da a cualquiera con el link el
+    permiso de renombrar, modificar o borrar el documento, que es lo que
+    significa `edit`.
+    """
+    valor = (args.link_access or cfg.get("destino", {}).get("link_access") or "view").lower()
+    if valor not in upload.ACCESOS:
+        raise SystemExit("link_access inválido: %r. Valores: %s"
+                         % (valor, ", ".join(upload.ACCESOS)))
+    return valor
+
+
+def descubrible(cfg, args):
+    """«Descubrible» de la pantalla de compartir. La CLI sólo puede apagarlo."""
+    if args.no_discoverable:
+        return False
+    valor = cfg.get("destino", {}).get("discoverable")
+    return True if valor is None else bool(valor)
 
 
 def cargar_config(ruta):
@@ -315,7 +343,9 @@ def subir(args, cfg):
     modo = modo_subida(cfg, args)
     rpc = OdooRPC(destino["url"], destino["db"], destino["username"], destino["password"])
     rpc.login()
-    docs = upload.Documentos(rpc, on_conflict=args.on_conflict)
+    docs = upload.Documentos(rpc, on_conflict=args.on_conflict,
+                            link_access=acceso_enlace(cfg, args),
+                            discoverable=descubrible(cfg, args))
     docs.detectar()
 
     raiz_id = docs.ruta([destino["raiz"], destino["ambiente"]])
@@ -364,9 +394,72 @@ def subir(args, cfg):
                 docs.subir(ruta_h, ruta_h.name, carpeta_id,
                            origen="forum:knowledge.article:%s" % fila["ID Odoo"])
 
-    docs.subir(ruta_manifest, "manifest.csv", raiz_id, origen="forum:knowledge:manifest")
+    doc_manifest, _accion = docs.subir(ruta_manifest, "manifest.csv", raiz_id,
+                                       origen="forum:knowledge:manifest")
     print("\n=== Subida ===")
     print("  " + docs.resumen())
+    _mostrar_link_de_muestra(docs, doc_manifest)
+    return docs
+
+
+def _mostrar_link_de_muestra(docs, doc_id):
+    """Imprime el link público de un documento, para verificarlo a mano.
+
+    Es la única forma barata de comprobar que el acceso quedó bien: abrirlo en
+    una ventana privada. Si el acceso no se pudo aplicar no se imprime nada, en
+    vez de mostrar un link que va a pedir login.
+    """
+    if not docs.soporta_acceso or docs.link_access == "none":
+        return
+    try:
+        url = docs.url_publica(doc_id)
+    except Exception as e:  # noqa: BLE001 - verificar no puede tumbar la corrida
+        _logger.warning("No pude armar el link de muestra: %s", e)
+        return
+    if url:
+        print("  link de muestra (probalo en una ventana privada):")
+        print("    %s" % url)
+
+
+def corregir_acceso(args, cfg):
+    """Aplica el acceso por enlace a lo YA subido, sin regenerar ni re-subir nada.
+
+    Existe porque el acceso se hereda de la carpeta al CREAR el documento: las
+    corridas anteriores dejaron todo en `none` y arreglarlo re-subiendo 98 PDFs
+    sería pagar la subida entera para escribir dos campos.
+    """
+    destino = cfg["destino"]
+    rpc = OdooRPC(destino["url"], destino["db"], destino["username"], destino["password"])
+    rpc.login()
+    docs = upload.Documentos(rpc, on_conflict=args.on_conflict,
+                             link_access=acceso_enlace(cfg, args),
+                             discoverable=descubrible(cfg, args))
+    docs.detectar()
+    if not docs.soporta_acceso:
+        raise SystemExit(
+            "El destino no tiene `access_via_link` (Odoo %s): no hay acceso por enlace "
+            "que corregir." % rpc.version)
+
+    # `ruta_existente` y no `ruta`: acá no se crea nada. Si la carpeta no está,
+    # es que nunca se subió nada a este destino y hay que correr la subida, no
+    # inventar una carpeta vacía.
+    raiz_id = docs.ruta_existente([destino["raiz"], destino["ambiente"]])
+    if not raiz_id:
+        raise SystemExit(
+            "No existe la carpeta %s/%s en %s: no hay nada subido que corregir."
+            % (destino["raiz"], destino["ambiente"], destino["url"]))
+    ids = docs.documentos_bajo(raiz_id)
+    print("\n=== Acceso por enlace ===")
+    print("  %s/%s (id %s): %d documento(s)"
+          % (destino["raiz"], destino["ambiente"], raiz_id, len(ids)))
+    if args.dry_run:
+        print("  (--dry-run: no se escribe nada)")
+        return docs
+    docs.fijar_acceso(ids)
+    print("  %d documento(s) con acceso %s · descubrible: %s"
+          % (len(ids), docs.link_access, "sí" if docs.discoverable else "no"))
+    if ids:
+        _mostrar_link_de_muestra(docs, ids[0])
     return docs
 
 
@@ -403,6 +496,18 @@ def main():
                         "con la posición en el árbol codificada en el nombre. "
                         "mirror: árbol de carpetas espejo. Pisa a `destino.upload_mode`.")
     p.add_argument("--on-conflict", choices=["skip", "replace"], default="replace")
+    p.add_argument("--link-access", choices=list(upload.ACCESOS),
+                   help="«Acceso con enlace» de los documentos subidos. view (default): "
+                        "quien tenga el link puede abrir y descargar. edit: además puede "
+                        "modificar, renombrar y borrar. none: sin acceso por enlace, y el "
+                        "agente de soporte no va a poder pasar links. "
+                        "Pisa a `destino.link_access`.")
+    p.add_argument("--no-discoverable", action="store_true",
+                   help="dejar «Descubrible» en No (is_access_via_link_hidden=True). "
+                        "Por defecto los documentos quedan descubribles.")
+    p.add_argument("--only-access", action="store_true",
+                   help="sólo corregir el acceso por enlace de lo YA subido, sin exportar "
+                        "ni volver a subir nada. Con --dry-run sólo cuenta.")
     p.add_argument("--pdf-engine", choices=["auto", "weasyprint", "wkhtmltopdf"],
                    default="auto")
     p.add_argument("-v", "--verbose", action="store_true")
@@ -415,6 +520,11 @@ def main():
     # confirmación; cualquier otra corrida sí.
     if not args.dry_run:
         confirmar_ambientes(cfg, args, va_a_subir=not args.skip_upload)
+
+    if args.only_access:
+        corregir_acceso(args, cfg)
+        print("\nLog: %s" % archivo_log)
+        return
 
     if not args.only_upload:
         exportar(args, cfg)
