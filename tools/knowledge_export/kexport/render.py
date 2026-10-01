@@ -1,6 +1,7 @@
 """Arma el HTML final de cada artículo: breadcrumb, título, cuerpo y CSS."""
 import html as html_mod
 import logging
+import re
 
 from bs4 import BeautifulSoup
 
@@ -78,6 +79,17 @@ def _breadcrumb(path):
     return '<span class="sep">&gt;</span>'.join(partes) or "&nbsp;"
 
 
+# Caracteres que el editor deja pegados y no se ven: espacios de ancho cero,
+# BOM y word joiner. Con uno de ellos en el nombre del artículo, el título y su
+# encabezado se ven idénticos pero no son iguales como texto.
+_INVISIBLES = re.compile("[\u200b-\u200d\u2060\ufeff]")
+
+
+def _comparable(texto):
+    """Texto para comparar títulos: sin invisibles, espacios colapsados, en minúsculas."""
+    return " ".join(_INVISIBLES.sub("", texto or "").split()).lower()
+
+
 def _quitar_titulo_repetido(raiz, titulo):
     """Saca el encabezado inicial si repite el título del artículo.
 
@@ -86,7 +98,7 @@ def _quitar_titulo_repetido(raiz, titulo):
     esto el título sale DOS veces en casi todas las páginas. No se pierde nada:
     el título sigue como H1 del documento, con su breadcrumb.
     """
-    objetivo = (titulo or "").strip().lower()
+    objetivo = _comparable(titulo)
     if not objetivo:
         return False
     for nodo in raiz.find_all(True, recursive=False)[:3]:
@@ -94,7 +106,7 @@ def _quitar_titulo_repetido(raiz, titulo):
             if nodo.get_text(strip=True):
                 return False   # ya empezó el contenido de verdad
             continue
-        if nodo.get_text(strip=True).lower() == objetivo:
+        if _comparable(nodo.get_text()) == objetivo:
             nodo.decompose()
             return True
         return False
