@@ -1,60 +1,62 @@
-# Exportación de clientes (carga inicial de la API 03_clients)
+# Exportación de clientes para Heinwiss (carga inicial)
 
-Un CSV con **todos** los clientes de Odoo, con las mismas columnas que la consulta
-`03_clients` de la API de consultas (`bianalytics/odoo_api_query`), para la carga
-inicial del sistema externo que después sincroniza por esa API.
+Heinwiss consume los clientes de Forum por la API de consultas
+(`bianalytics/odoo_api_query`, `POST /api/v1/query/execute`) con la consulta guardada
+**`03_clients`**. Para la carga inicial se les da un único CSV con **la misma salida**
+de esa consulta, para todos los clientes, leído directo de la base con psql y en
+**sólo lectura**. No se modifica ni el módulo ni la consulta guardada.
 
-Lee Odoo **sólo en lectura** (XML-RPC, `search_count` y `search_read`): sin SQL, sin
-módulos, sin escrituras.
+## `partners_03_clients.sql`
 
-## Configuración
+Una sola sesión psql, `default_transaction_read_only = on` y `statement_timeout =
+5min`, con tres consultas y ninguna más:
 
-Un archivo por ambiente, junto a este README: `config.staging.json` y
-`config.prod.json` (fuera del repo). Copiá `config.example.json`:
+1. que exista `api_query_definition` y que el SQL guardado de `03_clients` sea el
+   esperado (el de producción al 01-10-2026, comparado con los espacios colapsados).
+   Si difiere, lo muestra y corta **antes** de exportar;
+2. `max(write_date)` y `max(create_date)` de `res_partner`: la fecha de corte que se le
+   informa a Heinwiss;
+3. la exportación: el SQL de `03_clients` con estos cambios y ningún otro:
+   - sin el filtro de fecha fija (`write_date > '2026-03-01'`): todos los
+     `customer_rank > 0`, sin filtrar `active` (como la consulta);
+   - sin `LIMIT`/`OFFSET`;
+   - `client_sync_local_date`, `client_updated_date` y `client_register_date` con el
+     formato que les da la API (`datetime.isoformat()`: `2026-09-12T18:30:19.564228`,
+     y `+00:00` en la que tiene zona).
 
-| campo | qué es |
-|---|---|
-| `url` | URL del Odoo (`https://support-forum.primateuy.com`) |
-| `db` | nombre de la base |
-| `username` | usuario; alcanza con lectura de contactos |
-| `api_key` | API key del usuario (Preferencias › Seguridad de la cuenta) |
-| `sleep` | pausa entre lotes de 2000, en segundos (default 0.5; lo pisa `--sleep`) |
+   Columnas, nombres, orden y el resto de los valores, idénticos a la API, incluidos
+   `client_gender` (sale «Sin definir»), `client_id_card = ref` y las cuatro columnas
+   de sucursal vacías.
 
-## Uso
+Lo informativo sale por stderr (`\warn`) y stdout lleva **sólo el CSV**, así que el
+archivo se escribe en la máquina que corre el comando y no queda nada en el servidor.
+Requiere psql 13+.
 
-```bash
-python3 partner_export.py --env staging --dry-run       # cuenta y muestra la 1ª página
-python3 partner_export.py --env staging --limit 5000    # prueba acotada
-python3 partner_export.py --env staging                 # todos
-python3 partner_export.py --env staging --fields country_id,street   # columnas extra
+## Cómo correrlo
+
+La base de Odoo está en el RDS; se entra por SSH al servidor de Odoo y psql toma la
+clave del `odoo.conf` **dentro del servidor** (no se imprime ni viaja):
+
+```sh
+cd tools/partner_export
+F=output/partners_prod_$(date +%Y%m%d_%H%M).csv
+ssh -o BatchMode=yes primate_forum 'sudo -n sh -c '\''
+  PGPASSWORD=$(sed -n "s/^[[:space:]]*db_password[[:space:]]*=[[:space:]]*//p" /var/odoo/forum.primateuy.com/odoo.conf) \
+  LC_ALL=C.UTF-8 psql -X -q -v ON_ERROR_STOP=1 \
+    -h aws-odoo.cww3o3vgjctg.us-east-2.rds.amazonaws.com -p 5432 -U odoo -d forum.primateuy.com -f -
+'\''' < partners_03_clients.sql > "$F" 2> "${F%.csv}.log"
+echo "exit=$?"; cat "${F%.csv}.log"
+gzip -k -9 "$F"
 ```
 
-## Qué exporta
+🔴 El PostgreSQL **local** de ese servidor tiene bases con los mismos nombres
+(`forum.primateuy.com`, `validacion-forum.primateuy.com`) que **no** son las que usa
+Odoo: son copias viejas. Las reales están en el RDS (`db_host` del `odoo.conf`). La
+verificación 1 lo detecta: en la copia local no existe `api_query_definition`.
 
-`res.partner` con `customer_rank > 0`, **incluidos los archivados**, ordenados por id.
-Es el filtro de `03_clients` sin la fecha fija (`write_date > '2026-03-01'`).
+`output/` está fuera del repo: el CSV tiene datos personales.
 
-Salida: `output/partners_<env>_<fecha>.csv` (fuera del repo: tiene datos personales),
-UTF-8, coma. **Idéntico a lo que devuelve hoy `03_clients`**: las mismas 18 columnas,
-en el mismo orden y con los mismos valores:
+## `partner_export.py`
 
-`client_id, client_name, client_dob, client_gender, client_phone, client_city,
-client_mail, client_mail_is_good, client_sync_local_date, client_updated_date,
-client_register_date, client_category, client_is_b2c, client_id_card,
-client_first_branch_id, client_last_branch_id, client_first_branch,
-client_last_branch`
-
-Se replica la consulta tal cual, incluso donde parece raro: `client_gender` compara
-contra `'F'`/`'M'` (Odoo guarda `female`/`male`, así que sale «Sin definir»),
-`client_id_card` es `ref` y las cuatro columnas de sucursal van vacías. La consulta no
-filtra por `active`, así que los archivados salen igual (y no hay columna que los
-distinga, como en la API).
-
-Únicas diferencias, inevitables por XML-RPC:
-
-- `client_updated_date` y `client_register_date` llegan sin microsegundos
-  (`2026-09-12T14:39:00` en vez de `2026-09-12T14:39:00.123456`).
-- `client_sync_local_date` es la fecha y hora de la corrida, en UTC (`+00:00`).
-
-Con `--fields`, los campos pedidos van al final (un Many2one en `<campo>` y
-`<campo>_name`); sin `--fields` el CSV es sólo el de la API.
+Alternativa anterior por XML-RPC (sin acceso a la base). Saca las mismas columnas,
+pero sin los microsegundos de las fechas; ver `--help`.
