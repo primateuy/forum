@@ -51,14 +51,13 @@
                 <field name="partner_id"/>
 
                 <filter name="filtro_hoy" string="Hoy"
-                        domain="[('date', '>=', datetime.datetime.combine(context_today(), datetime.time(0,0,0)))]"/>
+                        domain="[('date_local', '=', context_today().strftime('%Y-%m-%d'))]"/>
                 <filter name="filtro_ayer" string="Ayer"
-                        domain="[('date', '>=', datetime.datetime.combine(context_today() + relativedelta(days=-1), datetime.time(0,0,0))),
-                                 ('date', '&lt;', datetime.datetime.combine(context_today(), datetime.time(0,0,0)))]"/>
+                        domain="[('date_local', '=', (context_today() + relativedelta(days=-1)).strftime('%Y-%m-%d'))]"/>
                 <filter name="filtro_semana" string="Esta semana"
-                        domain="[('date', '>=', datetime.datetime.combine(context_today() + relativedelta(weeks=-1, weekday=0), datetime.time(0,0,0)))]"/>
+                        domain="[('date_local', '>=', (context_today() + relativedelta(weeks=-1, weekday=0)).strftime('%Y-%m-%d'))]"/>
                 <filter name="filtro_mes" string="Este mes"
-                        domain="[('date', '>=', datetime.datetime.combine(context_today().replace(day=1), datetime.time(0,0,0)))]"/>
+                        domain="[('date_local', '>=', (context_today() + relativedelta(day=1)).strftime('%Y-%m-%d'))]"/>
                 <separator/>
                 <filter name="filtro_ventas" string="Solo ventas"
                         domain="[('tipo', '=', 'venta')]"/>
