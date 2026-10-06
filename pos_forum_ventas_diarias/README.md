@@ -17,6 +17,9 @@ Tres vistas sobre los mismos datos:
 
 **Filtros:** Hoy · Ayer · Esta semana · Este mes · Con transacción del adquirente · Excluir vueltos.
 
+Los filtros de fecha cortan por día calendario en la zona horaria del usuario, no en UTC: una
+venta de las 22:00 queda en el día en que se hizo y no en el siguiente.
+
 **Agrupaciones:** forma de pago · sesión · punto de venta · cajero · cliente · **sello** · cuotas ·
 fecha por día o por mes.
 

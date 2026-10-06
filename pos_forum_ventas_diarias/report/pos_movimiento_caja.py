@@ -30,10 +30,14 @@ class PosMovimientoCaja(models.Model):
     """
 
     _name = 'pos.forum.movimiento.caja'
+    _inherit = ['pos.forum.date.local.mixin']
     _description = 'Movimientos de caja del punto de venta'
     _auto = False
     _rec_name = 'concepto'
     _order = 'date desc, id desc'
+
+    # Campo de origen para el día calendario local del mixin.
+    _date_local_source = 'date'
 
     # ------------------------------------------------------------------
     # Comunes a todas las fuentes
