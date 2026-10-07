@@ -15,11 +15,10 @@
 --   06_invoice_details  cfe_fecha_hora_firma
 --   07_invoices         invoice_local_date
 --   15_stock_movements  stock_movement_local_date
--- Sin LIMIT/OFFSET. Mismas filas, columnas y valores que la API; cambia sólo
--- la forma de escribirlos: numéricos con sus decimales (1.00, la API: 1.0) y
--- timestamps con espacio (la API: con 'T').
+-- Sin LIMIT/OFFSET. Mismas filas, columnas y valores que la API, escritos como
+-- los devuelve la API (lo resuelve a_csv.py).
 --
--- Todo lo informativo sale por stderr (\warn); stdout lleva SÓLO el CSV.
+-- Todo lo informativo sale por stderr (\warn); stdout lleva sólo los datos.
 -- Requiere psql 13+. Uso en README.md.
 
 \set ON_ERROR_STOP 1
@@ -96,12 +95,24 @@ SELECT btrim(sql_query) AS base_sql,
 -- las definiciones de estos tres endpoints terminan en un WHERE). El salto de
 -- línea antes del AND evita que un comentario '--' en la última línea se coma
 -- el filtro.
-COPY (
+--
+-- stdout NO es el CSV: son los tipos de las columnas (\gdesc), una línea
+-- marcadora y una fila JSON por línea. a_csv.py lo convierte al CSV con los
+-- valores escritos como los devuelve la API, que necesita el tipo de cada
+-- columna (numeric → float, timestamp → isoformat).
+\pset format unaligned
+\pset tuples_only on
+\pset fieldsep '\t'
+\pset null ''
 SELECT * FROM (
 :base_sql
  AND :campo_fecha >= :'desde' AND :campo_fecha < :'hasta'
-) AS endpoint
-) TO STDOUT WITH (FORMAT csv, HEADER true);
+) AS endpoint \gdesc
+\echo '@@FILAS@@'
+SELECT row_to_json(endpoint)::text FROM (
+:base_sql
+ AND :campo_fecha >= :'desde' AND :campo_fecha < :'hasta'
+) AS endpoint;
 
 -- 4. Resumen (stderr) ------------------------------------------------------
 SELECT count(*) AS filas FROM (

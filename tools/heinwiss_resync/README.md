@@ -12,14 +12,37 @@ exporta y le agrega el filtro de fechas igual que el controlador (`base_sql + "
 AND campo op %s"`). Usa el mismo campo de fecha que Heinwiss usa en sus llamadas,
 sacado de `api_query_log`. Todo corre en **sólo lectura**.
 
-Verificado contra la API local (`o17_support_forum`, septiembre de 2026): son las
-mismas filas y los mismos valores en los tres endpoints (32 / 45 / 69). Lo único
-que cambia es cómo se escriben los valores:
+Cada valor se escribe **como lo devuelve la API**, para que Heinwiss lo cargue
+con lo que ya tiene. `export.sql` manda el tipo de cada columna y las filas en
+JSON, y `a_csv.py` hace las mismas conversiones que la API:
+- Odoo convierte `numeric` a `float`: `1990.00` sale `1990.0`;
+- las fechas pasan por `isoformat()`: `2026-09-24T18:59:39`;
+- los textos van tal cual, por ejemplo `"Efectivo - Suc GAUCHO"` con sus comillas;
+- `NULL` queda vacío.
 
-| | API (JSON) | CSV |
-|---|---|---|
-| numéricos | `1.0`, `-70.0` | `1.00`, `-70.00` |
-| timestamps (`15`) | `2026-09-24T18:59:39` | `2026-09-24 18:59:39` |
+Verificado contra la API local (`o17_support_forum`, del 1/5 al 30/9 de 2026), valor
+por valor y sin normalizar nada:
+- en `07_invoices` (529 filas) y `15_stock_movements` (1.272) son **idénticos**;
+- en `06_invoice_details` (1.139), todo lo que devuelve la API está en el CSV, pero
+  la API no devuelve todo (ver abajo).
+
+## 🔴 La API pierde filas al paginar
+
+Las consultas guardadas no tienen un `ORDER BY` estable, y el controlador les pega
+`LIMIT/OFFSET`. PostgreSQL no garantiza el mismo orden entre una página y la
+siguiente. En `06_invoice_details`, del 1/5 al 30/9 en local, recorrer todas las
+páginas da 1.139 filas pero **sólo 945 distintas**: unas 180 salen repetidas y
+otras tantas no salen nunca. Pasa igual con 100 o con 150 filas por página. Es la
+misma causa de los «duplicados» de `07` del 05-10, y además puede dejarle huecos a
+Heinwiss.
+
+El CSV no pagina, así que trae todas las filas. Arreglarlo en la API es agregar un
+`ORDER BY` por la clave antes del `LIMIT/OFFSET`, pero queda fuera de este dump.
+
+Aparte de eso, `06` puede repetir un `invoice_detail_id`: la consulta une la línea
+de la factura con las líneas del pedido del PDV por producto, y si el pedido tiene
+dos líneas del mismo producto, la línea de factura sale dos veces. Es así en la
+consulta, y la API lo devuelve igual (14 casos en local).
 
 ## Cómo correrlo
 
@@ -31,7 +54,7 @@ DESDE=... HASTA=... ./run.sh local o17_otra_base
 ```
 
 `HASTA` es **exclusive**. Deja en `output/<destino>_<fecha>/`:
-- un CSV por endpoint;
+- un CSV por endpoint, con los valores como los devuelve la API;
 - un `.log` por endpoint, con la base, la definición (md5 y fecha de
   modificación), el filtro, la zona horaria y las filas;
 - `consistencia.txt`;

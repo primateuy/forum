@@ -45,11 +45,15 @@ correr() {
 
 for Q in 07_invoices 06_invoice_details 15_stock_movements; do
     echo "== $Q" >&2
-    if ! correr "$Q" < "$DIR/export.sql" > "$OUT/$Q.csv" 2> "$OUT/$Q.log"; then
+    # export.sql manda tipos + filas JSON; a_csv.py escribe el CSV con los
+    # valores como los devuelve la API.
+    if ! correr "$Q" < "$DIR/export.sql" > "$OUT/.$Q.raw" 2> "$OUT/$Q.log" \
+       || ! python3 "$DIR/a_csv.py" < "$OUT/.$Q.raw" > "$OUT/$Q.csv" 2>> "$OUT/$Q.log"; then
         cat "$OUT/$Q.log" >&2
         echo "ERROR en $Q: no se sigue." >&2
         exit 1
     fi
+    rm -f "$OUT/.$Q.raw"
     grep -v '^---' "$OUT/$Q.log" >&2
 done
 
