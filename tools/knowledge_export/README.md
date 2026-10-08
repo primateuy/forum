@@ -61,6 +61,7 @@ El `.gitignore` deja fuera **todos** los `config*.json` menos el `.example`.
 |---|---|
 | `origen.url / db / username / password` | Odoo de FORUM, de donde se lee |
 | `origen.root_id` | artículo raíz por defecto (`null` = todo el alcance) |
+| `origen.cliente` | etiqueta del cliente de origen (`forum`, `dla`). Si falta, sale de `destino.raiz` |
 | `destino.url / db / username / password` | Odoo de Primate, donde se sube |
 | `destino.raiz` / `destino.ambiente` | carpetas raíz en Documentos (`Forum` / `Producción`) |
 | `destino.upload_mode` | `flat` (default) o `mirror`; lo pisa `--upload-mode` |
@@ -81,6 +82,20 @@ La `url` puede ir con o sin esquema: si falta, se asume `https://`.
 El usuario del destino necesita poder crear `documents.document` y escribir
 `ir.attachment` (para la trazabilidad). **No** necesita leer `ir.model`, y no
 hace falta dárselo.
+
+### Otro cliente (por ejemplo, DLA)
+
+Nada de la lectura está atado a Forum: alcanza con una configuración propia,
+por ejemplo `config.dla-to-staging.json`, con el Odoo de DLA en `origen`,
+`"cliente": "dla"` y `"raiz": "DLA"` en `destino`. La etiqueta del cliente
+separa las dos cosas que antes decían «forum» fijo:
+
+- la carpeta de salida por defecto: `out/dla_knowledge`, así no se pisan los
+  PDFs de Forum en `out/forum_knowledge`;
+- la trazabilidad de cada documento subido: `dla:knowledge.article:<id>`.
+
+Vale lo mismo que para Forum: el origen tiene que tener su **filestore**, o las
+imágenes salen con placeholder.
 
 ## Uso
 

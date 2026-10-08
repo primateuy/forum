@@ -16,6 +16,8 @@
     "db": "forum_prod",
     "username": "usuario@dominio.com",
     "password": "API_KEY_O_CLAVE",
+    "cliente": "forum",
+    "_cliente": "Etiqueta corta del cliente de origen (forum, dla). Va en la trazabilidad de cada documento subido y en la carpeta de salida por defecto. Si falta, sale de destino.raiz.",
     "root_id": 87,
     "_root_id": "Artículo raíz por defecto. null = todo el alcance. Se pisa con --root-id."
   },

@@ -15,7 +15,9 @@ import json
 import logging
 import os
 import platform
+import re
 import sys
+import unicodedata
 from pathlib import Path
 
 AQUI = Path(__file__).resolve().parent
@@ -187,6 +189,23 @@ def descubrible(cfg, args):
     return True if valor is None else bool(valor)
 
 
+def etiqueta_cliente(cfg):
+    """Etiqueta corta del cliente de origen: `forum`, `dla`.
+
+    Va en la marca de trazabilidad de cada documento subido
+    (`<etiqueta>:knowledge.article:<id>`) y en la carpeta de salida por defecto
+    (`out/<etiqueta>_knowledge`), para que dos clientes no se pisen los PDFs ni
+    queden etiquetados con el nombre del otro.
+
+    Sale de `origen.cliente` si está, y si no de `destino.raiz` («Forum» ->
+    `forum`), que es lo que ya tenían las configuraciones existentes: para ellas
+    no cambia nada.
+    """
+    texto = cfg.get("origen", {}).get("cliente") or cfg.get("destino", {}).get("raiz") or "forum"
+    texto = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]+", "_", texto.lower()).strip("_") or "forum"
+
+
 def cargar_config(ruta):
     ruta = Path(ruta)
     if not ruta.exists():
@@ -340,6 +359,7 @@ def subir(args, cfg):
         raise SystemExit("No hay %s. Corré primero la exportación." % ruta_manifest)
 
     destino = cfg["destino"]
+    etiqueta = etiqueta_cliente(cfg)
     modo = modo_subida(cfg, args)
     rpc = OdooRPC(destino["url"], destino["db"], destino["username"], destino["password"])
     rpc.login()
@@ -385,17 +405,17 @@ def subir(args, cfg):
             carpeta_id = docs.ruta(list(partes), raiz_id)
             destino_log = "/".join(partes)
         _, accion = docs.subir(ruta_pdf, ruta_pdf.name, carpeta_id,
-                               origen="forum:knowledge.article:%s" % fila["ID Odoo"])
+                               origen="%s:knowledge.article:%s" % (etiqueta, fila["ID Odoo"]))
         _logger.info("  [%d/%d] %s -> %s (%s)", n, total, ruta_pdf.name,
                      destino_log, accion)
         if args.upload_html and fila["Archivo HTML"]:
             ruta_h = base / fila["Archivo HTML"]
             if ruta_h.exists():
                 docs.subir(ruta_h, ruta_h.name, carpeta_id,
-                           origen="forum:knowledge.article:%s" % fila["ID Odoo"])
+                           origen="%s:knowledge.article:%s" % (etiqueta, fila["ID Odoo"]))
 
     doc_manifest, _accion = docs.subir(ruta_manifest, "manifest.csv", raiz_id,
-                                       origen="forum:knowledge:manifest")
+                                       origen="%s:knowledge:manifest" % etiqueta)
     print("\n=== Subida ===")
     print("  " + docs.resumen())
     _mostrar_link_de_muestra(docs, doc_manifest)
@@ -473,7 +493,8 @@ def main():
                         "config.prod-to-staging.json, config.prod-to-prod.json")
     p.add_argument("--yes", "-y", action="store_true",
                    help="no pedir confirmación de los ambientes (corridas desatendidas)")
-    p.add_argument("--out", default=str(AQUI / "out" / "forum_knowledge"))
+    p.add_argument("--out", help="carpeta de salida (default: out/<cliente>_knowledge, "
+                                    "con el cliente de `origen.cliente` o `destino.raiz`)")
     p.add_argument("--root-id", type=int, help="exportar sólo este subárbol")
     p.add_argument("--dry-run", action="store_true",
                    help="sólo muestra el árbol y los conteos, no genera nada")
@@ -513,8 +534,10 @@ def main():
     p.add_argument("-v", "--verbose", action="store_true")
     args = p.parse_args()
 
-    archivo_log = configurar_log(Path(args.out).expanduser(), args.verbose)
     cfg = cargar_config(args.config)
+    if not args.out:
+        args.out = str(AQUI / "out" / ("%s_knowledge" % etiqueta_cliente(cfg)))
+    archivo_log = configurar_log(Path(args.out).expanduser(), args.verbose)
 
     # El `--dry-run` no escribe en ningún lado, así que no molesta con la
     # confirmación; cualquier otra corrida sí.
