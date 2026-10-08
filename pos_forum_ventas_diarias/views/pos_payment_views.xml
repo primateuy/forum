@@ -72,14 +72,13 @@
 
             <xpath expr="//field[@name='pos_order_id']" position="before">
                 <filter name="filtro_hoy" string="Hoy"
-                        domain="[('payment_date', '>=', datetime.datetime.combine(context_today(), datetime.time(0,0,0)))]"/>
+                        domain="[('date_local', '=', context_today().strftime('%Y-%m-%d'))]"/>
                 <filter name="filtro_ayer" string="Ayer"
-                        domain="[('payment_date', '>=', datetime.datetime.combine(context_today() + relativedelta(days=-1), datetime.time(0,0,0))),
-                                 ('payment_date', '&lt;', datetime.datetime.combine(context_today(), datetime.time(0,0,0)))]"/>
+                        domain="[('date_local', '=', (context_today() + relativedelta(days=-1)).strftime('%Y-%m-%d'))]"/>
                 <filter name="filtro_semana" string="Esta semana"
-                        domain="[('payment_date', '>=', datetime.datetime.combine(context_today() + relativedelta(weeks=-1, weekday=0), datetime.time(0,0,0)))]"/>
+                        domain="[('date_local', '>=', (context_today() + relativedelta(weeks=-1, weekday=0)).strftime('%Y-%m-%d'))]"/>
                 <filter name="filtro_mes" string="Este mes"
-                        domain="[('payment_date', '>=', datetime.datetime.combine(context_today().replace(day=1), datetime.time(0,0,0)))]"/>
+                        domain="[('date_local', '>=', (context_today() + relativedelta(day=1)).strftime('%Y-%m-%d'))]"/>
                 <separator/>
                 <filter name="filtro_con_transaccion" string="Con transacción del adquirente"
                         domain="[('payment_transaction_id', '!=', False)]"/>

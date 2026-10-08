@@ -24,7 +24,14 @@ class PosPayment(models.Model):
     la venta.
     """
 
-    _inherit = 'pos.payment'
+    # _name repetido junto a _inherit no crea un modelo nuevo: es la forma
+    # que pide Odoo para sumarle un mixin a un modelo existente. Sin él,
+    # con _inherit en lista de varios, el ORM no infiere el nombre.
+    _name = 'pos.payment'
+    _inherit = ['pos.payment', 'pos.forum.date.local.mixin']
+
+    # Campo de origen para el día calendario local del mixin.
+    _date_local_source = 'payment_date'
 
     config_id = fields.Many2one(
         comodel_name='pos.config',

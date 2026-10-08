@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'FORUM — Ventas del POS por forma de pago',
-    'version': '17.0.1.0.0',
+    'version': '17.0.1.1.0',
     'author': 'PRIMATE',
     'website': 'https://primate.uy',
     'category': 'Point of Sale',
