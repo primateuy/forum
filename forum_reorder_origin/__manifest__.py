@@ -21,7 +21,7 @@
     'website': 'https://primateuy.odoo.com',
     # primate_reposicion_avanzada se usa solo por el mixin de distribución
     # (primate.distribution.strategy.mixin): no hay acoplamiento con el resto del módulo.
-    'depends': ['stock', 'product', 'automatic_crossdocking', 'primate_reposicion_avanzada'],
+    'depends': ['stock', 'product', 'automatic_crossdocking', 'primate_reposicion_avanzada', 'reorden_rendimiento', 'setu_advance_reordering'],
     'data': [
         'security/ir.model.access.csv',
         'wizard/reorder_warning_wizard_views.xml',
