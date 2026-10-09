@@ -1,13 +1,28 @@
 # -*- coding: utf-8 -*-
+import logging
 import math
+import time
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+from odoo.fields import Command
+from odoo.osv import expression
 from odoo.tools import float_compare, float_round
 
 from odoo.addons.primate_reposicion_avanzada.models.distribution_strategy_mixin import (
     DISTRIBUTION_STRATEGIES,
 )
+
+_logger = logging.getLogger(__name__)
+
+# Última regeneración del informe de reabastecimiento, por (base, compañía). Vive en memoria
+# del proceso a propósito: guardarla en ir.config_parameter invalidaría las cachés de todos
+# los workers en cada apertura de la pantalla. Cada worker regenera, como mucho, una vez por
+# ventana.
+_REPORTE_ULTIMO = {}
+
+# Clave de la caché por transacción del conjunto de reglas no cumplibles.
+CACHE_NO_CUMPLIBLES = 'forum_reorder_origin.no_cumplibles'
 
 
 class StockWarehouseOrderpoint(models.Model):
@@ -64,6 +79,14 @@ class StockWarehouseOrderpoint(models.Model):
     # cambiar el criterio que acababa de aplicar. La foto de abajo es lo que permite volver
     # a repartir cuantas veces se quiera hasta que se ordene de verdad.
 
+    forum_sin_ruta = fields.Boolean(
+        string='Sin ruta de abastecimiento',
+        compute='_compute_forum_sin_ruta',
+        search='_search_forum_sin_ruta',
+        help='No hay ninguna regla de abastecimiento que llegue a esta ubicación por las rutas '
+             'del producto, su categoría, el almacén o la propia regla. Al ordenarla falla con '
+             '«No se encontró regla para abastecer».',
+    )
     forum_demand_original = fields.Float(
         string='Demanda Original',
         readonly=True,
@@ -125,7 +148,12 @@ class StockWarehouseOrderpoint(models.Model):
                 multiple = multiples.get(vals.get('product_id'), 0)
                 if multiple and multiple > 1:
                     vals['qty_multiple'] = float(multiple)
+        self._limpiar_cache_no_cumplibles()
         return super().create(vals_list)
+
+    def write(self, vals):
+        self._limpiar_cache_no_cumplibles()
+        return super().write(vals)
 
     @api.depends('route_id', 'route_id.supplier_wh_id', 'warehouse_id', 'warehouse_id.resupply_wh_ids')
     def _compute_origin_warehouse_id(self):
@@ -205,21 +233,21 @@ class StockWarehouseOrderpoint(models.Model):
             domain = domain + [('product_id', 'in', productos),
                                ('origin_warehouse_id', 'in', almacenes)]
 
-        agrupado = self.read_group(
+        # _read_group y no read_group: el público formatea cada grupo para la pantalla y arma
+        # el nombre visible de cada producto (≈ 27 mil, 10 s de los 13 que tardaba el filtro
+        # de cumplibles) que acá no se usa. Los ids de cada grupo salen en la misma consulta.
+        agrupado = self._read_group(
             domain,
-            fields=['%s:sum' % demand_field],
             groupby=['product_id', 'origin_warehouse_id'],
-            lazy=False,
+            aggregates=['%s:sum' % demand_field, 'id:array_agg'],
         )
         if not agrupado:
             return {}
 
         # Productos por almacén origen, para pedir el free_qty de una sola vez por almacén.
         productos_por_almacen = defaultdict(list)
-        for fila in agrupado:
-            product_id = fila['product_id'][0]
-            warehouse_id = fila['origin_warehouse_id'][0]
-            productos_por_almacen[warehouse_id].append(product_id)
+        for producto, almacen, _demanda, _ids in agrupado:
+            productos_por_almacen[almacen.id].append(producto.id)
 
         disponible = {}
         product_obj = self.env['product.product']
@@ -232,14 +260,15 @@ class StockWarehouseOrderpoint(models.Model):
                 disponible[(producto.id, warehouse_id)] = producto.free_qty
 
         grupos = {}
-        for fila in agrupado:
-            clave = (fila['product_id'][0], fila['origin_warehouse_id'][0])
-            demanda = fila[demand_field] or 0.0
+        for producto, almacen, demanda, ids in agrupado:
+            clave = (producto.id, almacen.id)
+            demanda = demanda or 0.0
             libre = disponible.get(clave, 0.0)
             grupos[clave] = {
                 'demand': demanda,
                 'available': libre,
                 'shortfall': max(demanda - libre, 0.0),
+                '_ids': ids,
             }
         return grupos
 
@@ -260,26 +289,138 @@ class StockWarehouseOrderpoint(models.Model):
         if not grupos:
             return {}
 
-        domain = self._origin_candidate_domain(demand_field=demand_field) + [
-            ('product_id', 'in', [k[0] for k in grupos]),
-            ('origin_warehouse_id', 'in', [k[1] for k in grupos]),
-        ]
-        # search_read en vez de search + loop sobre el recordset: acá se recorren todas las
-        # candidatas (204.897 en la base de FORUM) y solo hacen falta tres enteros por fila.
-        # Instanciar los registros para leer dos many2one cuesta un orden de magnitud más.
-        por_clave = {}
-        for fila in self.search_read(domain, ['product_id', 'origin_warehouse_id']):
-            clave = (fila['product_id'][0], fila['origin_warehouse_id'][0])
-            if clave in grupos:
-                por_clave.setdefault(clave, []).append(fila['id'])
-
+        # Los ids de cada grupo ya vienen del agrupado (array_agg): antes se volvían a buscar
+        # todas las candidatas con un search_read que además formateaba los many2one.
         resultado = {}
         for clave, datos in grupos.items():
-            ids = por_clave.get(clave)
+            datos = dict(datos)
+            ids = datos.pop('_ids', None)
             if not ids:
                 continue
-            resultado[clave] = dict(datos, orderpoints=self.browse(ids))
+            resultado[clave] = dict(datos, orderpoints=self.browse(sorted(ids)))
         return resultado
+
+    @api.model
+    def _ids_sin_ruta(self, ids=None):
+        """Reglas activas para las que no hay NINGUNA regla de abastecimiento que llegue.
+
+        Reproduce en SQL la búsqueda de `procurement.group._search_rule`: una regla de stock
+        sirve si no es de empuje, está activa, su destino es la ubicación de la regla de
+        reorden o un padre, su almacén es el mismo o ninguno, y pertenece a alguna ruta que
+        aplica: la de la propia regla de reorden, las del producto, las de su categoría (con
+        las de las categorías padre) o las del almacén. Si no hay ninguna, «Ordenar» falla
+        con «No se encontró regla para abastecer…».
+
+        Es un control, no un sustituto de la búsqueda real: no mira paquetes ni rutas por
+        empaque, que Forum no usa.
+        """
+        filtro = "AND o.id IN %s" if ids is not None else ""
+        if ids is not None and not ids:
+            return set()
+        self.env.flush_all()
+        self.env.cr.execute(f"""
+            SELECT o.id
+              FROM stock_warehouse_orderpoint o
+              JOIN product_product pp ON pp.id = o.product_id
+              JOIN product_template pt ON pt.id = pp.product_tmpl_id
+              JOIN product_category pc ON pc.id = pt.categ_id
+              JOIN stock_location l ON l.id = o.location_id
+             WHERE o.active {filtro}
+               AND NOT EXISTS (
+                    SELECT 1
+                      FROM stock_rule r
+                      JOIN stock_location dl ON dl.id = r.location_dest_id
+                      JOIN stock_route rt ON rt.id = r.route_id AND rt.active
+                     WHERE r.active
+                       AND r.action != 'push'
+                       AND l.parent_path LIKE dl.parent_path || '%%'
+                       AND (r.warehouse_id IS NULL OR r.warehouse_id = o.warehouse_id)
+                       AND (r.company_id IS NULL OR r.company_id = o.company_id)
+                       AND (r.route_id = o.route_id
+                            OR r.route_id IN (SELECT rp.route_id FROM stock_route_product rp
+                                               WHERE rp.product_id = pt.id)
+                            OR r.route_id IN (SELECT rc.route_id FROM stock_route_categ rc
+                                                JOIN product_category c ON c.id = rc.categ_id
+                                               WHERE pc.parent_path LIKE c.parent_path || '%%')
+                            OR r.route_id IN (SELECT rw.route_id FROM stock_route_warehouse rw
+                                               WHERE rw.warehouse_id = o.warehouse_id))
+               )
+        """, [tuple(ids)] if ids is not None else [])
+        return {fila[0] for fila in self.env.cr.fetchall()}
+
+    def _compute_forum_sin_ruta(self):
+        sin_ruta = self._ids_sin_ruta([i for i in self.ids if isinstance(i, int)])
+        for op in self:
+            op.forum_sin_ruta = op.id in sin_ruta
+
+    def _search_forum_sin_ruta(self, operator, value):
+        if operator not in ('=', '!='):
+            raise UserError(_('Operación no soportada.'))
+        positivo = (operator == '=') == bool(value)
+        return [('id', 'in' if positivo else 'not in', list(self._ids_sin_ruta()))]
+
+    def action_agregar_ruta_sucursal(self):
+        """Agrega a cada producto la ruta que abastece la sucursal de la regla, si le falta.
+
+        Es la corrección de «No se encontró regla para abastecer»: la ruta de la sucursal es
+        la de reabastecimiento entre almacenes que Odoo marca con `supplied_wh_id`. Sólo
+        AGREGA: no saca rutas ni toca reglas, así que no puede dejar a otra regla sin ruta.
+        Las reglas cuya sucursal no tiene ruta de abastecimiento se informan.
+        """
+        sin_ruta = self.filtered('forum_sin_ruta')
+        rutas = self.env['stock.route'].search([
+            ('supplied_wh_id', 'in', sin_ruta.warehouse_id.ids),
+            ('product_selectable', '=', True)])
+        por_almacen = {}
+        for ruta in rutas:
+            por_almacen.setdefault(ruta.supplied_wh_id.id, self.env['stock.route'])
+            por_almacen[ruta.supplied_wh_id.id] |= ruta
+        agregar, sin_ruta_de_sucursal = {}, self.browse()
+        for op in sin_ruta:
+            ruta = por_almacen.get(op.warehouse_id.id)
+            if not ruta:
+                sin_ruta_de_sucursal |= op
+                continue
+            plantilla = op.product_id.product_tmpl_id
+            agregar[plantilla] = agregar.get(plantilla, self.env['stock.route']) | ruta
+        for plantilla, ruta in agregar.items():
+            plantilla.write({'route_ids': [Command.link(r.id) for r in ruta]})
+        # Campo calculado sin dependencias: lo ya leído en esta petición quedó viejo.
+        self.invalidate_model(['forum_sin_ruta'])
+        mensaje = _('Se agregó la ruta de sucursal a %s producto(s).') % len(agregar)
+        if sin_ruta_de_sucursal:
+            mensaje += '\n' + _('%s regla(s) quedan sin ruta: su sucursal no tiene ruta de '
+                                 'abastecimiento (%s).') % (
+                len(sin_ruta_de_sucursal),
+                ', '.join(sin_ruta_de_sucursal.warehouse_id.mapped('name')))
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Rutas de sucursal'),
+                'message': mensaje,
+                'type': 'warning' if sin_ruta_de_sucursal else 'success',
+                'sticky': bool(sin_ruta_de_sucursal),
+            },
+        }
+
+    @api.model
+    def _origin_unfulfillable_ids_todas(self):
+        """Las no cumplibles de TODAS las candidatas, calculadas una vez por transacción.
+
+        La lista filtrada por «cumplibles» pide el mismo dominio varias veces en una sola
+        petición (búsqueda, conteo, agrupaciones) y cada vez reagrupaba las 125 mil reglas
+        candidatas. Dentro de una petición de lectura el stock no cambia; si la petición
+        escribe reglas, la caché se descarta en create/write.
+        """
+        cache = self.env.cr.cache
+        if CACHE_NO_CUMPLIBLES not in cache:
+            cache[CACHE_NO_CUMPLIBLES] = frozenset(self._origin_unfulfillable_ids())
+        return cache[CACHE_NO_CUMPLIBLES]
+
+    @api.model
+    def _limpiar_cache_no_cumplibles(self):
+        self.env.cr.cache.pop(CACHE_NO_CUMPLIBLES, None)
 
     @api.model
     def _origin_unfulfillable_ids(self, restrict_to=None):
@@ -304,13 +445,18 @@ class StockWarehouseOrderpoint(models.Model):
         los candidatos y no solo los de self; los @api.depends alcanzan para disparar el
         recálculo, pero no para delimitar qué se lee.
         """
-        con_warning = self._origin_unfulfillable_ids(restrict_to=self) if self else set()
+        if not self:
+            return
+        # Si la petición ya calculó el conjunto completo (el filtro de la lista), se reusa.
+        con_warning = self.env.cr.cache.get(CACHE_NO_CUMPLIBLES)
+        if con_warning is None:
+            con_warning = self._origin_unfulfillable_ids(restrict_to=self)
         for op in self:
             op.origin_stock_warning = op.id in con_warning
 
     def _search_origin_stock_warning(self, operator, value):
         """Filtro que usa exactamente el mismo criterio de agrupación que el campo."""
-        con_warning = self._origin_unfulfillable_ids()
+        con_warning = self._origin_unfulfillable_ids_todas()
         if operator == '=' and value:
             return [('id', 'in', list(con_warning))]
         return [('id', 'not in', list(con_warning))]
@@ -500,16 +646,171 @@ class StockWarehouseOrderpoint(models.Model):
         }
 
     def action_replenish(self, force_to_max=False):
-        """Override para validar stock en origen antes de reabastecer."""
+        """Override para validar stock en origen antes de reabastecer.
+
+        Con más de una regla seleccionada, el reabastecimiento es TOLERANTE: una regla sin ruta
+        (o con cualquier otro error de abastecimiento) no tira abajo las demás. El core ya sabe
+        hacerlo —es lo que usa el planificador— con `raise_user_error=False`: aparta las
+        reglas que fallan, procesa el resto y deja una actividad en la ficha del producto. La
+        pantalla, en cambio, lo llama con el error activado, y una sola regla mala cancelaba
+        el lote entero de miles. Las que fallan se informan al final en un aviso.
+
+        Con una sola regla se mantiene el comportamiento del core: el error con el botón para
+        ir a corregir el producto.
+        """
         unfulfillable = self._check_origin_stock()
         if unfulfillable:
             self._raise_origin_stock_error(unfulfillable)
-        res = super().action_replenish(force_to_max=force_to_max)
+        if len(self) <= 1:
+            res = super().action_replenish(force_to_max=force_to_max)
+        else:
+            errores = self.env.cr.cache.setdefault('forum_reposicion_errores', [])
+            del errores[:]
+            res = super(StockWarehouseOrderpoint, self.with_context(
+                reposicion_tolerante=True,
+                stock_proceso_masivo=True,
+                wis_encolar_envios=True,
+            )).action_replenish(force_to_max=force_to_max)
+            if errores:
+                res = self._notificacion_reposicion_parcial(errores)
+            del errores[:]
         # Acá la decisión se efectivizó: el movimiento ya se generó, así que el ciclo de
         # distribución se cierra y la foto se descarta. exists() porque el action_replenish
         # del core borra las reglas manuales que quedan en cero.
         self.exists().forum_clear_distribution()
         return res
+
+    def _procure_orderpoint_confirm(self, use_new_cursor=False, company_id=None,
+                                    raise_user_error=True):
+        if self.env.context.get('reposicion_tolerante'):
+            raise_user_error = False
+        return super()._procure_orderpoint_confirm(
+            use_new_cursor=use_new_cursor, company_id=company_id,
+            raise_user_error=raise_user_error)
+
+    def _notificacion_reposicion_parcial(self, errores):
+        """Aviso fijo con las reglas que no se pudieron reabastecer y por qué."""
+        por_mensaje = {}
+        for orderpoint, mensaje in errores:
+            por_mensaje.setdefault(mensaje, self.browse())
+            por_mensaje[mensaje] |= orderpoint
+        fallidas = self.browse().concat(*por_mensaje.values())
+        lineas = []
+        for mensaje, reglas in list(por_mensaje.items())[:10]:
+            nombres = ', '.join(reglas[:5].mapped(
+                lambda o: '%s (%s)' % (o.product_id.display_name, o.warehouse_id.name)))
+            if len(reglas) > 5:
+                nombres += _(' y %s más') % (len(reglas) - 5)
+            lineas.append('• %s: %s' % (mensaje.strip().splitlines()[0], nombres))
+        _logger.warning("Reabastecimiento parcial: %s de %s reglas no se pudieron procesar.",
+                        len(fallidas), len(self))
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Reabastecimiento parcial: %s de %s reglas no se procesaron')
+                         % (len(fallidas), len(self)),
+                'message': _('El resto se ordenó. Las reglas con error quedan en la lista '
+                             '(filtro «Sin ruta de abastecimiento») y con una actividad en la '
+                             'ficha del producto.\n\n%s') % '\n'.join(lineas),
+                'type': 'warning',
+                'sticky': True,
+            },
+        }
+
+    @api.model
+    def _get_orderpoint_action(self):
+        """Regenera el informe de reabastecimiento como mucho una vez por ventana.
+
+        El core lo recorre ENTERO cada vez que se abre la pantalla —y la pantalla se vuelve a
+        abrir sola después de cada «Ordenar»—: lee el pronóstico de todos los productos con
+        stock negativo y crea las reglas manuales que falten. Con el catálogo de Forum son
+        ≈ 20 s por apertura. Dentro de la ventana (parámetro
+        `forum_reorder_origin.reporte_minutos`, 10 por defecto; 0 la desactiva) se devuelve la
+        acción sin regenerar: las reglas que ya existen se siguen viendo y actualizando.
+        """
+        minutos = int(self.env['ir.config_parameter'].sudo().get_param(
+            'forum_reorder_origin.reporte_minutos', 10) or 0)
+        clave = (self.env.cr.dbname, self.env.company.id)
+        ahora = time.time()
+        if minutos > 0 and not self.env.context.get('forum_reporte_forzar') \
+                and ahora - _REPORTE_ULTIMO.get(clave, 0) < minutos * 60:
+            action = self.env["ir.actions.actions"]._for_xml_id(
+                "stock.action_orderpoint_replenish")
+            action['context'] = self.env.context
+            return action
+        contexto = self.env.context
+        self.env.cr.cache.pop('forum_reporte_reglas', None)
+        try:
+            res = super(StockWarehouseOrderpoint, self.with_context(
+                forum_reporte_rapido=True))._get_orderpoint_action()
+        finally:
+            self.env.cr.cache.pop('forum_reporte_reglas', None)
+        res['context'] = contexto
+        _REPORTE_ULTIMO[clave] = ahora
+        return res
+
+    @api.model
+    def _get_orderpoint_products(self):
+        """Al regenerar el informe, sólo los productos que el core no va a descartar.
+
+        El core cruza CADA producto con CADA ubicación de reposición (15 mil × 48 en Forum) y,
+        en cada cruce, recorre todos los stocks y movimientos del producto para ver si el
+        saldo da negativo; si no da negativo, lo descarta. Acá se calcula ese mismo saldo
+        —mismas consultas, misma comparación por `parent_path`, mismo redondeo— de una sola
+        pasada por las filas, y se le pasan al core sólo los productos con algún saldo
+        negativo. El resultado del informe es el mismo; lo que se ahorra es el cruce.
+        """
+        productos = super()._get_orderpoint_products()
+        if not self.env.context.get('forum_reporte_rapido') or not productos:
+            return productos
+        return self._forum_productos_con_saldo_negativo(productos)
+
+    @api.model
+    def _forum_productos_con_saldo_negativo(self, productos):
+        from collections import defaultdict
+
+        ubicaciones = self._get_orderpoint_locations()
+        if not ubicaciones:
+            return productos
+        Move = self.env['stock.move'].with_context(active_test=False)
+        Quant = self.env['stock.quant'].with_context(active_test=False)
+        dominio_quant, dominio_entra, dominio_sale = productos._get_domain_locations_new(
+            ubicaciones.ids)
+        estados = [('state', 'in', ('waiting', 'confirmed', 'assigned', 'partially_available'))]
+        de_productos = [('product_id', 'in', productos.ids)]
+        filas = []
+        for producto, ubicacion, cantidad in Quant._read_group(
+                expression.AND([de_productos, dominio_quant]),
+                ['product_id', 'location_id'], ['quantity:sum']):
+            filas.append((producto.id, ubicacion, cantidad))
+        for producto, ubicacion, cantidad in Move._read_group(
+                expression.AND([de_productos, estados, dominio_entra]),
+                ['product_id', 'location_dest_id'], ['product_qty:sum']):
+            filas.append((producto.id, ubicacion, cantidad))
+        for producto, ubicacion, cantidad in Move._read_group(
+                expression.AND([de_productos, estados, dominio_sale]),
+                ['product_id', 'location_id'], ['product_qty:sum']):
+            filas.append((producto.id, ubicacion, -cantidad))
+
+        # Mismo criterio que el core: una fila cuenta para la ubicación de reposición si el
+        # parent_path de ésta está CONTENIDO en el de la fila (`in`, no `startswith`).
+        ancestros = {}
+        saldo = defaultdict(float)
+        for producto_id, ubicacion, cantidad in filas:
+            if not ubicacion:
+                continue
+            if ubicacion.id not in ancestros:
+                ruta = ubicacion.parent_path
+                ancestros[ubicacion.id] = [u.id for u in ubicaciones if u.parent_path in ruta]
+            for destino_id in ancestros[ubicacion.id]:
+                saldo[(producto_id, destino_id)] += cantidad
+
+        redondeo = {p.id: p.uom_id.rounding for p in productos}
+        con_negativo = {
+            producto_id for (producto_id, _destino), valor in saldo.items()
+            if float_compare(valor, 0, precision_rounding=redondeo[producto_id]) < 0}
+        return productos.filtered(lambda p: p.id in con_negativo)
 
     def action_replenish_auto(self):
         """Override para validar stock en origen antes de automatizar."""

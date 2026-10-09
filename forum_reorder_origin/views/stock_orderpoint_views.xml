@@ -84,6 +84,18 @@
         <field name="code">action = records.action_restore_original_demand()</field>
     </record>
 
+    <!-- Corrige «No se encontró regla para abastecer»: agrega al producto la ruta de la
+         sucursal de cada regla seleccionada que no tiene ruta. Sólo agrega. -->
+    <record id="action_agregar_ruta_sucursal" model="ir.actions.server">
+        <field name="name">Agregar ruta de sucursal</field>
+        <field name="model_id" ref="stock.model_stock_warehouse_orderpoint"/>
+        <field name="binding_model_id" ref="stock.model_stock_warehouse_orderpoint"/>
+        <field name="binding_view_types">list</field>
+        <field name="groups_id" eval="[(4, ref('stock.group_stock_manager'))]"/>
+        <field name="state">code</field>
+        <field name="code">action = records.action_agregar_ruta_sucursal()</field>
+    </record>
+
     <!-- Herencia de la vista search para agregar filtros -->
     <record id="stock_reorder_report_search_origin" model="ir.ui.view">
         <field name="name">stock.warehouse.orderpoint.search.origin</field>
@@ -108,6 +120,12 @@
                         help="Reglas cuya cantidad a pedir viene de una distribucion de stock
                               insuficiente. Se puede volver a repartir con otro criterio, o
                               restaurar la demanda original, hasta que se ordenen."/>
+                <filter string="Sin ruta de abastecimiento"
+                        name="filter_sin_ruta"
+                        domain="[('forum_sin_ruta', '=', True)]"
+                        help="Reglas para las que no hay ninguna regla de abastecimiento que
+                              llegue a su ubicación. Al ordenarlas fallan: hay que revisar las
+                              rutas del producto o del almacén."/>
                 <filter string="Origen sin resolver"
                         name="filter_origin_unresolved"
                         domain="[('origin_warehouse_id', '=', False), ('qty_to_order', '&gt;', 0)]"
