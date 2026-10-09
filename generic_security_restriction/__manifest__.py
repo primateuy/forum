@@ -1,6 +1,6 @@
 {
     "name": "Generic Security Restriction",
-    "version": "17.0.0.28.1",
+    "version": "17.0.0.29.0",
     "author": "Center of Research and Development",
     "website": "https://crnd.pro",
     "license": 'OPL-1',
@@ -14,6 +14,7 @@
     'depends': [
         'base',
         'web',
+        'loyalty',
     ],
     'data': [
         'security/ir.model.access.csv',
