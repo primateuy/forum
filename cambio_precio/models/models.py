@@ -176,6 +176,9 @@ class LoyaltyReward(models.Model):
         string='Descripción',
         compute='_compute_description',
         store=True,
+        # FIX [#ISSUE]: al redefinir el campo como Text no hereda el readonly=False del Char
+        # original de loyalty, y el usuario no podía editar la "Descripción en la orden".
+        readonly=False,
         compute_sudo=True,
         help='Descripción de la recompensa, se mostrará en el Punto de Venta'
     )
