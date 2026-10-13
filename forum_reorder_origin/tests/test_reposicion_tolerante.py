@@ -5,6 +5,7 @@ from odoo.addons.stock.models.stock_orderpoint import StockWarehouseOrderpoint a
 from odoo.tests.common import TransactionCase, tagged
 
 from ..models import stock_warehouse_orderpoint as modulo
+from ..models.reposicion_proceso import PARAM_UMBRAL
 
 
 @tagged('post_install', '-at_install', 'forum_reposicion')
@@ -14,6 +15,8 @@ class TestReposicionTolerante(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.env = cls.env(context=dict(cls.env.context, tracking_disable=True))
+        # Estos tests son del camino inmediato: no dependen del umbral que tenga la base.
+        cls.env['ir.config_parameter'].sudo().set_param(PARAM_UMBRAL, '200')
         cls.almacen = cls.env['stock.warehouse'].create({'name': 'Sucursal reposición test',
                                                          'code': 'SRT'})
         cls.origen = cls.env['stock.location'].create({

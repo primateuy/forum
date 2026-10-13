@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="forum_reposicion_proceso_view_tree" model="ir.ui.view">
+        <field name="name">forum.reposicion.proceso.tree</field>
+        <field name="model">forum.reposicion.proceso</field>
+        <field name="arch" type="xml">
+            <tree create="0" decoration-info="state in ('cola', 'procesando')"
+                  decoration-warning="state == 'hecho' and (sin_stock or errores)"
+                  decoration-muted="state == 'cancelado'">
+                <field name="name"/>
+                <field name="create_date" string="Pedido el"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="force_to_max" optional="hide"/>
+                <field name="total"/>
+                <field name="progress" widget="progressbar"/>
+                <field name="repuestas"/>
+                <field name="sin_stock"/>
+                <field name="errores"/>
+                <field name="omitidas" optional="hide"/>
+                <field name="ended_at" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-info="state in ('cola', 'procesando')"
+                       decoration-success="state == 'hecho'"
+                       decoration-muted="state == 'cancelado'"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="forum_reposicion_proceso_view_form" model="ir.ui.view">
+        <field name="name">forum.reposicion.proceso.form</field>
+        <field name="model">forum.reposicion.proceso</field>
+        <field name="arch" type="xml">
+            <form create="0" edit="0">
+                <header>
+                    <button name="action_reanudar" type="object" string="Reanudar" class="btn-primary"
+                            invisible="state != 'cancelado' and not estancado"/>
+                    <button name="action_cancelar" type="object" string="Cancelar"
+                            invisible="state not in ('cola', 'procesando')"
+                            confirm="Lo ya repuesto queda; las reglas pendientes no se reponen. ¿Cancelar?"/>
+                    <field name="state" widget="statusbar" statusbar_visible="cola,procesando,hecho"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_ver_operaciones" type="object" class="oe_stat_button"
+                                icon="fa-truck" invisible="not picking_count">
+                            <field name="picking_count" widget="statinfo" string="Operaciones"/>
+                        </button>
+                        <button name="action_ver_reglas_con_problema" type="object" class="oe_stat_button"
+                                icon="fa-exclamation-triangle" invisible="not sin_stock and not errores"
+                                string="Reglas sin reponer"/>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="user_id"/>
+                            <field name="create_date" string="Pedido el"/>
+                            <field name="force_to_max"/>
+                            <field name="automatizar" invisible="not automatizar"/>
+                        </group>
+                        <group>
+                            <field name="started_at"/>
+                            <field name="ended_at"/>
+                            <field name="heartbeat"/>
+                            <field name="estancado" invisible="1"/>
+                            <field name="sin_stock" invisible="1"/>
+                            <field name="errores" invisible="1"/>
+                        </group>
+                    </group>
+                    <field name="progress" widget="forum_reposicion_progreso" nolabel="1" class="w-100"/>
+                    <notebook>
+                        <page string="Reglas" name="reglas">
+                            <field name="linea_ids">
+                                <tree decoration-success="estado == 'repuesta'"
+                                      decoration-danger="estado in ('sin_stock', 'error')"
+                                      decoration-muted="estado == 'omitida'">
+                                    <field name="secuencia" string="#"/>
+                                    <field name="product_id"/>
+                                    <field name="location_id"/>
+                                    <field name="orderpoint_id" optional="hide"/>
+                                    <field name="estado" widget="badge"
+                                           decoration-success="estado == 'repuesta'"
+                                           decoration-danger="estado in ('sin_stock', 'error')"/>
+                                    <field name="motivo"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Registro" name="log">
+                            <field name="log" nolabel="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="forum_reposicion_proceso_view_search" model="ir.ui.view">
+        <field name="name">forum.reposicion.proceso.search</field>
+        <field name="model">forum.reposicion.proceso</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="user_id"/>
+                <filter name="activos" string="En curso" domain="[('state', 'in', ('cola', 'procesando'))]"/>
+                <filter name="con_problemas" string="Con reglas sin reponer"
+                        domain="['|', ('sin_stock', '>', 0), ('errores', '>', 0)]"/>
+                <filter name="mios" string="Míos" domain="[('user_id', '=', uid)]"/>
+                <separator/>
+                <filter name="por_estado" string="Estado" context="{'group_by': 'state'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="forum_reposicion_proceso_action" model="ir.actions.act_window">
+        <field name="name">Procesos de reposición</field>
+        <field name="res_model">forum.reposicion.proceso</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Todavía no hay procesos de reposición</p>
+            <p>Cuando se ordenan muchas reglas de reabastecimiento a la vez, la reposición corre
+               acá en segundo plano, por tandas, y se puede seguir su avance.</p>
+        </field>
+    </record>
+
+    <menuitem id="forum_reposicion_proceso_menu" name="Procesos de reposición"
+              parent="stock.menu_stock_procurement" action="forum_reposicion_proceso_action"
+              sequence="12" groups="forum_reorder_origin.group_reposicion_masiva"/>
+
+</odoo>

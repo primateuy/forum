@@ -658,6 +658,14 @@ class StockWarehouseOrderpoint(models.Model):
         Con una sola regla se mantiene el comportamiento del core: el error con el botón para
         ir a corregir el producto.
         """
+        if self.env.context.get('forum_reposicion_fondo'):
+            # Un sub-lote del proceso en segundo plano: el stock en origen ya se controló
+            # allí (las reglas sin stock se saltean y se listan) y el aviso lo arma el proceso.
+            res = super().action_replenish(force_to_max=force_to_max)
+            self.exists().forum_clear_distribution()
+            return res
+        if len(self) > self.env['forum.reposicion.proceso']._umbral():
+            return self._forum_reponer_en_fondo(force_to_max=force_to_max)
         unfulfillable = self._check_origin_stock()
         if unfulfillable:
             self._raise_origin_stock_error(unfulfillable)
@@ -679,6 +687,29 @@ class StockWarehouseOrderpoint(models.Model):
         # del core borra las reglas manuales que quedan en cero.
         self.exists().forum_clear_distribution()
         return res
+
+    def _forum_reponer_en_fondo(self, force_to_max=False, automatizar=False):
+        """Muchas reglas: se crea el proceso en segundo plano y se responde enseguida."""
+        self.env['forum.reposicion.proceso']._controlar_permiso(len(self))
+        proceso = self.env['forum.reposicion.proceso']._crear(
+            orderpoints=self, force_to_max=force_to_max, automatizar=automatizar)
+        return proceso._notificacion_creado()
+
+    @api.model
+    def forum_reponer_dominio(self, domain, force_to_max=False):
+        """«Ordenar» con «seleccionar todo»: llegan el dominio de la lista, no los ids.
+
+        El cliente web corta la selección por dominio en 20.000 ids y mandarlos de vuelta es
+        caro; el dominio entra directo en el INSERT … SELECT del proceso. Hasta el umbral se
+        sigue el camino normal (inmediato).
+        """
+        Proceso = self.env['forum.reposicion.proceso']
+        total = self.search_count(domain, limit=Proceso._umbral() + 1)
+        if total <= Proceso._umbral():
+            return self.search(domain).action_replenish(force_to_max=force_to_max)
+        Proceso._controlar_permiso(total)
+        proceso = Proceso._crear(dominio=domain, force_to_max=force_to_max)
+        return proceso._notificacion_creado()
 
     def _procure_orderpoint_confirm(self, use_new_cursor=False, company_id=None,
                                     raise_user_error=True):
@@ -814,6 +845,8 @@ class StockWarehouseOrderpoint(models.Model):
 
     def action_replenish_auto(self):
         """Override para validar stock en origen antes de automatizar."""
+        if len(self) > self.env['forum.reposicion.proceso']._umbral():
+            return self._forum_reponer_en_fondo(automatizar=True)
         unfulfillable = self._check_origin_stock()
         if unfulfillable:
             self._raise_origin_stock_error(unfulfillable)

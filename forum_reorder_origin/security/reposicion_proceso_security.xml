@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Categoría propia: con un solo grupo, la ficha del usuario lo muestra como una casilla.
+         En la categoría de Inventario se mezclaría con el desplegable Usuario/Administrador. -->
+    <record id="module_category_reposicion" model="ir.module.category">
+        <field name="name">Reposición</field>
+        <field name="sequence">40</field>
+    </record>
+
+    <!-- Quién puede reponer en segundo plano (más reglas que el umbral) y ver los procesos.
+         Se asigna a mano: un administrador de inventario sin este grupo sigue ordenando hasta
+         el umbral, como siempre. -->
+    <record id="group_reposicion_masiva" model="res.groups">
+        <field name="name">Reposición masiva</field>
+        <field name="category_id" ref="module_category_reposicion"/>
+        <field name="implied_ids" eval="[(4, ref('stock.group_stock_user'))]"/>
+        <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+        <field name="comment">Ordenar más reglas que el umbral (reposición en segundo plano) y ver el menú
+            Procesos de reposición.</field>
+    </record>
+
+    <record id="forum_reposicion_proceso_rule_company" model="ir.rule">
+        <field name="name">Proceso de reposición: multicompañía</field>
+        <field name="model_id" ref="model_forum_reposicion_proceso"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <record id="forum_reposicion_proceso_regla_rule_company" model="ir.rule">
+        <field name="name">Regla de un proceso de reposición: multicompañía</field>
+        <field name="model_id" ref="model_forum_reposicion_proceso_regla"/>
+        <field name="domain_force">[('proceso_id.company_id', 'in', company_ids)]</field>
+    </record>
+
+</odoo>

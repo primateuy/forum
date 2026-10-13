@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+  <t t-name="forum_reorder_origin.ReposicionProgreso">
+    <t t-set="v" t-value="vista"/>
+    <div class="o_forum_reorder_origin_progreso w-100">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <div class="progress flex-grow-1" style="height: 22px;">
+          <div t-att-class="'progress-bar ' + v.claseBarra" role="progressbar"
+               t-attf-style="width: {{ v.porcentaje }}%;" t-att-aria-valuenow="v.porcentaje"
+               aria-valuemin="0" aria-valuemax="100">
+            <span class="fw-bold"><t t-esc="v.porcentaje"/>%</span>
+          </div>
+        </div>
+        <span class="text-muted small text-nowrap" t-esc="v.detalle"/>
+      </div>
+
+      <div t-if="v.estancado" class="alert alert-warning py-2 mb-2">
+        <i class="fa fa-pause me-1"/>
+        Hace más de 5 minutos que no avanza: la cadena de tandas se cortó (por ejemplo, un
+        reinicio del servidor). Usá «Reanudar»; lo ya repuesto no se repite.
+      </div>
+      <div t-elif="v.enCola" class="alert alert-info py-2 mb-2">
+        <i class="fa fa-clock-o me-1"/>
+        En cola: arranca cuando termine el proceso anterior.
+      </div>
+      <div t-elif="v.paso" class="alert alert-info py-2 mb-2">
+        <i class="fa fa-cog fa-spin me-1"/>
+        <strong t-esc="v.paso"/>
+      </div>
+
+      <div class="d-flex flex-wrap gap-4 mb-2">
+        <div>
+          <span class="text-muted small d-block">Transcurrido</span>
+          <span class="fs-5 font-monospace" t-esc="v.transcurrido"/>
+        </div>
+        <div t-if="v.eta">
+          <span class="text-muted small d-block">Restante estimado</span>
+          <span class="fs-5 font-monospace text-primary" t-esc="v.eta"/>
+        </div>
+        <div t-if="v.ritmo">
+          <span class="text-muted small d-block">Ritmo</span>
+          <span class="fs-5 font-monospace" t-esc="v.ritmo"/>
+        </div>
+      </div>
+
+      <div class="row g-2">
+        <t t-foreach="v.contadores" t-as="c" t-key="c_index">
+          <div class="col-6 col-md-3">
+            <div t-att-class="c.claseCaja">
+              <div class="text-muted small" t-esc="c.etiqueta"/>
+              <div t-att-class="c.claseValor" t-esc="c.texto"/>
+            </div>
+          </div>
+        </t>
+      </div>
+
+      <div t-if="v.corriendo" class="text-muted small mt-2">
+        <i class="fa fa-refresh fa-spin me-1"/>
+        Actualizándose solo. Podés cerrar la pantalla: el proceso sigue en segundo plano.
+      </div>
+    </div>
+  </t>
+
+</templates>

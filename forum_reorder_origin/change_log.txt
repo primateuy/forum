@@ -456,3 +456,80 @@ El faltante es un valor almacenado que solo se puebla con la acción de recálcu
 actualizar el módulo hay que correr "Recalcular Faltante en Origen" desde el menú Acciones de
 la lista de Reabastecimiento; si no, la columna queda en cero y parece que no hay faltante.
 Con esta corrección la acción entra cómoda en el tiempo de una petición web; antes no.
+
+
+17.0.2.4.0 — reposición en segundo plano, por tandas encadenadas (13/10/2026)
+--------------------------------------------------------------------------------
+
+## Por qué
+
+«Ordenar» corría entero dentro de la petición del usuario. El 13-10 Eduardo ordenó 6.550 reglas
+de la plantilla 6365230 en support y el worker murió dos veces por el límite de 120 s de CPU, sin
+dejar nada hecho. Forum puede llegar a reponer ~720.000 reglas de una vez.
+
+## Qué cambia
+
+- Con más reglas que el umbral (parámetro `forum_reorder_origin.reposicion_umbral`, 200 por
+  defecto), «Ordenar», «Ordenar al máximo» y «Automatizar» crean un proceso REP/xxxxx y responden
+  enseguida (6.550 reglas: 0,19 s; 15.000: 1,4 s). Hasta el umbral, todo sigue igual.
+- Con «seleccionar todo», la lista manda el dominio y no los ids (el cliente web cortaba en
+  20.000): el proceso se arma con un solo INSERT … SELECT.
+- Menú Inventario › Operaciones › Reabastecimiento › Procesos de reposición: barra en vivo,
+  ritmo, restante estimado, contadores, detalle por regla, botón a las operaciones tocadas y a
+  las reglas sin reponer. Al terminar, aviso al usuario por el bus.
+- Las reglas sin stock en origen se SALTEAN y se listan con el motivo (antes bloqueaban todo).
+  El control es el mismo de siempre, por grupo (producto, almacén origen).
+- Las reglas que ya esperan en otro proceso activo no se toman dos veces.
+- Las operaciones quedan como con «Ordenar»: las líneas se suman a la operación abierta de cada
+  sucursal. Se probó un grupo de abastecimiento por sub-lote y daba 2.505 operaciones chicas para
+  6.550 reglas (≈ 22 preparaciones por sucursal); decisión de Daryl: como siempre.
+
+## Cómo corre (sin cron)
+
+Estilo queue_job: cada tanda es una petición HTTP al propio Odoo
+(`/forum_reorder_origin/reposicion/tanda`, autorizada por un token en parámetros del sistema).
+Trabaja hasta `forum_reorder_origin.reposicion_segundos` (60 s por defecto) en sub-lotes de 300
+reglas con un commit cada uno, y antes de terminar dispara la siguiente y libera el worker. Un
+advisory lock asegura una sola tanda por vez. Si la cadena se corta (reinicio), el proceso se ve
+«estancado» a los 5 minutos y se retoma con «Reanudar»; crear otro proceso también lo retoma.
+
+Dos trampas encontradas en la prueba local con 2 workers:
+- El disparo de la tanda siguiente tiene que ser sincrónico (en el postcommit, con 1 s de
+  espera): con un hilo aparte, el worker que pasa `limit_memory_soft` se recicla al responder y
+  el hilo muere con él sin mandar nada.
+- La llamada va sin proxies del entorno (`trust_env=False`). En macOS, leer el proxy del sistema
+  en un worker (proceso hijo de un fork) lo mata en seco.
+
+## Medido (local, o17_bench_crossdock2, 2 workers, 120 s CPU / 240 s real)
+
+- 6.550 reglas de la plantilla 6365230: ~60 reglas/s reponiendo; 3.000 reglas por petición de
+  60 s (27 s en consultas). Saltear sin stock: ~3.000 reglas en 5 s.
+- 15.000 reglas con presupuesto de 5 s: 7 peticiones encadenadas sin huecos.
+- 721.000 reglas (todo forum) ≈ 3–4 h reponiendo, sin ocupar más de un worker a la vez.
+
+## Al desplegar
+
+- `-u forum_reorder_origin` (modelos, vistas, menú, secuencia y assets nuevos).
+- La URL de la tanda se arma con `http_interface`/`http_port` del servidor y el Host de
+  `web.base.url`. Si el servidor está detrás de algo que no deja llamar a 127.0.0.1:<puerto>,
+  fijarla entera en `forum_reorder_origin.reposicion_url`.
+
+
+17.0.2.4.1 — grupo «Reposición masiva» y permisos de los procesos (13/10/2026)
+--------------------------------------------------------------------------------
+
+El menú «Procesos de reposición» quedó para cualquier usuario de inventario, más abierto que
+Reabastecimiento (sólo administradores), sin regla por compañía (support tiene reglas en 6
+compañías) y con «Cancelar» al alcance de cualquiera con permiso de escritura.
+
+- Grupo nuevo «Reposición masiva» (Ajustes › Usuarios › Reposición), en una categoría propia.
+  Se asigna a mano; trae sólo a OdooBot y al admin.
+- Con el grupo: ordenar más reglas que el umbral (segundo plano), ver el menú, los procesos y
+  sus reglas, cancelar y reanudar.
+- Sin el grupo: hasta el umbral se ordena como siempre; por encima, aviso claro de que falta el
+  permiso (en vez de correrlo en la petición, que es lo que el servidor corta).
+- Reglas multicompañía para procesos y sus reglas.
+- base.group_system conserva acceso completo (borrar procesos).
+
+Al desplegar: asignar el grupo a quienes reponen masivo (en support: Eduardo, Luis Torres,
+Mathias Oroño, Mauricio Romero). Sin eso, al pasar de 200 reglas les sale el aviso.
