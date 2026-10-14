@@ -51,3 +51,25 @@ class ResUsers(models.Model):
                 'Sucursal: se agregan los PDV %s a allowed_pos de %s.',
                 ', '.join(faltan.mapped('name')), user.login)
             user.sudo().write({'allowed_pos': [(4, c.id) for c in faltan]})
+
+    def _branch_operation_location_ids(self):
+        """Ubicaciones que usan los tipos de operación que el usuario ya ve.
+
+        Si el perfil le deja VER un tipo de operación, tiene que dejarle
+        EJECUTARLO. El origen y el destino configurados en el tipo le llegan como
+        valor por defecto del formulario: el desplegable ya está filtrado por la
+        restricción, así que el usuario no los elige, se los encuentra puestos. Si
+        no puede leerlos, el formulario abre bien y falla recién al guardar.
+
+        El `sudo()` es deliberado: hay que resolver los tipos de operación sin que
+        la restricción sobre `stock.picking.type` se aplique dentro del cálculo del
+        dominio. El recorte lo sigue dando el dominio de la búsqueda, que es el
+        mismo de `restrict_stock_picking_type`.
+        """
+        self.ensure_one()
+        tipos = self.env['stock.picking.type'].sudo().search([
+            '|',
+            ('warehouse_id', 'in', self.branch_warehouse_ids.ids),
+            ('id', 'in', self._branch_pos_picking_type_ids()),
+        ])
+        return (tipos.default_location_src_id | tipos.default_location_dest_id).ids

@@ -91,12 +91,25 @@
          Ademas de las ubicaciones propias entran las de transito, proveedor,
          cliente, inventario y produccion, que son las contrapartes de esos
          cuatro flujos. Quedan fuera las ubicaciones internas y de vista de
-         OTROS almacenes, que es lo que se quiere ocultar. -->
+         OTROS almacenes, que es lo que se quiere ocultar.
+
+         La tercera rama cierra el agujero: si el perfil deja VER un tipo de
+         operacion, tiene que dejar EJECUTARLO. El origen y el destino que ese
+         tipo trae configurados le llegan al usuario como valor por defecto, y
+         el desplegable ya esta filtrado, asi que no los elige: se los encuentra
+         puestos. Sin esta rama, un tipo que apunta a la ubicacion de otra
+         sucursal abre bien el formulario y revienta al Guardar con un
+         AccessError sobre stock.location.
+
+         Va con child_of y no con in para que entren las sublocaciones del
+         destino, que las necesitan las operaciones detalladas. Eso deja ver el
+         ARBOL de esa ubicacion, no sus existencias: las corta
+         restrict_stock_quant, que va por ubicacion propia. -->
     <record id="restrict_stock_location" model="generic.security.model.restriction">
         <field name="name">Sucursal — Ubicaciones propias y contrapartes del circuito</field>
         <field name="model_id" ref="stock.model_stock_location"/>
         <field name="domain_type">code</field>
-        <field name="domain_code">['|', ('id', 'child_of', user._branch_view_location_ids()), ('usage', 'in', ('supplier', 'customer', 'inventory', 'production', 'transit'))]</field>
+        <field name="domain_code">['|', '|', ('id', 'child_of', user._branch_view_location_ids()), ('usage', 'in', ('supplier', 'customer', 'inventory', 'production', 'transit')), ('id', 'child_of', user._branch_operation_location_ids())]</field>
         <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
     </record>
 

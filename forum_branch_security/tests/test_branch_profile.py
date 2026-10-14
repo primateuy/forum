@@ -101,3 +101,48 @@ class TestBranchProfile(BranchProfileCase):
         self.assertTrue(self.branch_group.menu_access_only)
         self.assertTrue(self.branch_group.model_restriction_ids)
         self.assertTrue(self.branch_group.branch_access_ids)
+
+    def test_13_si_ve_el_tipo_de_operacion_puede_ejecutarlo(self):
+        """Las ubicaciones del tipo de operación visible son legibles.
+
+        El criterio es: si el perfil deja ver un tipo de operación, tiene que
+        dejar ejecutarlo. El destino configurado en el tipo le llega al usuario
+        como valor por defecto —el desplegable ya está filtrado, así que no lo
+        elige— y si no puede leerlo el formulario falla recién al guardar.
+        """
+        destino_ajeno = self.otro_warehouse.lot_stock_id
+        sub_ajena = self.env['stock.location'].create({
+            'name': 'Sub BP', 'location_id': destino_ajeno.id, 'usage': 'internal',
+            'company_id': self.otro_warehouse.company_id.id,
+        })
+        nunca_usada = self.otro_warehouse.view_location_id
+
+        # Sin ningún tipo visible que la use, la ubicación ajena está cerrada.
+        self.env.registry.clear_cache()
+        with self.assertRaises(AccessError):
+            destino_ajeno.with_user(self.user).read(['complete_name'])
+
+        tipo = self.env['stock.picking.type'].create({
+            'name': 'Intercambio BP', 'code': 'outgoing', 'sequence_code': 'IBP',
+            'warehouse_id': self.warehouse.id,
+            'company_id': self.warehouse.company_id.id,
+            'default_location_src_id': self.warehouse.lot_stock_id.id,
+            'default_location_dest_id': destino_ajeno.id,
+        })
+        # _compute_domain está cacheado: el permiso nuevo no aparece hasta limpiar.
+        self.env.registry.clear_cache()
+
+        self.assertIn(tipo, self.as_branch_user('stock.picking.type').search([]))
+        destino_ajeno.with_user(self.user).read(['complete_name'])
+        sub_ajena.with_user(self.user).read(['complete_name'])
+
+        picking = self.as_branch_user('stock.picking').create({
+            'picking_type_id': tipo.id,
+            'location_id': self.warehouse.lot_stock_id.id,
+            'location_dest_id': destino_ajeno.id,
+        })
+        self.assertTrue(picking)
+
+        # La vista del otro almacén no la usa ningún tipo visible: sigue cerrada.
+        with self.assertRaises(AccessError):
+            nunca_usada.with_user(self.user).read(['complete_name'])
