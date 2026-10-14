@@ -533,3 +533,23 @@ compañías) y con «Cancelar» al alcance de cualquiera con permiso de escritur
 
 Al desplegar: asignar el grupo a quienes reponen masivo (en support: Eduardo, Luis Torres,
 Mathias Oroño, Mauricio Romero). Sin eso, al pasar de 200 reglas les sale el aviso.
+
+
+17.0.2.4.2 — un choque con otro proceso no descarta el sub-lote (14/10/2026)
+----------------------------------------------------------------------------
+
+En support, REP/00004 (Luis Torres, 520 reglas) perdió 220 reglas: el sub-lote 2 escribía
+sobre las operaciones abiertas al mismo tiempo que la cola de envíos a WIS y PostgreSQL lo
+rechazó («could not serialize access due to concurrent update»). Se marcaban con error y había
+que ordenarlas de nuevo a mano.
+
+- Ante un choque de concurrencia (SerializationFailure, DeadlockDetected, LockNotAvailable) el
+  sub-lote se deshace y se reintenta en una transacción nueva, hasta 3 intentos, con una espera
+  al azar de 1 a 3 s. Volver al savepoint no alcanza: la transacción sigue viendo la foto vieja.
+- Sólo se pierde el sub-lote en curso: los anteriores ya están commiteados. El lock de la tanda es
+  de la sesión y sobrevive al rollback.
+- Si choca las 3 veces, las reglas quedan con error y el motivo lo dice. Cada reintento queda en
+  el registro del proceso.
+
+Va junto con integracion_wis 0.9.7: un movimiento nuevo ya no se suma a una operación que WIS
+ya tiene (abre una nueva), que era además la que más chocaba con la cola.

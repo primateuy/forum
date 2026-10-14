@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
+from unittest.mock import patch
+
+from psycopg2 import errors as pg_errors
+
 from odoo.exceptions import AccessError, UserError
 from odoo.tests.common import TransactionCase, new_test_user, tagged
 
-from ..models.reposicion_proceso import PARAM_UMBRAL
+from ..models.reposicion_proceso import PARAM_UMBRAL, REINTENTOS_CHOQUE
 
 
 @tagged('post_install', '-at_install', 'forum_reposicion')
@@ -164,6 +168,43 @@ class TestReposicionProceso(TransactionCase):
         self.todas.action_replenish()
         self.assertEqual(self.Proceso._correr_tanda('otro'), {'estado': 'token inválido'})
         self.assertEqual(self._procesos().state, 'cola')
+
+    def _chocar(self, veces):
+        """El sub-lote choca `veces` veces con otro proceso y después repone normal."""
+        Proceso = type(self.Proceso)
+        original = Proceso._reponer
+        llamadas = []
+
+        def reponer(proceso, lineas):
+            llamadas.append(1)
+            if len(llamadas) <= veces:
+                raise pg_errors.SerializationFailure(
+                    "could not serialize access due to concurrent update")
+            return original(proceso, lineas)
+        return patch.object(Proceso, '_reponer', autospec=True, side_effect=reponer), llamadas
+
+    def test_choque_con_otro_proceso_se_reintenta(self):
+        """14-10, support: REP/00004 chocó con la cola de WIS y perdió 220 reglas."""
+        self.todas.action_replenish()
+        proceso = self._procesos()
+        parche, llamadas = self._chocar(2)
+        with parche:
+            self._correr()
+        self.assertEqual(len(llamadas), 3)
+        self.assertEqual((proceso.state, proceso.repuestas, proceso.sin_stock, proceso.errores),
+                         ('hecho', 1, 1, 1))
+        self.assertIn('reintento 2 de 2', proceso.log)
+
+    def test_choque_que_se_repite_queda_con_error(self):
+        self.todas.action_replenish()
+        proceso = self._procesos()
+        parche, llamadas = self._chocar(REINTENTOS_CHOQUE)
+        with parche:
+            self._correr()
+        self.assertEqual(len(llamadas), REINTENTOS_CHOQUE)
+        self.assertEqual((proceso.state, proceso.errores, proceso.repuestas), ('hecho', 3, 0))
+        self.assertIn('Choque con otro proceso', self._linea(proceso, self.con_stock).motivo)
+        self.assertFalse(self._moves(self.con_stock))
 
 
 @tagged('post_install', '-at_install', 'forum_reposicion')

@@ -16,12 +16,14 @@ Si la cadena se corta (reinicio del servidor, worker matado), el proceso queda �
 y se retoma con «Reanudar»; también se retoma solo cuando alguien crea otro proceso.
 """
 import logging
+import random
 import secrets
 import threading
 import time
 from urllib.parse import urlparse
 
 import requests
+from psycopg2 import errors as pg_errors
 
 from odoo import _, api, fields, http, models
 from odoo.exceptions import UserError
@@ -40,6 +42,10 @@ PARAM_TOKEN = 'forum_reorder_origin.reposicion_token'
 PARAM_UMBRAL = 'forum_reorder_origin.reposicion_umbral'
 PARAM_SEGUNDOS = 'forum_reorder_origin.reposicion_segundos'
 ESTADOS_ACTIVOS = ('cola', 'procesando')
+# Otro proceso escribía lo mismo: se reintenta el sub-lote en una transacción nueva.
+CHOQUES = (pg_errors.SerializationFailure, pg_errors.DeadlockDetected,
+           pg_errors.LockNotAvailable)
+REINTENTOS_CHOQUE = 3  # intentos en total antes de marcar el sub-lote con error
 
 
 def _en_test():
@@ -332,8 +338,15 @@ class ForumReposicionProceso(models.Model):
     # ------------------------------------------------------------------
     # Un sub-lote
     # ------------------------------------------------------------------
-    def _procesar_sublote(self):
-        """Repone el próximo sub-lote de reglas pendientes de este proceso y commitea."""
+    def _procesar_sublote(self, intento=1):
+        """Repone el próximo sub-lote de reglas pendientes de este proceso y commitea.
+
+        Si choca con otro proceso que escribe las mismas operaciones (la cola de WIS, un
+        usuario), el sub-lote se reintenta en una transacción nueva hasta
+        `REINTENTOS_CHOQUE` veces. Volver al savepoint no alcanza: la transacción sigue
+        viendo la foto vieja y chocaría igual. 14-oct-2026, support: REP/00004 perdió 220
+        reglas así.
+        """
         self.ensure_one()
         cr = self.env.cr
         Linea = self.env['forum.reposicion.proceso.regla']
@@ -348,9 +361,25 @@ class ForumReposicionProceso(models.Model):
         n_sublote = (lineas[0].secuencia - 1) // SUBLOTE + 1
         self.write({'paso': _("Sub-lote %s: reglas %s a %s de %s") % (
             n_sublote, lineas[0].secuencia, lineas[-1].secuencia, self.total)})
+        if intento > 1:
+            self._registrar(_("Sub-lote %s: choque con otro proceso, reintento %s de %s.")
+                            % (n_sublote, intento - 1, REINTENTOS_CHOQUE - 1))
         try:
             with cr.savepoint():
                 resultado = self._reponer(lineas)
+        except CHOQUES as e:
+            del self.env.cr.cache.setdefault('forum_reposicion_errores', [])[:]
+            if intento < REINTENTOS_CHOQUE:
+                _logger.warning("[reposición] %s: el sub-lote %s chocó con otro proceso "
+                                "(intento %s de %s): %s", self.name, n_sublote, intento,
+                                REINTENTOS_CHOQUE, e)
+                self._deshacer_para_reintentar()
+                return self._procesar_sublote(intento=intento + 1)
+            _logger.error("[reposición] %s: el sub-lote %s chocó %s veces con otro proceso",
+                          self.name, n_sublote, intento)
+            motivo = _("Choque con otro proceso que modificaba las mismas operaciones; "
+                       "reintentado %s veces: %s") % (intento, str(e)[:300])
+            resultado = {linea.id: ('error', motivo) for linea in lineas}
         except Exception as e:  # una falla inesperada no traba el proceso: se anota y sigue
             _logger.exception("[reposición] %s: falló el sub-lote %s", self.name, n_sublote)
             del self.env.cr.cache.setdefault('forum_reposicion_errores', [])[:]
@@ -502,6 +531,19 @@ class ForumReposicionProceso(models.Model):
     def _commit(self):
         if not _en_test():
             self.env.cr.commit()
+
+    def _deshacer_para_reintentar(self):
+        """Transacción nueva para reintentar un sub-lote que chocó.
+
+        Se deshace sólo el sub-lote (los anteriores ya están commiteados) y se espera un
+        rato al azar, para no volver a chocar con el mismo proceso. El lock de la tanda es
+        de la sesión y sobrevive al rollback. En los tests no se puede deshacer: alcanza
+        con volver al savepoint, que ya pasó.
+        """
+        if not _en_test():
+            self.env.cr.rollback()
+            time.sleep(random.uniform(1, 3))
+        self.env.invalidate_all()
 
     # ------------------------------------------------------------------
     # Acciones
