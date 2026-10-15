@@ -10,8 +10,12 @@ class TestBranchProfile(BranchProfileCase):
 
     def test_01_ve_solo_su_almacen(self):
         visibles = self.as_branch_user('stock.warehouse').search([])
-        self.assertEqual(visibles, self.warehouse)
+        self.assertIn(self.warehouse, visibles)
         self.assertNotIn(self.otro_warehouse, visibles)
+        # Lo unico que se suma al propio es el almacen de un tipo de operacion
+        # que el perfil ya le deja ver: en franquicia, el del PdV. Ver test_15.
+        tipos_visibles = self.as_branch_user('stock.picking.type').search([])
+        self.assertFalse(visibles - (self.warehouse | tipos_visibles.warehouse_id))
 
     def test_01b_ve_solo_sus_tipos_de_operacion(self):
         visibles = self.as_branch_user('stock.picking.type').search([])
@@ -183,3 +187,30 @@ class TestBranchProfile(BranchProfileCase):
             'partner_id': contacto.id,
         })
         self.assertEqual(picking.location_dest_id, salida_ajena)
+
+    def test_15_el_almacen_del_pdv_es_legible(self):
+        """En franquicia el PdV mueve stock en otro almacen, y hay que leerlo.
+
+        El `display_name` de un tipo de operacion es `<almacen>: <nombre>`, asi
+        que un tipo visible con el almacen cerrado rompe el `web_search_read`
+        con el que el cliente web abre el tablero de Inventario: la pantalla no
+        carga y salta un AccessError sobre `stock.warehouse`.
+        """
+        almacen_pdv = self.env['stock.warehouse'].create({
+            'name': 'Almacen PdV BP', 'code': 'APDV',
+            'company_id': self.franquicia.id,
+        })
+        self.pos_config.picking_type_id = almacen_pdv.out_type_id
+        self.assertNotIn(almacen_pdv, self.user.branch_warehouse_ids)
+        self.env.registry.clear_cache()
+
+        visibles = self.as_branch_user('stock.picking.type').search([])
+        self.assertIn(almacen_pdv.out_type_id, visibles)
+
+        # Esto es lo que falla si el almacen del PdV no se abre.
+        visibles.with_user(self.user).read(['display_name'])
+        almacen_pdv.with_user(self.user).read(['name'])
+
+        # Y el almacen de la otra sucursal sigue cerrado.
+        self.assertNotIn(
+            self.otro_warehouse, self.as_branch_user('stock.warehouse').search([]))

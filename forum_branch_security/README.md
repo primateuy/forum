@@ -184,6 +184,22 @@ Dos cosas más que conviene saber:
   configuración que se toca una vez. **Dar de alta una sucursal nueva es uno de esos casos**:
   después de ponerle la ubicación de salida a su contacto hay que reiniciar.
 
+### El almacén de un tipo visible también se abre
+
+`restrict_stock_warehouse` tiene una segunda rama,
+`('id', 'in', user._branch_operation_warehouse_ids())`. No es cosmética: el
+`display_name` de un tipo de operación es `<almacén>: <nombre>`, así que un tipo
+visible con el almacén cerrado **rompe la pantalla de Inventario entera** — el
+`web_search_read` con el que el cliente web la abre falla con `AccessError` sobre
+`stock.warehouse` y no carga nada.
+
+Pasa en las franquicias: el tipo de operación del PdV vive en el almacén `z_` de la
+compañía del franquiciado, no en el almacén del local, que es de FORUM. Ese tipo
+entra por `_branch_pos_picking_type_ids()`, que lo necesita la caja.
+
+La consecuencia es que un usuario de franquicia ve **dos** almacenes: el suyo y el
+`z_` de su propia compañía. Ninguno de otra sucursal.
+
 ## Convención de listas de precios
 
 **Las listas de precios viven en la casa central o sin compañía, nunca dentro de la

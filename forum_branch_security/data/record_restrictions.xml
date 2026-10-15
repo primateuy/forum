@@ -16,11 +16,25 @@
          todo cuando self.env.su es True.
          ================================================================ -->
 
+    <!-- El propio y el del PdV, que es lo que ya devuelve
+         _branch_operating_warehouse_ids de retail_branch y lo que ya usaba
+         _branch_view_location_ids para las ubicaciones. Este dominio miraba solo
+         branch_warehouse_ids y quedaba un paso atras.
+
+         No es cosmetica: el display_name de un tipo de operacion es
+         "<almacen>: <nombre>", asi que un tipo visible con el almacen cerrado
+         rompe el web_search_read con el que el cliente web abre el tablero de
+         Inventario, y la pantalla no carga.
+
+         Pasa en las franquicias: el tipo de operacion del PdV vive en el almacen
+         z_ de la compania del franquiciado, no en el almacen del local, que es de
+         FORUM. Ese tipo entra por _branch_pos_picking_type_ids(), que lo necesita
+         la caja, asi que el almacen tiene que poder leerse. -->
     <record id="restrict_stock_warehouse" model="generic.security.model.restriction">
         <field name="name">Sucursal — Almacenes propios</field>
         <field name="model_id" ref="stock.model_stock_warehouse"/>
         <field name="domain_type">code</field>
-        <field name="domain_code">[('id', 'in', user.branch_warehouse_ids.ids)]</field>
+        <field name="domain_code">[('id', 'in', user._branch_operating_warehouse_ids())]</field>
         <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
     </record>
 
