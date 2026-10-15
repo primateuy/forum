@@ -146,3 +146,40 @@ class TestBranchProfile(BranchProfileCase):
         # La vista del otro almacén no la usa ningún tipo visible: sigue cerrada.
         with self.assertRaises(AccessError):
             nunca_usada.with_user(self.user).read(['complete_name'])
+
+    def test_14_el_destino_que_pone_el_contacto_tambien_se_abre(self):
+        """Si el tipo no trae destino, lo pone el contacto — y también hay que leerlo.
+
+        Es el caso real del intercambio entre sucursales: `Intercambio - Envio`
+        no tiene destino configurado, así que `stock.picking._compute_location_id`
+        cae en `partner_id.property_stock_customer`, que apunta a la ubicación de
+        salida de la sucursal de destino. Mirar sólo los defaults del tipo de
+        operación no alcanza.
+        """
+        tipo = self.warehouse.out_type_id
+        self.assertFalse(
+            tipo.default_location_dest_id,
+            'La premisa del caso es un tipo de salida sin destino configurado.')
+
+        salida_ajena = self.env['stock.location'].create({
+            'name': 'Salida OBP', 'usage': 'internal',
+            'location_id': self.otro_warehouse.view_location_id.id,
+            'company_id': self.otro_warehouse.company_id.id,
+        })
+        contacto = self.env['res.partner'].create({'name': 'Sucursal OBP'})
+
+        # Sin la propiedad, la ubicación de salida ajena está cerrada.
+        self.env.registry.clear_cache()
+        with self.assertRaises(AccessError):
+            salida_ajena.with_user(self.user).read(['complete_name'])
+
+        contacto.with_company(
+            self.otro_warehouse.company_id).property_stock_customer = salida_ajena
+        self.env.registry.clear_cache()
+
+        salida_ajena.with_user(self.user).read(['complete_name'])
+        picking = self.as_branch_user('stock.picking').create({
+            'picking_type_id': tipo.id,
+            'partner_id': contacto.id,
+        })
+        self.assertEqual(picking.location_dest_id, salida_ajena)

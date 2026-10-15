@@ -94,12 +94,18 @@
          OTROS almacenes, que es lo que se quiere ocultar.
 
          La tercera rama cierra el agujero: si el perfil deja VER un tipo de
-         operacion, tiene que dejar EJECUTARLO. El origen y el destino que ese
-         tipo trae configurados le llegan al usuario como valor por defecto, y
-         el desplegable ya esta filtrado, asi que no los elige: se los encuentra
-         puestos. Sin esta rama, un tipo que apunta a la ubicacion de otra
-         sucursal abre bien el formulario y revienta al Guardar con un
-         AccessError sobre stock.location.
+         operacion, tiene que dejar EJECUTARLO. El origen y el destino le llegan
+         al usuario como valor por defecto, y el desplegable ya esta filtrado,
+         asi que no los elige: se los encuentra puestos. Sin esta rama, un
+         intercambio hacia otra sucursal abre bien el formulario y revienta al
+         Guardar con un AccessError sobre stock.location.
+
+         Son DOS fuentes, no una (ver stock.picking._compute_location_id): lo
+         que el tipo trae configurado, y -si el tipo lo deja vacio- lo que pone
+         el CONTACTO con property_stock_customer / property_stock_supplier. El
+         intercambio entre sucursales es el segundo caso: Intercambio - Envio no
+         tiene destino, y lo trae la ficha de la sucursal de destino. Las dos las
+         resuelve _branch_operation_location_ids.
 
          Va con child_of y no con in para que entren las sublocaciones del
          destino, que las necesitan las operaciones detalladas. Eso deja ver el

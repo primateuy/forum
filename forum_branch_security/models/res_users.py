@@ -56,10 +56,19 @@ class ResUsers(models.Model):
         """Ubicaciones que usan los tipos de operación que el usuario ya ve.
 
         Si el perfil le deja VER un tipo de operación, tiene que dejarle
-        EJECUTARLO. El origen y el destino configurados en el tipo le llegan como
-        valor por defecto del formulario: el desplegable ya está filtrado por la
-        restricción, así que el usuario no los elige, se los encuentra puestos. Si
-        no puede leerlos, el formulario abre bien y falla recién al guardar.
+        EJECUTARLO. El origen y el destino le llegan como valor por defecto del
+        formulario: el desplegable ya está filtrado por la restricción, así que
+        el usuario no los elige, se los encuentra puestos. Si no puede leerlos,
+        el formulario abre bien y falla recién al guardar.
+
+        Son dos fuentes, no una (ver `stock.picking._compute_location_id`):
+
+        1. El origen y el destino configurados en el tipo de operación.
+        2. **Si el tipo los deja vacíos, los pone el contacto**, con sus
+           `property_stock_supplier` y `property_stock_customer`. Es el caso del
+           intercambio entre sucursales: `Intercambio - Envio` no tiene destino,
+           y al elegir la sucursal de destino el formulario trae la ubicación de
+           salida de esa sucursal, que no es del almacén del usuario.
 
         El `sudo()` es deliberado: hay que resolver los tipos de operación sin que
         la restricción sobre `stock.picking.type` se aplique dentro del cálculo del
@@ -72,4 +81,43 @@ class ResUsers(models.Model):
             ('warehouse_id', 'in', self.branch_warehouse_ids.ids),
             ('id', 'in', self._branch_pos_picking_type_ids()),
         ])
-        return (tipos.default_location_src_id | tipos.default_location_dest_id).ids
+        ubicaciones = tipos.default_location_src_id | tipos.default_location_dest_id
+
+        # Solo se abren las ubicaciones del contacto si algún tipo visible deja
+        # el origen o el destino sin configurar: son esos los que delegan en el
+        # contacto. Un perfil cuyos tipos tengan todo fijo no se ensancha.
+        campos = []
+        if any(not t.default_location_src_id for t in tipos):
+            campos.append('property_stock_supplier')
+        if any(not t.default_location_dest_id for t in tipos):
+            campos.append('property_stock_customer')
+        if campos:
+            ubicaciones |= self._branch_partner_location_ids(campos)
+
+        return ubicaciones.ids
+
+    def _branch_partner_location_ids(self, campos):
+        """Ubicaciones configuradas como ubicación de stock de algún contacto.
+
+        Se leen de `ir.property` y no recorriendo `res.partner` porque el campo es
+        `company_dependent`: el valor vive en la propiedad, y la base tiene cientos
+        de miles de contactos contra unas pocas decenas de propiedades definidas.
+
+        Se ignoran las propiedades globales (`res_id` vacío), que son el default de
+        la compañía y apuntan a las ubicaciones `customer`/`supplier` de core, ya
+        permitidas por la segunda rama del dominio.
+        """
+        self.ensure_one()
+        propiedades = self.env['ir.property'].sudo().search([
+            ('fields_id.model', '=', 'res.partner'),
+            ('fields_id.name', 'in', campos),
+            ('res_id', '!=', False),
+            ('company_id', 'in', [False] + self.company_ids.ids),
+        ])
+        ids = set()
+        for propiedad in propiedades:
+            valor = propiedad.value_reference or ''
+            modelo, _, res_id = valor.partition(',')
+            if modelo == 'stock.location' and res_id.isdigit():
+                ids.add(int(res_id))
+        return self.env['stock.location'].sudo().browse(sorted(ids)).exists()
