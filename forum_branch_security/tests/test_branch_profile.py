@@ -10,8 +10,12 @@ class TestBranchProfile(BranchProfileCase):
 
     def test_01_ve_solo_su_almacen(self):
         visibles = self.as_branch_user('stock.warehouse').search([])
-        self.assertEqual(visibles, self.warehouse)
+        self.assertIn(self.warehouse, visibles)
         self.assertNotIn(self.otro_warehouse, visibles)
+        # Lo unico que se suma al propio es el almacen de un tipo de operacion
+        # que el perfil ya le deja ver: en franquicia, el del PdV. Ver test_15.
+        tipos_visibles = self.as_branch_user('stock.picking.type').search([])
+        self.assertFalse(visibles - (self.warehouse | tipos_visibles.warehouse_id))
 
     def test_01b_ve_solo_sus_tipos_de_operacion(self):
         visibles = self.as_branch_user('stock.picking.type').search([])
@@ -146,3 +150,67 @@ class TestBranchProfile(BranchProfileCase):
         # La vista del otro almacén no la usa ningún tipo visible: sigue cerrada.
         with self.assertRaises(AccessError):
             nunca_usada.with_user(self.user).read(['complete_name'])
+
+    def test_14_el_destino_que_pone_el_contacto_tambien_se_abre(self):
+        """Si el tipo no trae destino, lo pone el contacto — y también hay que leerlo.
+
+        Es el caso real del intercambio entre sucursales: `Intercambio - Envio`
+        no tiene destino configurado, así que `stock.picking._compute_location_id`
+        cae en `partner_id.property_stock_customer`, que apunta a la ubicación de
+        salida de la sucursal de destino. Mirar sólo los defaults del tipo de
+        operación no alcanza.
+        """
+        tipo = self.warehouse.out_type_id
+        self.assertFalse(
+            tipo.default_location_dest_id,
+            'La premisa del caso es un tipo de salida sin destino configurado.')
+
+        salida_ajena = self.env['stock.location'].create({
+            'name': 'Salida OBP', 'usage': 'internal',
+            'location_id': self.otro_warehouse.view_location_id.id,
+            'company_id': self.otro_warehouse.company_id.id,
+        })
+        contacto = self.env['res.partner'].create({'name': 'Sucursal OBP'})
+
+        # Sin la propiedad, la ubicación de salida ajena está cerrada.
+        self.env.registry.clear_cache()
+        with self.assertRaises(AccessError):
+            salida_ajena.with_user(self.user).read(['complete_name'])
+
+        contacto.with_company(
+            self.otro_warehouse.company_id).property_stock_customer = salida_ajena
+        self.env.registry.clear_cache()
+
+        salida_ajena.with_user(self.user).read(['complete_name'])
+        picking = self.as_branch_user('stock.picking').create({
+            'picking_type_id': tipo.id,
+            'partner_id': contacto.id,
+        })
+        self.assertEqual(picking.location_dest_id, salida_ajena)
+
+    def test_15_el_almacen_del_pdv_es_legible(self):
+        """En franquicia el PdV mueve stock en otro almacen, y hay que leerlo.
+
+        El `display_name` de un tipo de operacion es `<almacen>: <nombre>`, asi
+        que un tipo visible con el almacen cerrado rompe el `web_search_read`
+        con el que el cliente web abre el tablero de Inventario: la pantalla no
+        carga y salta un AccessError sobre `stock.warehouse`.
+        """
+        almacen_pdv = self.env['stock.warehouse'].create({
+            'name': 'Almacen PdV BP', 'code': 'APDV',
+            'company_id': self.franquicia.id,
+        })
+        self.pos_config.picking_type_id = almacen_pdv.out_type_id
+        self.assertNotIn(almacen_pdv, self.user.branch_warehouse_ids)
+        self.env.registry.clear_cache()
+
+        visibles = self.as_branch_user('stock.picking.type').search([])
+        self.assertIn(almacen_pdv.out_type_id, visibles)
+
+        # Esto es lo que falla si el almacen del PdV no se abre.
+        visibles.with_user(self.user).read(['display_name'])
+        almacen_pdv.with_user(self.user).read(['name'])
+
+        # Y el almacen de la otra sucursal sigue cerrado.
+        self.assertNotIn(
+            self.otro_warehouse, self.as_branch_user('stock.warehouse').search([]))

@@ -136,22 +136,69 @@ local y por talle— **sin** costo ni margen.
 
 El dominio de `restrict_stock_location` tiene una tercera rama,
 `('id', 'child_of', user._branch_operation_location_ids())`, que abre las ubicaciones de
-origen y destino configuradas en los tipos de operación que el usuario ya ve.
+origen y destino que usan los tipos de operación que el usuario ya ve.
 
-Sin ella, un tipo de operación que apunta a la ubicación de otra sucursal **abre bien el
-formulario y revienta al Guardar** con `AccessError` sobre `stock.location`. Pasa porque el
-destino le llega al usuario como valor por defecto: el desplegable sí está filtrado por la
-restricción, así que la ubicación prohibida no la elige él, se la encuentra puesta.
+Sin ella, un intercambio hacia otra sucursal **abre bien el formulario y revienta al
+Guardar** con `AccessError` sobre `stock.location`. Pasa porque el destino le llega al
+usuario como valor por defecto: el desplegable sí está filtrado por la restricción, así que
+la ubicación prohibida no la elige él, se la encuentra puesta.
 
-Dos cosas que conviene saber:
+#### El destino sale de dos lados, no de uno
+
+Esto es lo que hace que mirar sólo el tipo de operación no alcance. En
+`stock.picking._compute_location_id`:
+
+```python
+if picking.picking_type_id.default_location_dest_id:
+    location_dest_id = picking.picking_type_id.default_location_dest_id.id
+elif picking.partner_id:
+    location_dest_id = picking.partner_id.property_stock_customer.id
+```
+
+**`Intercambio - Envio` no tiene destino configurado.** El destino lo pone el contacto de la
+sucursal a la que se envía, con su *Ubicación del cliente*
+(`property_stock_customer`) — en FORUM, una `POLO/Salida <Sucursal>`. El origen de
+`Intercambio - Recepcion` sale igual de `property_stock_supplier`.
+
+Dos consecuencias prácticas:
+
+- **Esas ubicaciones son `internal`, no `transit`.** Si fueran de tránsito la segunda rama
+  del dominio ya las dejaría pasar y no habría error. Es fácil confundirse porque la
+  *Ubicación del proveedor* de la misma ficha (`Transito a Almacenes`) sí es de tránsito y
+  nunca dio problema.
+- `_branch_operation_location_ids()` las resuelve leyendo `ir.property`, y **sólo** si algún
+  tipo visible deja el origen o el destino vacío. Un perfil cuyos tipos tengan todo fijo no
+  se ensancha. No se recorre `res.partner` porque el campo es `company_dependent`: el valor
+  vive en la propiedad, y la base tiene cientos de miles de contactos contra unas pocas
+  decenas de propiedades definidas.
+
+Dos cosas más que conviene saber:
 
 - Va con `child_of` y no con `in`, para que entren las sublocaciones del destino, que las
   necesitan las operaciones detalladas. Deja ver el **árbol** de esa ubicación, no sus
   existencias: las corta `restrict_stock_quant`, que va por ubicación propia.
 - **`_compute_domain` está cacheado.** Si cambiás el origen o el destino de un tipo de
-  operación, el permiso nuevo no aparece hasta limpiar caché o reiniciar el servidor. Es el
-  mismo caché que `retail_branch` limpia al cambiar la sucursal de un usuario; acá nadie lo
-  limpia porque el disparador es una configuración que se toca una vez.
+  operación, o la *Ubicación del cliente* de un contacto, el permiso nuevo no aparece hasta
+  limpiar caché o reiniciar el servidor. Es el mismo caché que `retail_branch` limpia al
+  cambiar la sucursal de un usuario; acá nadie lo limpia porque el disparador es una
+  configuración que se toca una vez. **Dar de alta una sucursal nueva es uno de esos casos**:
+  después de ponerle la ubicación de salida a su contacto hay que reiniciar.
+
+### El almacén de un tipo visible también se abre
+
+`restrict_stock_warehouse` tiene una segunda rama,
+`('id', 'in', user._branch_operation_warehouse_ids())`. No es cosmética: el
+`display_name` de un tipo de operación es `<almacén>: <nombre>`, así que un tipo
+visible con el almacén cerrado **rompe la pantalla de Inventario entera** — el
+`web_search_read` con el que el cliente web la abre falla con `AccessError` sobre
+`stock.warehouse` y no carga nada.
+
+Pasa en las franquicias: el tipo de operación del PdV vive en el almacén `z_` de la
+compañía del franquiciado, no en el almacén del local, que es de FORUM. Ese tipo
+entra por `_branch_pos_picking_type_ids()`, que lo necesita la caja.
+
+La consecuencia es que un usuario de franquicia ve **dos** almacenes: el suyo y el
+`z_` de su propia compañía. Ninguno de otra sucursal.
 
 ## Convención de listas de precios
 
