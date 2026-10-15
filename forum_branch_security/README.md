@@ -132,6 +132,27 @@ disponibilidad y ninguna de valor.
 El perfil **ve** la Consulta de Stock —puede buscar un artículo y ver su disponibilidad por
 local y por talle— **sin** costo ni margen.
 
+### Si ve el tipo de operación, puede ejecutarlo
+
+El dominio de `restrict_stock_location` tiene una tercera rama,
+`('id', 'child_of', user._branch_operation_location_ids())`, que abre las ubicaciones de
+origen y destino configuradas en los tipos de operación que el usuario ya ve.
+
+Sin ella, un tipo de operación que apunta a la ubicación de otra sucursal **abre bien el
+formulario y revienta al Guardar** con `AccessError` sobre `stock.location`. Pasa porque el
+destino le llega al usuario como valor por defecto: el desplegable sí está filtrado por la
+restricción, así que la ubicación prohibida no la elige él, se la encuentra puesta.
+
+Dos cosas que conviene saber:
+
+- Va con `child_of` y no con `in`, para que entren las sublocaciones del destino, que las
+  necesitan las operaciones detalladas. Deja ver el **árbol** de esa ubicación, no sus
+  existencias: las corta `restrict_stock_quant`, que va por ubicación propia.
+- **`_compute_domain` está cacheado.** Si cambiás el origen o el destino de un tipo de
+  operación, el permiso nuevo no aparece hasta limpiar caché o reiniciar el servidor. Es el
+  mismo caché que `retail_branch` limpia al cambiar la sucursal de un usuario; acá nadie lo
+  limpia porque el disparador es una configuración que se toca una vez.
+
 ## Convención de listas de precios
 
 **Las listas de precios viven en la casa central o sin compañía, nunca dentro de la
