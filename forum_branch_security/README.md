@@ -200,6 +200,67 @@ entra por `_branch_pos_picking_type_ids()`, que lo necesita la caja.
 La consecuencia es que un usuario de franquicia ve **dos** almacenes: el suyo y el
 `z_` de su propia compañía. Ninguno de otra sucursal.
 
+### El tramo invisible del intercambio lo ejecuta el código
+
+El intercambio entre sucursales son **tres tramos**, y el operador sólo conoce el primero:
+
+1. `Sucursal origen → POLO/Salida <Destino>` — el *Intercambio - Envio* que valida él. El
+   destino se lo pone el contacto de la sucursal de destino (ver arriba).
+2. `POLO/Salida <Destino> → Tránsito <Destino>` — invisible: una regla push `transparent`,
+   que no agrega una operación, sólo corre el destino del movimiento.
+3. `Tránsito <Destino> → Existencias <Destino>` — la recepción que valida la **otra**
+   sucursal: una regla push `manual`, que crea el picking en el almacén de destino.
+
+Los tramos 2 y 3 los aplica `stock.move._push_apply()` **dentro de la transacción del que
+envía**. El 2 pasa sin permisos nuevos, porque la ubicación de tránsito es
+`usage='transit'` y el dominio ya deja ver las contrapartes del circuito. El 3 es el que
+rompía, en dos momentos distintos:
+
+| momento | qué lee | error |
+|---|---|---|
+| al confirmar | la ubicación de existencias del destino, que sale de la regla | `read ... stock.location` |
+| al validar | el movimiento encadenado, para propagarle la reserva | `read ... stock.move` |
+
+El core ya eleva **parte** del circuito —`move.sudo().copy(...)` en `stock_rule._run_push`,
+`(new_push_moves).sudo()._action_confirm()` y `move_dests.sudo()._action_assign()`— pero no
+la resolución de la regla ni las lecturas previas, que corren como el usuario.
+
+`models/stock_move.py` eleva esas dos, y sólo para el perfil:
+
+- `_push_apply()`: la aplicación entera de las reglas push. Es la unidad que tiene sentido,
+  porque o el circuito se aplica completo o no se aplica.
+- `_action_done()`: sólo cuando hay un tramo encadenado que el usuario **no puede leer**
+  (`_branch_eleva_la_cadena`). Una entrega de PdV o una recepción del propio local siguen
+  corriendo con los permisos del usuario.
+
+**Esto no le ensancha nada.** Medido con el perfil puesto, antes y después: 1 almacén de 47,
+7 tipos de operación de 320, 93 ubicaciones de 291, 45 quants de 3.671. El picking de
+recepción y su movimiento le siguen siendo invisibles, y la ubicación de existencias de la
+otra sucursal sigue dando `AccessError` al leerla.
+
+#### Sin las reglas push, esto no hace nada
+
+El tramo puente **no es código: son dos reglas push por sucursal**, y en la base de FORUM
+están **archivadas** las que sirven para el intercambio entre sucursales:
+
+| regla | tramo | ruta | estado |
+|---|---|---|---|
+| `Recolectar <Sucursal>` | POLO/Salida X → Tránsito X | `X: Recibir en 1 paso (existencias)` | archivada |
+| `Movimiento en 2 pasos (Sucursales)` | Tránsito X → Existencias X | idem | archivada |
+| `Envios a X` | POLO/Salida X → Tránsito X | `X: Recibe de Deposito Central` | activa |
+
+La diferencia está en de qué almacén cuelga cada ruta: `_search_rule` filtra por las rutas
+del almacén del movimiento, y las `Recibe de Deposito Central` cuelgan **sólo del CENTRO
+LOGISTICO**. O sea que las activas disparan cuando el que envía es el centro logístico —el
+reabastecimiento— y **nunca** cuando el que envía es una sucursal. Las `Recibir en 1 paso`
+sí están seleccionadas en cada almacén de sucursal.
+
+Con las reglas archivadas el envío termina en `POLO/Salida <Destino>` y no se genera
+ninguna recepción, **para cualquier usuario, administrador incluido**. Desarchivarlas es una
+decisión funcional, con dos cosas para mirar antes: la cobertura es parcial, y cuando el que
+envía es el POLO quedan dos reglas push compitiendo por el mismo tramo (`Envios a X` manual
+contra `Recolectar X` transparente).
+
 ## Convención de listas de precios
 
 **Las listas de precios viven en la casa central o sin compañía, nunca dentro de la
