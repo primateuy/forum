@@ -19,6 +19,9 @@ from .common import BranchProfileCase
 
 @tagged('post_install', '-at_install')
 class TestBranchTransferChain(BranchProfileCase):
+    """Salida de tránsito."""
+
+    SALIDA_INTERNA = False
 
     @classmethod
     def setUpClass(cls):
@@ -39,10 +42,21 @@ class TestBranchTransferChain(BranchProfileCase):
 
         Location = cls.env['stock.location']
         padre_transito = cls.env.ref('stock.stock_location_locations_virtual')
-        cls.salida = Location.create({
-            'name': 'Salida Otro BP', 'usage': 'transit',
-            'location_id': padre_transito.id, 'company_id': empresa.id,
-        })
+        if cls.SALIDA_INTERNA:
+            # Como en producción: POLO/Salida X, interna del Centro Logístico, que no
+            # es ni el almacén del local ni el de la sucursal destino.
+            cls.polo = cls.env['stock.warehouse'].create({
+                'name': 'Centro Logístico BP', 'code': 'CLBP', 'company_id': empresa.id,
+            })
+            cls.salida = Location.create({
+                'name': 'Salida Otro BP', 'usage': 'internal',
+                'location_id': cls.polo.view_location_id.id, 'company_id': empresa.id,
+            })
+        else:
+            cls.salida = Location.create({
+                'name': 'Salida Otro BP', 'usage': 'transit',
+                'location_id': padre_transito.id, 'company_id': empresa.id,
+            })
         cls.transito = Location.create({
             'name': 'Tránsito Otro BP', 'usage': 'transit',
             'location_id': padre_transito.id, 'company_id': empresa.id,
@@ -135,3 +149,22 @@ class TestBranchTransferChain(BranchProfileCase):
         recepcion = self._recepcion(envio)
         self.assertEqual(recepcion.state, 'assigned',
                          'Con la mercadería en Tránsito, la recepción queda lista.')
+
+    def test_04_ve_la_salida_para_elegirla_en_el_envio(self):
+        self.assertTrue(
+            self.env['stock.location'].with_user(self.usuario_local).search(
+                [('id', '=', self.salida.id)]))
+
+
+@tagged('post_install', '-at_install')
+class TestBranchTransferChainSalidaInterna(TestBranchTransferChain):
+    """Salida interna del Centro Logístico: la configuración de producción."""
+
+    SALIDA_INTERNA = True
+
+    def test_05_del_centro_logistico_ve_la_salida_y_nada_mas(self):
+        Location = self.env['stock.location'].with_user(self.usuario_local)
+        self.assertFalse(Location.search([('id', '=', self.polo.lot_stock_id.id)]))
+        self.assertEqual(
+            Location.search([('id', 'child_of', self.polo.view_location_id.id)]),
+            self.salida)

@@ -104,12 +104,18 @@
          Va con child_of y no con in para que entren las sublocaciones del
          destino, que las necesitan las operaciones detalladas. Eso deja ver el
          ARBOL de esa ubicacion, no sus existencias: las corta
-         restrict_stock_quant, que va por ubicacion propia. -->
+         restrict_stock_quant, que va por ubicacion propia.
+
+         La cuarta rama son las Salidas hacia las otras sucursales: el origen de
+         las reglas push de las rutas del almacen. Un envio a otra sucursal tiene
+         como destino esa Salida, y si es interna del Centro Logistico (y no de
+         transito) el usuario no podia ni guardar la transferencia. Va con in:
+         la Salida sola, no lo que cuelgue de ella. -->
     <record id="restrict_stock_location" model="generic.security.model.restriction">
         <field name="name">Sucursal — Ubicaciones propias y contrapartes del circuito</field>
         <field name="model_id" ref="stock.model_stock_location"/>
         <field name="domain_type">code</field>
-        <field name="domain_code">['|', '|', ('id', 'child_of', user._branch_view_location_ids()), ('usage', 'in', ('supplier', 'customer', 'inventory', 'production', 'transit')), ('id', 'child_of', user._branch_operation_location_ids())]</field>
+        <field name="domain_code">['|', '|', '|', ('id', 'child_of', user._branch_view_location_ids()), ('usage', 'in', ('supplier', 'customer', 'inventory', 'production', 'transit')), ('id', 'child_of', user._branch_operation_location_ids()), ('id', 'in', user._branch_route_source_location_ids())]</field>
         <field name="group_ids" eval="[(4, ref('group_branch_user'))]"/>
     </record>
 

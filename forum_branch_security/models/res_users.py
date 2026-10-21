@@ -73,3 +73,23 @@ class ResUsers(models.Model):
             ('id', 'in', self._branch_pos_picking_type_ids()),
         ])
         return (tipos.default_location_src_id | tipos.default_location_dest_id).ids
+
+    def _branch_route_source_location_ids(self):
+        """Ubicaciones donde arrancan las reglas push de las rutas de su almacén.
+
+        En Forum son las «Salida X»: el local manda a otra sucursal con «Intercambio -
+        Envíos» y el destino de esa transferencia es la Salida de la sucursal destino,
+        que viene de la ubicación de cliente del contacto. Según cómo esté configurada
+        es de tránsito (y ya la cubre el dominio por uso) o interna del Centro
+        Logístico, y en ese caso el usuario no podía ni guardar el envío.
+
+        Se toman de las reglas y no de un nombre: son exactamente las ubicaciones desde
+        las que la ruta va a seguir moviendo la mercadería. Ver la ubicación no da ver
+        sus existencias, que siguen recortadas a las ubicaciones propias.
+        """
+        self.ensure_one()
+        reglas = self.env['stock.rule'].sudo().search([
+            ('route_id.warehouse_ids', 'in', self.branch_warehouse_ids.ids),
+            ('action', 'in', ('push', 'pull_push')),
+        ])
+        return reglas.location_src_id.ids
