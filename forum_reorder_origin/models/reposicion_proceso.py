@@ -27,7 +27,7 @@ from psycopg2 import errors as pg_errors
 
 from odoo import _, api, fields, http, models
 from odoo.exceptions import UserError
-from odoo.tools import SQL, config, float_is_zero
+from odoo.tools import SQL, config
 
 _logger = logging.getLogger(__name__)
 
@@ -424,13 +424,7 @@ class ForumReposicionProceso(models.Model):
         reglas.flush_recordset([c.name for c in campos])
 
         if self.force_to_max:
-            # Lo mismo que hace el core con force_to_max, pero ANTES del control de stock en
-            # origen: así se controla lo que de verdad se va a pedir.
-            for op in reglas:
-                op.qty_to_order = op.product_max_qty - op.qty_forecast
-                resto = op.qty_multiple > 0 and op.qty_to_order % op.qty_multiple or 0.0
-                if not float_is_zero(resto, precision_rounding=op.product_uom.rounding):
-                    op.qty_to_order += op.qty_multiple - resto
+            reglas._forum_ajustar_al_maximo()
         nada = reglas.filtered(lambda o: o.qty_to_order <= 0)
         for op in nada:
             resultado[por_regla[op.id]] = ('omitida', _("No había nada para pedir."))

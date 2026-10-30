@@ -7,7 +7,7 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.fields import Command
 from odoo.osv import expression
-from odoo.tools import float_compare, float_round
+from odoo.tools import float_compare, float_is_zero, float_round
 
 from odoo.addons.primate_reposicion_avanzada.models.distribution_strategy_mixin import (
     DISTRIBUTION_STRATEGIES,
@@ -135,6 +135,29 @@ class StockWarehouseOrderpoint(models.Model):
             op.forum_demand_effective = (
                 op.forum_demand_original if op.forum_demand_original > 0 else op.qty_to_order
             )
+
+    def _compute_qty_to_order(self):
+        """Arrastra la demanda efectiva cada vez que se recalcula la cantidad a pedir.
+
+        El core recalcula `qty_to_order` con `env.add_to_compute()` cuando cambian los
+        movimientos de stock (`stock.move`) y al ordenar (`_procure_orderpoint_confirm`).
+        Ese camino NO recalcula los campos almacenados que dependen de él, así que
+        `forum_demand_effective` quedaba con el valor viejo —muchas veces en 0—. Una regla
+        con demanda efectiva en 0 queda fuera del agrupado de no cumplibles: el filtro
+        «Reglas cumplibles» la mostraba con el origen sin stock y «Reponer» la rechazaba
+        (Forum, 30-10-2026, Jean Slim Fit).
+        """
+        super()._compute_qty_to_order()
+        self.env.add_to_compute(self._fields['forum_demand_effective'], self)
+
+    def _forum_ajustar_al_maximo(self):
+        """Lo mismo que hace el core con `force_to_max`, para hacerlo ANTES del control de
+        stock en origen: así se controla lo que de verdad se va a pedir."""
+        for op in self:
+            op.qty_to_order = op.product_max_qty - op.qty_forecast
+            resto = op.qty_multiple > 0 and op.qty_to_order % op.qty_multiple or 0.0
+            if not float_is_zero(resto, precision_rounding=op.product_uom.rounding):
+                op.qty_to_order += op.qty_multiple - resto
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -666,6 +689,10 @@ class StockWarehouseOrderpoint(models.Model):
             return res
         if len(self) > self.env['forum.reposicion.proceso']._umbral():
             return self._forum_reponer_en_fondo(force_to_max=force_to_max)
+        if force_to_max:
+            # Antes del control: si no, se controla la cantidad actual y después el core la
+            # sube al máximo sin volver a mirar el origen.
+            self._forum_ajustar_al_maximo()
         unfulfillable = self._check_origin_stock()
         if unfulfillable:
             self._raise_origin_stock_error(unfulfillable)
