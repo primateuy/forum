@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Envío a otra sucursal: los movimientos encadenados se confirman como sistema.
+"""Envío a otra sucursal: los movimientos encadenados se confirman y se validan como sistema.
 
 El local manda mercadería con «Intercambio - Envíos» a la Salida de la sucursal
 destino, y las reglas push de la ruta de esa sucursal arman el resto:
@@ -35,3 +35,22 @@ class StockMove(models.Model):
         if self.env.su or not self.env.user.has_group('forum_branch_security.group_branch_user'):
             return super()._push_apply()
         return super(StockMove, self.sudo())._push_apply()
+
+    def _action_done(self, cancel_backorder=False):
+        """Para el perfil de sucursal, validar corre como sistema.
+
+        Al validar, el core recorre los movimientos siguientes de la cadena —la recepción
+        en la otra sucursal—: los lee para ver si corta el vínculo
+        (`_check_unlink_move_dest`) y para agruparlos por compañía antes de reservarlos.
+        La reserva ya la hace como superusuario, pero la lectura previa no, y el perfil no
+        ve movimientos de otra sucursal: «Usuario - Suc. Centro no tiene acceso 'leer' a
+        Movimiento de stock» al validar un Intercambio - Envío a Maldonado (support,
+        02-11-2026).
+
+        El usuario ya pasó el control de acceso al apretar Validar sobre SU operación;
+        `sudo()` no cambia el uid, así que la validación queda registrada a su nombre.
+        """
+        if self.env.su or not self.env.user.has_group('forum_branch_security.group_branch_user'):
+            return super()._action_done(cancel_backorder=cancel_backorder)
+        hechos = super(StockMove, self.sudo())._action_done(cancel_backorder=cancel_backorder)
+        return hechos.with_env(self.env)

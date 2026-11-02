@@ -143,8 +143,14 @@ class TestBranchTransferChain(BranchProfileCase):
         self.assertEqual(envio.state, 'assigned')
         envio.move_ids.quantity = 4
         envio.move_ids.picked = True
+        # Validar es otra petición: la recepción de la otra sucursal se lee de la base.
+        # Con la caché del «Marcar por realizar» el error de permisos no aparecía
+        # (support, 02-11-2026: «no tiene acceso 'leer' a Movimiento de stock» al validar).
+        self.env.invalidate_all()
         envio.button_validate()
         self.assertEqual(envio.state, 'done')
+        self.assertEqual(envio.move_ids.write_uid, self.usuario_local,
+                         'La validación la sigue registrando el usuario del local.')
 
         recepcion = self._recepcion(envio)
         self.assertEqual(recepcion.state, 'assigned',
