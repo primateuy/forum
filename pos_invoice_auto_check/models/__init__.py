@@ -3,3 +3,4 @@
 
 from . import pos_invoice_auto_check
 from . import pos_order
+from . import account_move

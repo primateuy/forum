@@ -66,6 +66,16 @@ class POSOrder(models.Model):
         }
 
 
+    def cfe_estado_emision(self):
+        """Para el PDV, después de guardar la venta: ¿salió el CFE?"""
+        self.ensure_one()
+        return self.account_move._pos_cfe_estado()
+
+    def cfe_reintentar_emision(self):
+        """El botón «Reintentar emisión» del PDV."""
+        self.ensure_one()
+        return self.account_move._pos_cfe_reintentar()
+
     def send_mail_invoice(self):
         if not self.account_move:
             self.action_pos_order_invoice()

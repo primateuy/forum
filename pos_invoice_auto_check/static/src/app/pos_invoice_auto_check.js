@@ -6,6 +6,7 @@ import { usePos } from "@point_of_sale/app/store/pos_hook";
 import { _t } from "@web/core/l10n/translation";
 import { ConnectionLostError } from "@web/core/network/rpc_service";
 import { ConfirmPopup } from "@point_of_sale/app/utils/confirm_popup/confirm_popup";
+import { ErrorPopup } from "@point_of_sale/app/errors/popups/error_popup";
 
 patch(PaymentScreen.prototype, {
     setup() {
@@ -34,6 +35,42 @@ patch(PaymentScreen.prototype, {
             }
         }
     },
+    async _forumAsegurarCfeEmitido(orderId) {
+        let estado = await this._forumCfeLlamar("cfe_estado_emision", orderId);
+        while (estado.pendiente) {
+            // Un solo botón: no hay otra salida que reintentar.
+            await this.popup.add(ErrorPopup, {
+                title: _t("El CFE no se emitió"),
+                body: _t(
+                    "La venta %(venta)s quedó guardada, pero su comprobante no se pudo emitir a DGI " +
+                    "(%(motivo)s). La rutina no se puede imprimir sin el CFE: reintentá la emisión.",
+                    {
+                        venta: estado.factura || "",
+                        motivo: estado.error || _t("sin respuesta de UCFE"),
+                    }
+                ),
+                confirmText: _t("Reintentar emisión"),
+            });
+            estado = await this._forumCfeLlamar("cfe_reintentar_emision", orderId);
+        }
+    },
+
+    async _forumCfeLlamar(metodo, orderId) {
+        // Mismo criterio que el guardado de la venta: el bloqueo siempre con finally.
+        this.env.services.ui.block();
+        try {
+            return await this.orm.call("pos.order", metodo, [[orderId]]);
+        } catch (error) {
+            // Sin servidor no se sabe si salió: se vuelve a preguntar.
+            return {
+                pendiente: true,
+                error: error?.data?.message || error?.message || _t("sin conexión con el servidor"),
+            };
+        } finally {
+            this.env.services.ui.unblock();
+        }
+    },
+
     async _finalizeValidation() {
         if (this.pos.config.auto_check_invoice) {
             var self = this;
@@ -77,6 +114,13 @@ patch(PaymentScreen.prototype, {
                 return;
             } else if (!syncOrderResult) {
                 return;
+            }
+
+            // 1b. CFE emitido. La venta y la factura ya quedaron guardadas, pero la
+            // rutina impresa necesita el CFE: si no salió, el cajero reintenta acá
+            // mismo y no se pasa a la pantalla final hasta que salga.
+            if (syncOrderResult[0]?.account_move) {
+                await this._forumAsegurarCfeEmitido(syncOrderResult[0].id);
             }
 
             try {
