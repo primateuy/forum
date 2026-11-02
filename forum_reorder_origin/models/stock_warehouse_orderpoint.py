@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 import math
+import secrets
 import time
 
 from odoo import _, api, fields, models
@@ -742,9 +743,53 @@ class StockWarehouseOrderpoint(models.Model):
                                     raise_user_error=True):
         if self.env.context.get('reposicion_tolerante'):
             raise_user_error = False
+        if not (self.env.context.get('forum_grupo_solicitud_id')
+                or self.env.context.get('forum_grupo_solicitud')):
+            self = self.with_context(forum_grupo_solicitud=secrets.token_hex(8))  # noqa: PLW0642
         return super()._procure_orderpoint_confirm(
             use_new_cursor=use_new_cursor, company_id=company_id,
             raise_user_error=raise_user_error)
+
+    def _prepare_procurement_values(self, date=False, group=False):
+        """Cada solicitud de reabastecimiento lleva su propio grupo.
+
+        El core deja el movimiento sin grupo (salvo que la regla tenga uno), y Odoo sumaba
+        la preparación, el envío y la recepción de una solicitud a las abiertas de otra
+        para la misma sucursal. Las rutas propagan el grupo, así que con uno por solicitud
+        cada una arma su propio circuito (Forum, individualización con WIS, 21-10-2026).
+        """
+        values = super()._prepare_procurement_values(date=date, group=group)
+        if not values.get('group_id'):
+            grupo = self._forum_grupo_solicitud()
+            if grupo:
+                values['group_id'] = grupo
+        return values
+
+    def _forum_grupo_solicitud(self):
+        """El grupo de la solicitud en curso: el del proceso en segundo plano, o uno por
+        llamada a `_procure_orderpoint_confirm` («Ordenar», «Automatizar» y el disparo
+        programado).
+
+        Se crea recién al necesitarlo y se recuerda por cursor: el disparo programado
+        trabaja con un cursor por tanda de 1000 reglas, y uno creado en otro cursor no se
+        vería hasta su commit.
+        """
+        Grupo = self.env['procurement.group'].sudo()
+        ctx = self.env.context
+        if ctx.get('forum_grupo_solicitud_id'):
+            return Grupo.browse(ctx['forum_grupo_solicitud_id'])
+        token = ctx.get('forum_grupo_solicitud')
+        if not token:
+            return Grupo
+        grupos = self.env.cr.cache.setdefault('forum_grupos_solicitud', {})
+        grupo = Grupo.browse(grupos.get(token)).exists()
+        if not grupo:
+            ahora = fields.Datetime.context_timestamp(self, fields.Datetime.now())
+            grupo = Grupo.create({'name': _("Reabastecer %(fecha)s – %(usuario)s",
+                                            fecha=ahora.strftime('%d/%m %H:%M'),
+                                            usuario=self.env.user.name)})
+            grupos[token] = grupo.id
+        return grupo
 
     def _notificacion_reposicion_parcial(self, errores):
         """Aviso fijo con las reglas que no se pudieron reabastecer y por qué."""

@@ -1,6 +1,6 @@
 {
     'name': 'FORUM - Optimización Reglas de Abastecimiento',
-    'version': '17.0.2.4.3',
+    'version': '17.0.2.5.0',
     'category': 'Inventory/Inventory',
     'summary': 'Agrega información de origen, sincroniza múltiplos y valida stock en reglas de reabastecimiento',
     'description': """

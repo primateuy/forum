@@ -115,6 +115,11 @@ class ForumReposicionProceso(models.Model):
                                         "Las reglas se reponen como con «Ordenar»: en la operación "
                                         "abierta de cada sucursal.")
     picking_count = fields.Integer(string='Operaciones', compute='_compute_picking_count')
+    group_id = fields.Many2one('procurement.group', string='Grupo de abastecimiento',
+                               ondelete='set null', readonly=True, copy=False,
+                               help="Todo lo que repone el proceso va en este grupo: arma su "
+                                    "propia preparación, envío y recepción por sucursal, sin "
+                                    "sumarse a las de otras solicitudes.")
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -187,6 +192,7 @@ class ForumReposicionProceso(models.Model):
         else:
             seleccion = SQL('(SELECT unnest(%s::int[]))', list(orderpoints.ids))
         proceso = self.create({'force_to_max': force_to_max, 'automatizar': automatizar})
+        proceso.group_id = self.env['procurement.group'].sudo().create({'name': proceso.name})
         self.env.flush_all()
         self.env.cr.execute(SQL("""
             WITH elegidas AS (
@@ -442,6 +448,8 @@ class ForumReposicionProceso(models.Model):
         if not reglas:
             return resultado
 
+        if not self.group_id:  # proceso creado antes de 17.0.2.5.0
+            self.group_id = self.env['procurement.group'].sudo().create({'name': self.name})
         if self.automatizar:
             reglas.write({'trigger': 'auto'})
         self.env.flush_all()
@@ -449,12 +457,13 @@ class ForumReposicionProceso(models.Model):
         ultimo_move = self.env.cr.fetchone()[0]
         errores = self.env.cr.cache.setdefault('forum_reposicion_errores', [])
         del errores[:]
-        # Sin grupo propio, a propósito: igual que «Ordenar», las líneas se suman a la
-        # operación abierta de cada sucursal. Con un grupo por sub-lote, 6.550 reglas daban
-        # 2.505 operaciones chicas (≈ 22 preparaciones por sucursal); decisión de Daryl,
-        # 13-10-2026.
+        # Un grupo por proceso, no por sub-lote: con uno por sub-lote, 6.550 reglas daban
+        # 2.505 operaciones chicas (13-10-2026). Así, cada solicitud arma una preparación y
+        # un envío por sucursal y no se suma a las de otras (individualización con WIS,
+        # decisión de Daryl, 02-11-2026).
         reglas.with_context(forum_reposicion_fondo=True, reposicion_tolerante=True,
                             stock_proceso_masivo=True, wis_encolar_envios=True,
+                            forum_grupo_solicitud_id=self.group_id.id,
                             ).action_replenish()
         self._registrar_operaciones(ultimo_move)
         con_error = {}
