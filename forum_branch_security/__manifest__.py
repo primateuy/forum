@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'FORUM — Perfil Usuario Sucursal',
-    'version': '17.0.1.3.0',
+    'version': '17.0.1.4.0',
     'author': 'PRIMATE',
     'website': 'https://primate.uy',
     'category': 'Hidden/Tools',

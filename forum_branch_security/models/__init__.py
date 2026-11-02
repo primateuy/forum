@@ -4,3 +4,4 @@ from . import stock_quant_report
 from . import res_users
 from . import res_groups
 from . import stock_move
+from . import stock_picking
