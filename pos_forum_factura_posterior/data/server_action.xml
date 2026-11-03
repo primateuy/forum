@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Acción de tanda para regularizar ventas viejas sin facturar. Se dispara
+        a mano desde el menú Acción de la lista de órdenes: no hay cron, el
+        usuario decide cuándo corre cada tanda y cuántas van.
+
+        Los grupos son los mismos que los del botón de la ficha: emitir un CFE
+        no es una operación de cajero.
+    -->
+    <record id="action_server_facturar_masivo" model="ir.actions.server">
+        <field name="name">Facturar ventas de cajas cerradas</field>
+        <field name="model_id" ref="point_of_sale.model_pos_order"/>
+        <field name="binding_model_id" ref="point_of_sale.model_pos_order"/>
+        <field name="binding_view_types">list</field>
+        <field name="groups_id"
+               eval="[(6, 0, [ref('point_of_sale.group_pos_manager'),
+                              ref('account.group_account_invoice')])]"/>
+        <field name="state">code</field>
+        <field name="code">action = records.action_forum_facturar_masivo()</field>
+    </record>
+
+</odoo>

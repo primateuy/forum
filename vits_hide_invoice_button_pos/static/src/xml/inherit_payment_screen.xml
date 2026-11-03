@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    Author      : Varanval IT Solutions
+    Copyright   : (c) 2025 Varanval IT Solutions. All Rights Reserved.
+    License     : Odoo Proprietary License v1.0 (OPL-1)
+-->
+<templates id="vits_hide_invoice_button_pos.PaymentScreenButtons">
+    <t t-name='PaymentScreenButtons' t-inherit="point_of_sale.PaymentScreenButtons" t-inherit-mode="extension">
+        <xpath expr="//button[contains(@class, 'js_invoice')]" position="replace">
+            <t t-if="!this.env.services.pos.config.pos_hide_show_invoice_button">
+                <button class="button js_invoice btn btn-light btn-lg d-flex justify-content-between align-items-baseline w-100 w-md-50 lh-lg"
+                        t-att-class="{ 'highlight active': currentOrder.is_to_invoice() }"
+                        t-on-click="toggleIsToInvoice">
+                    <span><i class="fa fa-file-text-o me-2"/>Invoice
+                    </span>
+                    <i class="fa me-2"
+                       t-attf-class="{{ currentOrder.is_to_invoice() ? 'fa-check-square text-action' : 'fa-square-o' }}"/>
+                </button>
+            </t>
+        </xpath>
+    </t>
+</templates>
