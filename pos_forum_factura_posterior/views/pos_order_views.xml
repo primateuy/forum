@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_pos_pos_form_factura_posterior" model="ir.ui.view">
+        <field name="name">pos.order.form.factura.posterior</field>
+        <field name="model">pos.order</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_pos_form"/>
+        <field name="arch" type="xml">
+            <!--
+                El botón del core está condicionado a state == 'paid' y al cerrar
+                la caja las ventas no facturadas pasan a 'done'
+                (point_of_sale/models/pos_session.py:356). Se agrega uno propio
+                para ese estado en vez de tocar el del core, para no sacarle a
+                los cajeros el que ya tenían. Se ancla en el botón de devolución
+                porque después del inherit hay dos botones con el mismo name.
+            -->
+            <xpath expr="//button[@name='refund']" position="before">
+                <button name="action_pos_order_invoice"
+                        string="Facturar"
+                        type="object"
+                        class="oe_highlight"
+                        invisible="state != 'done'"
+                        groups="point_of_sale.group_pos_manager,account.group_account_invoice"
+                        confirm="Se va a emitir el CFE de esta venta con la fecha de la orden y se va a revertir su parte del asiento de cierre de caja. La acción no se puede deshacer. ¿Confirma?"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
