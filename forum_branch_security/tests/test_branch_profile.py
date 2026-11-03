@@ -214,3 +214,128 @@ class TestBranchProfile(BranchProfileCase):
         # Y el almacen de la otra sucursal sigue cerrado.
         self.assertNotIn(
             self.otro_warehouse, self.as_branch_user('stock.warehouse').search([]))
+
+
+    def _arma_el_intercambio(self):
+        """El circuito de intercambio entre sucursales, con sus tres tramos.
+
+        Lo arma como en FORUM: el usuario que envía es de la casa central —su
+        compañía activa es la de las ubicaciones, que es lo que hace que
+        `_push_apply` tome la rama **sin** sudo del core— y los dos tramos que
+        siguen son reglas push de una ruta del almacén que envía.
+        """
+        self.salida = self.env['stock.location'].create({
+            'name': 'Salida Otro BP', 'usage': 'internal',
+            'location_id': self.otro_warehouse.view_location_id.id,
+            'company_id': self.casa_central.id,
+        })
+        self.transito = self.env['stock.location'].create({
+            'name': 'Transito Otro BP', 'usage': 'transit',
+            'company_id': self.casa_central.id,
+        })
+        self.destino_final = self.otro_warehouse.lot_stock_id
+
+        # El envío le llega con la salida del destino ya puesta, que es lo que
+        # abrió _branch_operation_location_ids.
+        self.tipo_envio = self.warehouse.out_type_id
+        self.tipo_envio.default_location_dest_id = self.salida
+
+        ruta = self.env['stock.route'].create({
+            'name': 'Puente BP', 'warehouse_selectable': True,
+            'company_id': self.casa_central.id,
+            'warehouse_ids': [(6, 0, [self.warehouse.id])],
+        })
+        self.env['stock.rule'].create({
+            'name': 'Puente BP: salida -> transito', 'route_id': ruta.id,
+            'action': 'push', 'auto': 'transparent',
+            'location_src_id': self.salida.id, 'location_dest_id': self.transito.id,
+            'picking_type_id': self.otro_warehouse.int_type_id.id,
+            'company_id': self.casa_central.id,
+        })
+        self.env['stock.rule'].create({
+            'name': 'Puente BP: transito -> existencias', 'route_id': ruta.id,
+            'action': 'push', 'auto': 'manual',
+            'location_src_id': self.transito.id,
+            'location_dest_id': self.destino_final.id,
+            'picking_type_id': self.otro_warehouse.in_type_id.id,
+            'company_id': self.casa_central.id,
+        })
+
+        self.producto = self.env['product.product'].create({
+            'name': 'Producto Puente BP', 'type': 'product',
+        })
+        self.env['stock.quant']._update_available_quantity(
+            self.producto, self.warehouse.lot_stock_id, 5)
+
+        # Un usuario de sucursal de la casa central, como los "Usuario - Suc. X"
+        # de FORUM: el del fixture es de franquicia y opera en otra compañía.
+        self.usuario_central = self.env['res.users'].create({
+            'name': 'Cajero Central BP', 'login': 'cajero.central.bp',
+            'company_id': self.casa_central.id,
+            'company_ids': [(6, 0, [self.casa_central.id])],
+            'groups_id': [(6, 0, [
+                self.env.ref('base.group_user').id,
+                self.branch_group.id,
+            ])],
+        })
+        self.usuario_central.branch_warehouse_ids = self.warehouse
+
+        # _compute_domain está cacheado y el destino del tipo acaba de cambiar.
+        self.env.registry.clear_cache()
+
+    def _envia_a_la_otra_sucursal(self):
+        """Crea, confirma y valida el envío como el usuario de sucursal."""
+        picking = self.env['stock.picking'].with_user(self.usuario_central).create({
+            'picking_type_id': self.tipo_envio.id,
+            'location_id': self.warehouse.lot_stock_id.id,
+            'location_dest_id': self.salida.id,
+        })
+        self.env['stock.move'].with_user(self.usuario_central).create({
+            'name': 'Puente BP', 'picking_id': picking.id,
+            'product_id': self.producto.id, 'product_uom_qty': 1,
+            'location_id': self.warehouse.lot_stock_id.id,
+            'location_dest_id': self.salida.id,
+        })
+        picking.action_confirm()
+        picking.action_assign()
+        picking.move_ids.write({'quantity': 1, 'picked': True})
+        picking.button_validate()
+        return picking
+
+    def test_16_el_tramo_puente_lo_ejecuta_el_codigo(self):
+        """El envío se confirma y se valida aunque la cadena siga en otro local.
+
+        El intercambio son tres tramos y el operador sólo conoce el primero. Los
+        otros dos los aplica `_push_apply` dentro de su propio `_action_confirm`,
+        y el último termina en la ubicación de existencias de la otra sucursal:
+        `internal` y de otro almacén, o sea justo lo que el perfil oculta. El
+        usuario no la elige ni la ve, se la pone la regla.
+        """
+        self._arma_el_intercambio()
+
+        picking = self._envia_a_la_otra_sucursal()
+
+        self.assertEqual(picking.state, 'done')
+        move = self.env['stock.move'].browse(picking.move_ids.ids)
+        self.assertEqual(
+            move.location_dest_id, self.transito,
+            'El tramo transparente tiene que haber corrido el destino a tránsito.')
+        recepcion = move.move_dest_ids
+        self.assertTrue(recepcion, 'Falta el tramo que recibe en la otra sucursal.')
+        self.assertEqual(recepcion.location_dest_id, self.destino_final)
+        self.assertEqual(
+            recepcion.picking_id.picking_type_id, self.otro_warehouse.in_type_id)
+
+    def test_16b_el_tramo_puente_no_se_le_muestra_a_quien_envia(self):
+        """Lo que se eleva es la ejecución del tramo, no lo que el perfil deja ver."""
+        self._arma_el_intercambio()
+        picking = self._envia_a_la_otra_sucursal()
+        recepcion = self.env['stock.move'].browse(picking.move_ids.ids).move_dest_ids
+
+        como_usuario = lambda modelo: self.env[modelo].with_user(self.usuario_central)
+        self.assertNotIn(recepcion.picking_id, como_usuario('stock.picking').search([]))
+        self.assertNotIn(recepcion, como_usuario('stock.move').search([]))
+        self.assertNotIn(
+            self.otro_warehouse, como_usuario('stock.warehouse').search([]))
+        with self.assertRaises(AccessError):
+            self.destino_final.with_user(self.usuario_central).read(['complete_name'])
