@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo noupdate="1">
+    <!-- Tope de lineas por tanda. 199 es el mismo numero que el "Cantidad
+         maxima de lineas" del punto de emision: una factura de venta grande
+         entra sola en su tanda, y varias chicas entran juntas. -->
+    <record id="param_post_queue_max_lines" model="ir.config_parameter">
+        <field name="key">forum.post_queue_max_lines</field>
+        <field name="value">199</field>
+    </record>
+
+    <!-- A partir de cuantas facturas seleccionadas se encola. Con 2,
+         seleccionar una sola sigue registrando en el momento. -->
+    <record id="param_post_queue_min_moves" model="ir.config_parameter">
+        <field name="key">forum.post_queue_min_moves</field>
+        <field name="value">2</field>
+    </record>
+
+    <!-- Tope de lineas por corrida del cron, para no pasarse del
+         limit_time_real. Si queda cola, el cron se auto-dispara. -->
+    <record id="param_post_queue_max_lines_per_run" model="ir.config_parameter">
+        <field name="key">forum.post_queue_max_lines_per_run</field>
+        <field name="value">3000</field>
+    </record>
+</odoo>
