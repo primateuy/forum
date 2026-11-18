@@ -66,7 +66,84 @@ class PosOrder(models.Model):
         vals = super()._prepare_invoice_vals()
         if self._forum_es_factura_posterior():
             vals["invoice_date"] = self._forum_fecha_venta()
+        if not vals.get("invoice_cash_rounding_id"):
+            redondeo = self._forum_redondeo_sin_efectivo()
+            if redondeo:
+                vals["invoice_cash_rounding_id"] = redondeo.id
         return vals
+
+    def _prepare_aml_values_list_per_nature(self):
+        """
+        La reversión del cierre lleva el mismo redondeo que la factura.
+
+        El core sólo arma la línea de redondeo de la reversión si hubo efectivo o si
+        la caja redondea todo (point_of_sale/models/pos_order.py:752). Con la
+        factura redondeada por ``_forum_redondeo_sin_efectivo`` la reversión quedaba
+        descuadrada en esos centavos y el posteo se caía en ``_check_balanced``.
+        Se calcula como el core en el caso de pagos mixtos (pos_order.py:754-759):
+        lo cobrado contra el total de las líneas.
+        """
+        valores = super()._prepare_aml_values_list_per_nature()
+        redondeo = self._forum_redondeo_sin_efectivo()
+        if not redondeo or valores.get("cash_rounding") or redondeo.strategy != "add_invoice_line":
+            return valores
+        signo = 1 if self.amount_total < 0 else -1
+        total = sum(v["amount_currency"] for naturaleza in ("tax", "product")
+                    for v in valores.get(naturaleza, []))
+        cobrado = self.currency_id.round(sum(self.payment_ids.mapped("amount")))
+        importe = signo * self.currency_id.round(self.currency_id.round(total) + cobrado)
+        if self.currency_id.is_zero(importe):
+            return valores
+        tasa = self.currency_id._get_conversion_rate(
+            self.currency_id, self.company_id.currency_id, self.company_id, self.date_order)
+        if -signo * importe > 0.0 and redondeo.loss_account_id:
+            cuenta = redondeo.loss_account_id
+        else:
+            cuenta = redondeo.profit_account_id
+        valores["cash_rounding"].append({
+            "name": redondeo.name,
+            "account_id": cuenta.id,
+            "partner_id": self.partner_id.commercial_partner_id.id,
+            "currency_id": self.currency_id.id,
+            "amount_currency": importe,
+            "balance": self.company_id.currency_id.round(importe * tasa),
+            "display_type": "rounding",
+        })
+        return valores
+
+    def _forum_redondeo_sin_efectivo(self):
+        """
+        Método de redondeo para una venta cobrada sin efectivo y con centavos de diferencia.
+
+        El core le saca el método de redondeo a la factura cuando la caja
+        redondea sólo el efectivo y no hubo pagos en efectivo
+        (point_of_sale/models/pos_order.py:682), pero ``_create_invoice`` igual
+        agrega la línea de redondeo si lo cobrado no coincide con el total, y le
+        pone la cuenta de ese método vacío (pos_order.py:589-605). La línea queda
+        sin cuenta y la factura no se puede guardar:
+        ``account_move_line_check_accountable_required_fields``.
+
+        Pasa con la promoción OCA: el pinpad cobraba el descuento truncado
+        (4.798,39 contra 4.798,40). Eso se corrigió el 13-11-2026 (97cb0a1), pero
+        las ventas de antes no se podían facturar (producción, 18-11-2026: 5 ventas
+        de Pando y Paso Molino).
+
+        Se le devuelve el método de la caja sólo si la diferencia es menor que el
+        redondeo de la caja (centavos con el redondeo de $1). Es el mismo camino
+        que ya recorre cada venta en efectivo: el core ajusta la línea a lo
+        cobrado y la factura queda en ese importe. Una diferencia de $1 o más no es
+        un redondeo y se sigue frenando: es otra cosa (un pago mal ligado, por
+        ejemplo) y no tiene que quedar escondida en una línea de redondeo.
+        """
+        self.ensure_one()
+        config = self.config_id
+        metodo = config.rounding_method
+        if not (config.cash_rounding and metodo):
+            return self.env["account.cash.rounding"]
+        diferencia = self.currency_id.round(self.amount_paid - self.amount_total)
+        if self.currency_id.is_zero(diferencia) or abs(diferencia) >= metodo.rounding:
+            return self.env["account.cash.rounding"]
+        return metodo
 
     def _create_misc_reversal_move(self, payment_moves):
         """

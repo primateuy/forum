@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "PDV Forum — Facturar una venta después del cierre",
-    "version": "17.0.1.0.0",
+    "version": "17.0.1.1.0",
     "summary": "Permite emitir la factura de una venta del PDV cuando el cliente la pide después, con la fecha de la venta.",
     "description": """
 Facturar una venta del PDV después del cierre de caja
