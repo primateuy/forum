@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Copyright 2026 Primate (https://primate.uy)
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
+
+     En modo agrupado cada hoja del reporte es una direccion, asi que el
+     encabezado nativo ya imprime el nombre y la direccion de la sucursal.
+     Lo unico que falta es decir a que empresa pertenece. -->
+<odoo>
+    <template
+        id="forum_activity_statement_document"
+        inherit_id="partner_statement.activity_statement_document"
+    >
+        <xpath expr="//address" position="after">
+            <div t-if="o.parent_id" class="mt-1">
+                <strong>Empresa: </strong>
+                <span t-out="o.commercial_partner_id.name" />
+            </div>
+        </xpath>
+    </template>
+    <template
+        id="forum_outstanding_statement_document"
+        inherit_id="partner_statement.outstanding_statement_document"
+    >
+        <xpath expr="//address" position="after">
+            <div t-if="o.parent_id" class="mt-1">
+                <strong>Empresa: </strong>
+                <span t-out="o.commercial_partner_id.name" />
+            </div>
+        </xpath>
+    </template>
+    <template
+        id="forum_detailed_activity_statement_document"
+        inherit_id="partner_statement.detailed_activity_statement_document"
+    >
+        <xpath expr="//address" position="after">
+            <div t-if="o.parent_id" class="mt-1">
+                <strong>Empresa: </strong>
+                <span t-out="o.commercial_partner_id.name" />
+            </div>
+        </xpath>
+    </template>
+</odoo>

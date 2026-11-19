@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Copyright 2026 Primate (https://primate.uy)
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html). -->
+<odoo>
+    <record id="forum_statement_common_view" model="ir.ui.view">
+        <field name="name">statement.common.wizard.agrupar.direccion</field>
+        <field name="model">statement.common.wizard</field>
+        <field name="inherit_id" ref="partner_statement.statement_common_view" />
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='company_id']" position="after">
+                <field name="forum_group_address" />
+            </xpath>
+        </field>
+    </record>
+</odoo>
